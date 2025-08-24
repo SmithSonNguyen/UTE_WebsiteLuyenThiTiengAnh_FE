@@ -17,3 +17,10 @@ src/
 ├── main.jsx
 └── index.css       // Import Tailwind
 ```
+
+## Chạy src
+
+```terminal
+npm install
+npm run dev
+```
