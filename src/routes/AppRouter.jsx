@@ -3,6 +3,7 @@ import Login from "@/pages/Login";
 import Register from "../pages/Register";
 import ForgotPassword from "../pages/ForgotPassword";
 import Profile from "../pages/Profile";
+import Home from "../pages/Home";
 
 import ProtectedRouter from "./ProtectedRouter";
 
@@ -12,13 +13,12 @@ function AppRouter() {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
-
       <Route element={<ProtectedRouter />}>
         <Route path="/profile" element={<Profile />} />
       </Route>
 
       {/* Route mặc định, có thể redirect về login hoặc trang chủ */}
-      <Route path="/" element={<Navigate to="/login" />} />
+      <Route path="/" element={<Home />} />
       {/* Route cho trang không tìm thấy */}
       <Route
         path="*"

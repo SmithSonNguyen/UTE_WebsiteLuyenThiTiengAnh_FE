@@ -4,10 +4,12 @@ import React from "react";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
-import { Link } from "react-router-dom";
-import FormWrapper from "../components/common/FormWrapper";
-import Input from "../components/common/Input";
-import Button from "../components/common/Button";
+import { Link, useNavigate } from "react-router-dom";
+import FormWrapper from "@/components/common/FormWrapper";
+import Input from "@/components/common/Input";
+import Button from "@/components/common/Button";
+import { loginUser } from "@/redux/authSlice"; // import thunk
+import { useDispatch, useSelector } from "react-redux";
 
 const schema = yup.object({
   email: yup.string().email("Invalid email").required("Email is required"),
@@ -18,17 +20,33 @@ const schema = yup.object({
 });
 
 const Login = () => {
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const { isLoading, error, errorMessage } = useSelector(
+    (state) => state.auth.login
+  );
+
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors },
   } = useForm({
     resolver: yupResolver(schema),
   });
 
-  const onSubmit = (data) => {
-    console.log("Login data:", data);
-    // Call API here
+  const onSubmit = async (data) => {
+    try {
+      const resultAction = await dispatch(loginUser(data));
+      if (loginUser.fulfilled.match(resultAction)) {
+        // login thành công
+        navigate("/"); // chuyển hướng về trang chính
+      } else {
+        // login thất bại, error sẽ hiển thị từ Redux
+        console.log(resultAction.payload);
+      }
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   return (
@@ -46,10 +64,16 @@ const Login = () => {
           register={register("password")}
           error={errors.password}
         />
-        <Button type="submit" loading={isSubmitting}>
+        {error && (
+          <p className="text-red-600 text-sm my-2 ">
+            {typeof errorMessage === "string" ? errorMessage : "Login failed"}
+          </p>
+        )}
+        <Button type="submit" loading={isLoading}>
           Login
         </Button>
       </form>
+
       <div className="text-center mt-4">
         <Link to="/forgot-password" className="text-blue-600 hover:underline">
           Forgot Password?
