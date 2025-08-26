@@ -17,7 +17,7 @@ const persistConfig = {
   version: 1,
   storage,
 };
-//const rootReducer = combineReducers({ auth: authReducer, users: userReducer });
+
 const rootReducer = combineReducers({ auth: authReducer });
 const persistedReducer = persistReducer(persistConfig, rootReducer);
 
@@ -29,6 +29,6 @@ export const store = configureStore({
         ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
       },
     }),
-})
+});
 
 export let persistor = persistStore(store);
