@@ -4,6 +4,7 @@ import Register from "../pages/Register";
 import ForgotPassword from "../pages/ForgotPassword";
 import Profile from "../pages/Profile";
 import Home from "../pages/Home";
+import EditProfile from "@/pages/EditProfile";
 
 import ProtectedRouter from "./ProtectedRouter";
 
@@ -15,6 +16,7 @@ function AppRouter() {
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route element={<ProtectedRouter />}>
         <Route path="/profile" element={<Profile />} />
+        <Route path="/edit-profile" element={<EditProfile />} />
       </Route>
 
       {/* Route mặc định, có thể redirect về login hoặc trang chủ */}
