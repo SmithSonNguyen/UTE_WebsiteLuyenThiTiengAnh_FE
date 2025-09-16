@@ -5,6 +5,7 @@ import ForgotPassword from "../pages/ForgotPassword";
 import Profile from "../pages/Profile";
 import Home from "../pages/Home";
 import EditProfile from "@/pages/EditProfile";
+import ToeicHome from "@/pages/ToeicHome";
 
 import ProtectedRouter from "./ProtectedRouter";
 
@@ -14,6 +15,7 @@ function AppRouter() {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/toeic-home" element={<ToeicHome />} />
       <Route element={<ProtectedRouter />}>
         <Route path="/profile" element={<Profile />} />
         <Route path="/edit-profile" element={<EditProfile />} />
