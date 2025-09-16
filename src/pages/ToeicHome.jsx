@@ -1,5 +1,6 @@
 import Button from "../components/common/Button";
 import HeaderToeicHome from "../components/layouts/HeaderToeicHome";
+import FaqSectionToeicHome from "../components/layouts/FaqSectionToeicHome";
 
 const ToeicHome = () => {
   return (
@@ -85,6 +86,11 @@ const ToeicHome = () => {
             </div>
           </div>
         </div>
+      </section>
+
+      {/* FAQ Section */}
+      <section className="bg-gray-100 py-16">
+        <FaqSectionToeicHome />
       </section>
 
       {/* Call To Action */}
