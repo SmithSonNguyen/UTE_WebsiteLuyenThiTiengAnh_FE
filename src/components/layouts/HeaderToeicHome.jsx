@@ -1,10 +1,19 @@
 import React, { useState } from "react";
+import { useLocation } from "react-router-dom";
 import ExamDropdownToeicHome from "./ExamDropdownToeicHome";
 import StartModal from "../common/StartModal";
 import AvatarMenu from "../common/AvatarMenu";
 
 const HeaderToeicHome = () => {
   const [openModal, setOpenModal] = useState(false);
+  const location = useLocation();
+
+  const navLinks = [
+    { href: "/toeic-home", label: "Xây dựng lộ trình" },
+    { href: "/toeic-home/free-entry-test", label: "Kiểm tra đầu vào" },
+    { href: "/toeic/test-practice", label: "Luyện đề" },
+    { href: "/toeic/score-guarantee-programme", label: "Cam kết đầu ra" },
+  ];
 
   return (
     <>
@@ -28,30 +37,19 @@ const HeaderToeicHome = () => {
 
             {/* Menu */}
             <div className="font-svn-poppins hidden items-center rounded-[317px] bg-white px-1 py-0.5 font-semibold text-blue-900 lg:flex lg:gap-x-1 lg:max-2xl:text-xs 2xl:gap-x-2.5 shadow-sm">
-              <a
-                href="/toeic-home"
-                className="rounded-[317px] bg-blue-100 text-blue-500 px-3 py-3 text-base font-semibold"
-              >
-                Xây dựng lộ trình
-              </a>
-              <a
-                href="/toeic-home/free-entry-test"
-                className="rounded-[317px] hover:bg-gray-100 px-3 py-3 text-base font-semibold"
-              >
-                Kiểm tra đầu vào
-              </a>
-              <a
-                href="/vi/toeic/test-practice"
-                className="rounded-[317px] hover:bg-gray-100 px-3 py-3 text-base font-semibold"
-              >
-                Luyện đề
-              </a>
-              <a
-                href="/vi/toeic/score-guarantee-programme"
-                className="rounded-[317px] hover:bg-gray-100 px-3 py-3 text-base font-semibold "
-              >
-                Cam kết đầu ra
-              </a>
+              {navLinks.map((link) => (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  className={`rounded-[317px] px-3 py-3 text-base font-semibold ${
+                    location.pathname === link.href
+                      ? "bg-blue-100 text-blue-500"
+                      : "hover:bg-gray-100"
+                  }`}
+                >
+                  {link.label}
+                </a>
+              ))}
             </div>
           </div>
 
