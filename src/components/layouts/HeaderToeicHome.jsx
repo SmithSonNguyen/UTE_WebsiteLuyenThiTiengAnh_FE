@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import ExamDropdownToeicHome from "./ExamDropdownToeicHome";
 import StartModal from "../common/StartModal";
+import AvatarMenu from "../common/AvatarMenu";
 
 const HeaderToeicHome = () => {
   const [openModal, setOpenModal] = useState(false);
@@ -15,7 +16,7 @@ const HeaderToeicHome = () => {
             <a href="/vi/">
               <div className="relative rounded-[140px] bg-white px-3 py-2.5 shadow-sm hover:shadow-md transition">
                 <img
-                  src="Superman_shield.svg.png"
+                  src="../../../public/Superman_shield.svg.png"
                   alt="Logo DTT"
                   className="h-10 w-auto md:h-12 lg:h-14 2xl:h-16 object-contain"
                 />
@@ -34,7 +35,7 @@ const HeaderToeicHome = () => {
                 Xây dựng lộ trình
               </a>
               <a
-                href="/vi/toeic/free-entry-test"
+                href="/toeic-home/free-entry-test"
                 className="rounded-[317px] hover:bg-gray-100 px-3 py-3 text-base font-semibold"
               >
                 Kiểm tra đầu vào
@@ -62,6 +63,8 @@ const HeaderToeicHome = () => {
             >
               Bắt đầu
             </button>
+
+            <AvatarMenu />
           </div>
         </div>
       </div>
