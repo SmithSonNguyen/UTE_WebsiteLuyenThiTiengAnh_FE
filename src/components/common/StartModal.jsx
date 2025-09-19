@@ -17,7 +17,7 @@ const StartModal = ({ open, onClose }) => {
           <div className="w-7"></div>
           <a href="/vi/">
             <img
-              src="Superman_shield.svg.png"
+              src="../../../public/Superman_shield.svg.png"
               alt="Logo"
               className="h-10 w-auto md:h-12 lg:h-14 2xl:h-16 object-contain"
             />

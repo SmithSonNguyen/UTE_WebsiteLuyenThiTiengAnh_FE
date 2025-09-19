@@ -40,18 +40,27 @@ const FaqSectionToeicHome = () => {
           <div>
             <div className="relative">
               <span className="-my-2 inline-block overflow-hidden py-2">
-                <span className="font-svn-poppins text-[32px] md:text-[44px] font-bold leading-10 md:leading-[60px]">
-                  <gradient>DTT</gradient>&nbsp;
+                <span
+                  className="font-svn-poppins text-[32px] md:text-[44px] font-bold leading-10 md:leading-[60px]
+      bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent"
+                >
+                  DTT
                 </span>
               </span>
               <span className="-my-2 inline-block overflow-hidden py-2">
-                <span className="font-svn-poppins text-[32px] md:text-[44px] font-bold leading-10 md:leading-[60px]">
-                  <gradient>giúp</gradient>&nbsp;
+                <span
+                  className="font-svn-poppins text-[32px] md:text-[44px] font-bold leading-10 md:leading-[60px]
+      bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent"
+                >
+                  giúp
                 </span>
               </span>
               <span className="-my-2 inline-block overflow-hidden py-2">
-                <span className="font-svn-poppins text-[32px] md:text-[44px] font-bold leading-10 md:leading-[60px]">
-                  <gradient>bạn</gradient>
+                <span
+                  className="font-svn-poppins text-[32px] md:text-[44px] font-bold leading-10 md:leading-[60px]
+      bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent"
+                >
+                  bạn
                 </span>
               </span>
             </div>
