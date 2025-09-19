@@ -1,6 +1,7 @@
 import Button from "../components/common/Button";
 import HeaderToeicHome from "../components/layouts/HeaderToeicHome";
 import FaqSectionToeicHome from "../components/layouts/FaqSectionToeicHome";
+import Footer from "../components/common/Footer";
 
 const ToeicHome = () => {
   return (
@@ -104,6 +105,11 @@ const ToeicHome = () => {
         <Button size="lg" className="bg-yellow-400 text-black font-semibold">
           Đăng ký ngay
         </Button>
+      </section>
+
+      {/* Footer */}
+      <section>
+        <Footer />
       </section>
     </div>
   );
