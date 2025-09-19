@@ -28,6 +28,18 @@ function AppRouter() {
           // </ProtectedRouter>
         }
       />
+      <Route
+        path="/toeic-home/free-entry-test/full-test"
+        // element={<FreeEntryTest_FullTest />}
+      />
+      <Route
+        path="/toeic-home/free-entry-test/quick-test-LR"
+        // element={<FreeEntryTest_QuickTest_LR />}
+      />
+      <Route
+        path="/toeic-home/free-entry-test/quick-test-4KN"
+        // element={<FreeEntryTest_QuickTest_4KN />}
+      />
 
       <Route element={<ProtectedRouter />}>
         <Route path="/profile" element={<Profile />} />
