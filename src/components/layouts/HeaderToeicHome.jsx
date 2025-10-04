@@ -11,8 +11,8 @@ const HeaderToeicHome = () => {
   const navLinks = [
     { href: "/toeic-home", label: "Xây dựng lộ trình" },
     { href: "/toeic-home/free-entry-test", label: "Kiểm tra đầu vào" },
-    { href: "/toeic/test-practice", label: "Luyện đề" },
-    { href: "/toeic/score-guarantee-programme", label: "Cam kết đầu ra" },
+    { href: "/toeic-home/test-online", label: "Luyện đề" },
+    { href: "/toeic-home/score-guarantee-programme", label: "Cam kết đầu ra" },
   ];
 
   return (
@@ -27,7 +27,7 @@ const HeaderToeicHome = () => {
                 <img
                   src="../../../public/Superman_shield.svg.png"
                   alt="Logo DTT"
-                  className="h-10 w-auto md:h-12 lg:h-14 2xl:h-16 object-contain"
+                  className="h-2 w-auto md:h-12 lg:h-14 2xl:h-16 object-contain"
                 />
               </div>
             </a>
