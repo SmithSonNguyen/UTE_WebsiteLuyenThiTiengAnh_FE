@@ -2,13 +2,19 @@ import React, { useState } from "react";
 import { Radio, Button } from "antd";
 import HeaderToeicHome from "../components/layouts/HeaderToeicHome";
 import Footer from "../components/common/Footer";
+import { useNavigate } from "react-router-dom";
 
 export default function FreeEntryTest() {
   const [selectedTest, setSelectedTest] = useState(null);
+  const navigate = useNavigate();
 
   const handleSubmit = () => {
-    if (selectedTest) {
-      alert(`You selected: ${selectedTest}`);
+    if (selectedTest == "TOEIC Full Test") {
+      navigate("/toeic-home/free-entry-test/full-test");
+    } else if (selectedTest == "TOEIC Quick Test") {
+      navigate("/toeic-home/free-entry-test/quick-test");
+    } else if (selectedTest == "TOEIC Entry Test 4 KN") {
+      navigate("/toeic-home/free-entry-test/entry-test-4kn");
     } else {
       alert("Please select a test option before submitting.");
     }
