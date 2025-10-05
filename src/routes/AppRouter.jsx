@@ -7,6 +7,7 @@ import Home from "../pages/Home";
 import EditProfile from "../pages/EditProfile";
 import ToeicHome from "../pages/ToeicHome";
 import FreeEntryTest from "../pages/FreeEntryTest";
+import FreeEntryTest_FullTest from "../pages/FreeEntryTest_FullTest";
 
 import ProtectedRouter from "./ProtectedRouter";
 
@@ -30,7 +31,7 @@ function AppRouter() {
       />
       <Route
         path="/toeic-home/free-entry-test/full-test"
-        // element={<FreeEntryTest_FullTest />}
+        element={<FreeEntryTest_FullTest />}
       />
       <Route
         path="/toeic-home/free-entry-test/quick-test-LR"
