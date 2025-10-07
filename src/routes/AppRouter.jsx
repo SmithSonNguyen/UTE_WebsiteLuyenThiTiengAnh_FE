@@ -8,6 +8,7 @@ import EditProfile from "../pages/EditProfile";
 import ToeicHome from "../pages/ToeicHome";
 import FreeEntryTest from "../pages/FreeEntryTest";
 import FreeEntryTest_FullTest from "../pages/FreeEntryTest_FullTest";
+import LichKhaiGiang from "../pages/LichKhaiGiang";
 
 import ProtectedRouter from "./ProtectedRouter";
 
@@ -41,6 +42,9 @@ function AppRouter() {
         path="/toeic-home/free-entry-test/quick-test-4KN"
         // element={<FreeEntryTest_QuickTest_4KN />}
       />
+
+      {/* Lịch Khai giảng */}
+      <Route path="/toeic-home/lich-khai-giang" element={<LichKhaiGiang />} />
 
       <Route element={<ProtectedRouter />}>
         <Route path="/profile" element={<Profile />} />
