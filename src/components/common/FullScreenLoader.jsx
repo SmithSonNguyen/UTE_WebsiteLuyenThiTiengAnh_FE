@@ -1,4 +1,4 @@
-import logo from "@/assets/Cham_bochu.png";
+import logo from "@/assets/Superman_shield.svg.png";
 
 function FullScreenLoader() {
   //   return (

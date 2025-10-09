@@ -1,10 +1,12 @@
 import React, { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 
-export default function AvatarMenu({ onProfile, onLogout }) {
+export default function AvatarMenu({ onLogout }) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef(null);
   const avatar = useSelector((state) => state.auth.login?.currentUser?.avatar);
+  const navigate = useNavigate();
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -26,7 +28,7 @@ export default function AvatarMenu({ onProfile, onLogout }) {
         style={{ background: "none", border: "none" }}
       >
         <img
-          src={avatar || "https://i.pravatar.cc/40"}
+          src={avatar || "/default-avatar.png"}
           alt="avatar"
           className="w-8 h-8 rounded-full border object-cover"
         />
@@ -40,7 +42,7 @@ export default function AvatarMenu({ onProfile, onLogout }) {
             className="block w-full text-left py-1 hover:bg-gray-100 white-space-nowrap"
             onClick={() => {
               setOpen(false); // Đóng menu
-              onProfile(); // Chuyển sang trang cá nhân
+              navigate("/profile"); // Chuyển sang trang cá nhân
             }}
           >
             Trang cá nhân

@@ -75,12 +75,27 @@ function AppRouter() {
       <Route path="/toeic-home/lich-khai-giang" element={<LichKhaiGiang />} />
 
       <Route element={<ProtectedRouter />}>
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/edit-profile" element={<EditProfile />} />
+        <Route
+          path="/profile"
+          element={
+            <ToeicLayout showFooter={true}>
+              <Profile />
+            </ToeicLayout>
+          }
+        />
+        <Route
+          path="/edit-profile"
+          element={
+            <ToeicLayout>
+              <EditProfile />
+            </ToeicLayout>
+          }
+        />
       </Route>
 
       {/* Route mặc định, có thể redirect về login hoặc trang chủ */}
       <Route path="/" element={<Navigate to="/toeic-home" replace />} />
+      <Route path="/example" element={<Home />} />
       {/* Route cho trang không tìm thấy */}
       <Route
         path="*"
