@@ -10,6 +10,8 @@ import FreeEntryTest from "../pages/FreeEntryTest";
 import TestOnline from "@/pages/TestOnline";
 import QuestionDisplay from "@/components/test/QuestionDisplay";
 import ToeicLayout from "../components/layouts/ToeicLayout";
+import FreeEntryTest_FullTest from "../pages/FreeEntryTest_FullTest";
+import LichKhaiGiang from "../pages/LichKhaiGiang";
 
 import ProtectedRouter from "./ProtectedRouter";
 
@@ -42,7 +44,7 @@ function AppRouter() {
       />
       <Route
         path="/toeic-home/free-entry-test/full-test"
-        // element={<ToeicLayout><FreeEntryTest_FullTest /></ToeicLayout>}
+        element={<FreeEntryTest_FullTest />}
       />
       <Route
         path="/toeic-home/free-entry-test/quick-test-LR"
@@ -68,6 +70,9 @@ function AppRouter() {
           </ToeicLayout>
         }
       />
+
+      {/* Lịch Khai giảng */}
+      <Route path="/toeic-home/lich-khai-giang" element={<LichKhaiGiang />} />
 
       <Route element={<ProtectedRouter />}>
         <Route path="/profile" element={<Profile />} />
