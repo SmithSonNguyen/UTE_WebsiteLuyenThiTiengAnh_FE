@@ -74,8 +74,8 @@ function AppRouter() {
         <Route path="/edit-profile" element={<EditProfile />} />
       </Route>
 
-      {/* Route mặc định, có thể redirect về login hoặc trang chủ */}
-      <Route path="/" element={<Home />} />
+      {/* Route mặc định, redirect về toeic-home */}
+      <Route path="/" element={<Navigate to="/toeic-home" replace />} />
       {/* Route cho trang không tìm thấy */}
       <Route
         path="*"
