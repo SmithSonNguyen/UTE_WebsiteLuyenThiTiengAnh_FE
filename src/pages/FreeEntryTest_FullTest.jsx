@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import axios from "axios";
+import axiosInstance from "@/utils/axiosInstance";
 
 const PART_INFO = {
   1: { name: "Photographs", hasImage: true },
@@ -27,13 +27,11 @@ const FreeEntryTest_FullTest = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await axios.get(
-          "http://localhost:8080/toeic-home/free-entry-test/fulltest"
+        const res = await axiosInstance.get(
+          "/toeic-home/free-entry-test/fulltest"
         );
 
-        const rawData = Array.isArray(res.data)
-          ? res.data
-          : res.data?.data || [];
+        const rawData = Array.isArray(res) ? res : [];
 
         // 🔄 Flatten dữ liệu group => từng câu hỏi riêng
         const flattened = rawData.flatMap((group) =>
