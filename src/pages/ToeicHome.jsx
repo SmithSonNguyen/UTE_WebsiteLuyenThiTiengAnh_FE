@@ -1,13 +1,9 @@
 import Button from "../components/common/Button";
-import HeaderToeicHome from "../components/layouts/HeaderToeicHome";
 import FaqSectionToeicHome from "../components/layouts/FaqSectionToeicHome";
-import Footer from "../components/common/Footer";
 
 const ToeicHome = () => {
   return (
     <div className="w-full">
-      <HeaderToeicHome />
-
       {/* Hero Section */}
       <section className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-20">
         <div className="container mx-auto px-6 text-center">
@@ -105,11 +101,6 @@ const ToeicHome = () => {
         <Button size="lg" className="bg-yellow-400 text-black font-semibold">
           Đăng ký ngay
         </Button>
-      </section>
-
-      {/* Footer */}
-      <section>
-        <Footer />
       </section>
     </div>
   );
