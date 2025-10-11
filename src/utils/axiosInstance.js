@@ -27,8 +27,13 @@ export const initializeAxiosInterceptors = (store) => {
   instance.interceptors.request.use(
     function (config) {
       const accessToken = store.getState().auth.login.accessToken;
+      console.log(
+        "Request interceptor - Current access token:",
+        accessToken ? "EXISTS" : "NULL"
+      );
       if (accessToken) {
         config.headers.Authorization = `Bearer ${accessToken}`;
+        console.log("Added Authorization header");
       }
       return config;
     },
@@ -70,6 +75,7 @@ export const initializeAxiosInterceptors = (store) => {
         isRefreshing = true;
 
         try {
+          console.log("Attempting to refresh token...");
           const res = await axios.post(
             `${import.meta.env.VITE_BACKEND_URL}/users/refresh-token`,
             {},
@@ -77,12 +83,15 @@ export const initializeAxiosInterceptors = (store) => {
               withCredentials: true,
             }
           );
-          const newAccessToken = res.data.accessToken;
+          console.log("Refresh token response:", res.data);
+          const newAccessToken = res.data.access_token; // Sửa từ accessToken thành access_token
+          console.log("New access token:", newAccessToken);
           store.dispatch(setAccessToken(newAccessToken));
           processQueue(null, newAccessToken);
 
           originalRequest.headers = originalRequest.headers || {};
           originalRequest.headers.Authorization = "Bearer " + newAccessToken;
+          console.log("Retrying original request with new token");
           return instance(originalRequest);
         } catch (err) {
           processQueue(err, null);

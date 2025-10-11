@@ -27,11 +27,7 @@ export default function Header({ tab, setTab }) {
                     {t}
                   </button>
                 ) : (
-                  <AvatarMenu
-                    key={t}
-                    onProfile={() => setTab("Profile")}
-                    onLogout={() => setTab("Logout")}
-                  />
+                  <AvatarMenu key={t} />
                 )
               )}
             </div>

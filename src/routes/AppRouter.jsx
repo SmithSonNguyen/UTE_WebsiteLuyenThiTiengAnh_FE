@@ -2,9 +2,9 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Login from "@/pages/Login";
 import Register from "../pages/Register";
 import ForgotPassword from "../pages/ForgotPassword";
-import Profile from "../pages/Profile";
+import Profile from "../pages/profile/Profile";
 import Home from "../pages/Home";
-import EditProfile from "../pages/EditProfile";
+import EditProfile from "../pages/profile/EditProfile";
 import ToeicHome from "../pages/ToeicHome";
 import FreeEntryTest from "../pages/FreeEntryTest";
 import TestOnline from "@/pages/TestOnline";
@@ -12,6 +12,7 @@ import QuestionDisplay from "@/components/test/QuestionDisplay";
 import ToeicLayout from "../components/layouts/ToeicLayout";
 import FreeEntryTest_FullTest from "../pages/FreeEntryTest_FullTest";
 import LichKhaiGiang from "../pages/LichKhaiGiang";
+import CourseDetailPage from "@/pages/course/CourseDetailPage";
 
 import ProtectedRouter from "./ProtectedRouter";
 
@@ -73,6 +74,16 @@ function AppRouter() {
 
       {/* Lịch Khai giảng */}
       <Route path="/toeic-home/lich-khai-giang" element={<LichKhaiGiang />} />
+
+      {/* Course Detail Page */}
+      <Route
+        path="/toeic-home/course/:id"
+        element={
+          <ToeicLayout showFooter={true}>
+            <CourseDetailPage />
+          </ToeicLayout>
+        }
+      />
 
       <Route element={<ProtectedRouter />}>
         <Route
