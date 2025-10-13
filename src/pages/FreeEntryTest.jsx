@@ -135,11 +135,6 @@ export default function FreeEntryTest() {
           </Button>
         </div>
       </div>
-
-      {/* Footer */}
-      <a>
-        <Footer />
-      </a>
     </>
   );
 }
