@@ -15,30 +15,40 @@ const FixedRegistrationCard = ({ onRegister, course }) => {
         {" "}
         {/* Điều chỉnh gradient giống ảnh hơn */}
         <div className="text-xs bg-white bg-opacity-20 rounded px-2 py-1 inline-block mb-1">
-          STUDY4
+          DTT Toeic
         </div>
-        <div className="text-lg font-bold">TOEIC S&W</div>
-        <div className="text-xs">SPEAKING & WRITING</div>
+        <div className="text-lg font-bold">
+          {course?.title || "From 0 to 300+ TOEIC Speaking & Writing"}
+        </div>
+        <div className="text-xs">Reading & Listening</div>
         <div className="text-xs mt-1 opacity-90">
-          From 0 to 300+ TOEIC Speaking & Writing
+          {`Mục tiêu ${course?.targetScoreRange.min} - ${course?.targetScoreRange.max}`}
         </div>
       </div>
       {/* Special Offer - Giống ảnh: Ưu đãi tháng 10/2025 */}
-      <div className="text-center mb-4">
-        <div className="text-red-600 font-bold text-base">
-          Ưu đãi đặc biệt tháng 10/2025:
+      {course?.discountPrice > 0 && course?.discountPercent > 0 ? (
+        <div className="text-center mb-4">
+          <div className="text-red-600 font-bold text-base">
+            Ưu đãi đặc biệt tháng 10/2025:
+          </div>
+          <div className="text-green-600 text-2xl font-bold mb-1">
+            {course?.discountPrice?.toLocaleString() || "989.000"}đ
+          </div>
+          <div className="text-gray-500 line-through text-xs mb-1">
+            Giá gốc: {course?.price?.toLocaleString() || "1.800.000"}đ
+          </div>
+          <div className="text-red-600 text-xs">
+            Tiết kiệm: {discountAmount.toLocaleString()}đ (-
+            {course?.discountPercent || "45"}%)
+          </div>
         </div>
-        <div className="text-green-600 text-2xl font-bold mb-1">
-          {course?.discountPrice?.toLocaleString() || "989.000"}đ
+      ) : (
+        <div className="text-center mb-4">
+          <div className="text-green-600 text-2xl font-bold mb-1">
+            {course?.price?.toLocaleString() || "989.000"}đ
+          </div>
         </div>
-        <div className="text-gray-500 line-through text-xs mb-1">
-          Giá gốc: {course?.price?.toLocaleString() || "1.800.000"}đ
-        </div>
-        <div className="text-red-600 text-xs">
-          Tiết kiệm: {discountAmount.toLocaleString()}đ (-
-          {course?.discountPercent || "45"}%)
-        </div>
-      </div>
+      )}
       {/* Register Button - Nút lớn, xanh đậm */}
       <button
         onClick={onRegister}
@@ -52,43 +62,58 @@ const FixedRegistrationCard = ({ onRegister, course }) => {
       </button>
       {/* Course Stats - Icon và số liệu giống ảnh */}
       <div className="space-y-2 text-xs text-gray-600 mb-4">
-        <div className="flex items-center justify-between">
-          <span className="flex items-center">
-            <span className="mr-2">👥</span>
-            <span>{course?.studentsCount || "223"} học viên</span>
-          </span>
-          <span className="text-blue-600">Xem chi tiết</span>{" "}
-          {/* Thêm link nếu cần */}
+        <div className="flex items-center">
+          <span className="mr-2 text-yellow-400 text-base w-[17px]">★</span>
+          <span>{`${course?.rating?.average || "4.9"} sao trên ${
+            course?.rating?.reviewsCount || "70"
+          } đánh giá`}</span>
         </div>
-        <div className="flex items-center justify-between">
-          <span className="flex items-center">
-            <span className="mr-2">⏱️</span>
-            <span>50.0 giờ bài học</span>{" "}
-            {/* Hardcode theo ảnh, hoặc thêm field lessonHours */}
-          </span>
-          <span className="text-blue-600">▶</span>
+        <div className="flex items-center">
+          <span className="mr-2 w-[17px]">👥</span>
+          <span>{`${course?.studentsCount || "100"} học viên`}</span>
         </div>
-        <div className="flex items-center justify-between">
-          <span className="flex items-center">
-            <span className="mr-2">📖</span>
-            <span>10 chủ đề, 54 bài học</span>
-          </span>
-          <span className="text-blue-600">📋</span>
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="flex items-center">
-            <span className="mr-2">✏️</span>
-            <span>150 bài tập thực hành</span>
-          </span>
-          <span className="text-blue-600">150 bài</span>
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="flex items-center">
-            <span className="mr-2">👨‍🏫</span>
-            <span>Khóa học có giá trị trong 12 tháng</span>
-          </span>
-          <span className="text-blue-600">⏳</span>
-        </div>
+
+        {course.type === "live-meet" ? (
+          <>
+            <div className="flex items-center">
+              <span className="mr-2 w-[17px]">⏱️</span>
+              <span>{`${
+                course?.courseStructure?.hoursPerSession || "36"
+              } giờ/buổi, mỗi tuần ${
+                course?.courseStructure?.totalSessions /
+                  course?.courseStructure?.durationWeeks || "12"
+              } buổi`}</span>
+            </div>
+
+            <div className="flex items-center">
+              <span className="mr-2 w-[17px]">👨‍🏫</span>
+              <span>{`Khóa học kéo dài trong ${
+                course?.courseStructure?.durationWeeks || "4"
+              } tuần`}</span>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="flex items-center justify-between">
+              <span className="flex items-center">
+                <span className="mr-2">📖</span>
+                <span>
+                  {course.preRecordedContent?.totalTopics} chủ đề,{" "}
+                  {course.preRecordedContent?.totalLessons} bài học
+                </span>
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="flex items-center">
+                <span className="mr-2">✏️</span>
+                <span>
+                  {course.preRecordedContent?.totalExercises || 0} bài tập thực
+                  hành
+                </span>
+              </span>
+            </div>
+          </>
+        )}
       </div>
       {/* Contact - Giống ảnh */}
       <div className="text-center text-xs border-t pt-2">
