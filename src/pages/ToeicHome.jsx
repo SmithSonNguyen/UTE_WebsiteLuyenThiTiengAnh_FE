@@ -1,7 +1,27 @@
+import React, { useEffect, useState } from "react";
 import Button from "../components/common/Button";
 import FaqSectionToeicHome from "../components/layouts/FaqSectionToeicHome";
+import CourseCard from "@/components/course/CourseCard";
+import CourseCarousel from "../components/course/CourseCarousel";
+import { getFeaturedCourses } from "@/api/courseApi";
 
 const ToeicHome = () => {
+  const [courses, setCourses] = useState([]);
+
+  // Trong file ToeicHome.js, thay thế phần setCourses trong useEffect bằng dữ liệu mẫu đầy đủ sau:
+
+  useEffect(() => {
+    const fetchCourses = async () => {
+      try {
+        const response = await getFeaturedCourses();
+        setCourses(response);
+      } catch (error) {
+        console.error("Error fetching featured courses:", error);
+      }
+    };
+    fetchCourses();
+  }, []);
+
   return (
     <div className="w-full">
       {/* Hero Section */}
@@ -21,33 +41,7 @@ const ToeicHome = () => {
       </section>
 
       {/* Courses Section */}
-      <section className="py-16 bg-gray-50">
-        <div className="container mx-auto px-6">
-          <h2 className="text-3xl font-bold text-center mb-12">
-            Các Khóa Học TOEIC Nổi Bật
-          </h2>
-          <div className="grid md:grid-cols-3 gap-8">
-            {["700+", "800+", "900+"].map((target) => (
-              <div
-                key={target}
-                className="bg-white rounded-2xl shadow-md p-6 hover:shadow-lg transition"
-              >
-                <img
-                  src={`https://picsum.photos/400/250?random=${target}`}
-                  alt={`TOEIC ${target}`}
-                  className="rounded-xl mb-4"
-                />
-                <h3 className="text-xl font-semibold mb-2">TOEIC {target}</h3>
-                <p className="text-gray-600 mb-4">
-                  Khóa học dành cho học viên mong muốn đạt mục tiêu TOEIC{" "}
-                  {target}.
-                </p>
-                <Button className="w-full">Xem chi tiết</Button>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      <CourseCarousel courses={courses} title="Các Khóa Học TOEIC Nổi Bật" />
 
       {/* Benefits Section */}
       <section className="py-16">

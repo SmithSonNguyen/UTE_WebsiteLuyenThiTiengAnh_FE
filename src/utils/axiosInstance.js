@@ -27,6 +27,7 @@ export const initializeAxiosInterceptors = (store) => {
   instance.interceptors.request.use(
     function (config) {
       const accessToken = store.getState().auth.login.accessToken;
+
       if (accessToken) {
         config.headers.Authorization = `Bearer ${accessToken}`;
       }
@@ -77,12 +78,15 @@ export const initializeAxiosInterceptors = (store) => {
               withCredentials: true,
             }
           );
-          const newAccessToken = res.data.accessToken;
+
+          const newAccessToken = res.data.access_token; // Sửa từ accessToken thành access_token
+
           store.dispatch(setAccessToken(newAccessToken));
           processQueue(null, newAccessToken);
 
           originalRequest.headers = originalRequest.headers || {};
           originalRequest.headers.Authorization = "Bearer " + newAccessToken;
+          console.log("Retrying original request with new token");
           return instance(originalRequest);
         } catch (err) {
           processQueue(err, null);

@@ -1,9 +1,14 @@
 import { useState } from "react";
 import defaultavatar from "@/assets/defaultavatar.png";
-//import { updateProfile } from "@/features/profile/profileAPI";
-//import { useDispatch } from "react-redux";
 import FullScreenLoader from "@/components/common/FullScreenLoader";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
+import {
+  getUploadSignature,
+  uploadImageToCloudinary,
+  updateUserProfile,
+} from "@/api/userApi";
+import { useNavigate } from "react-router-dom";
+import { setCurrentUser } from "@/redux/authSlice";
 
 function formatDateISOtoInput(dateStr) {
   if (!dateStr) return "";
@@ -16,17 +21,18 @@ function formatDateISOtoInput(dateStr) {
 }
 
 function EditProfile() {
-  //const dispatch = useDispatch();
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const user = useSelector((state) => state.auth.login.currentUser);
-  const [avatar, setAvatar] = useState(user?.profile?.avatar || defaultavatar);
-  const [username, setUsername] = useState(user?.username || "");
-  const [lastname, setLastname] = useState(user?.profile?.lastname || "");
-  const [firstname, setFirstname] = useState(user?.profile?.firstname || "");
+  const [avatar, setAvatar] = useState(user?.avatar || defaultavatar);
+  const [avatarFile, setAvatarFile] = useState(null); // Store the actual file
+  const [lastname, setLastname] = useState(user?.lastname || "");
+  const [firstname, setFirstname] = useState(user?.firstname || "");
   const [birthday, setBirthday] = useState(
-    formatDateISOtoInput(user?.profile?.birthday)
+    formatDateISOtoInput(user?.birthday)
   );
-  const [bio, setBio] = useState(user?.profile?.bio || "");
-  const [bioCount, setBioCount] = useState((user?.profile?.bio || "").length);
+  const [phone, setPhone] = useState(user?.phone || "");
+  //const [bioCount, setBioCount] = useState((user?.bio || "").length);
 
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -36,15 +42,15 @@ function EditProfile() {
   const handleAvatarChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+      setAvatarFile(file); // Store the actual file for upload
       const reader = new FileReader();
       reader.onload = (ev) => setAvatar(ev.target.result);
       reader.readAsDataURL(file);
     }
   };
 
-  const handleBioChange = (e) => {
-    setBio(e.target.value);
-    setBioCount(e.target.value.length);
+  const handlePhoneChange = (e) => {
+    setPhone(e.target.value);
   };
 
   const handleSubmit = async (e) => {
@@ -52,34 +58,57 @@ function EditProfile() {
     setMessage("");
     setError("");
     setLoading(true);
-    const formData = new FormData();
-    formData.append("username", username);
-    formData.append("lastname", lastname);
-    formData.append("firstname", firstname);
-    formData.append("birthday", birthday);
-    formData.append("bio", bio);
-    if (
-      avatar &&
-      avatar !== user?.profile?.avatar &&
-      avatar.startsWith("data:")
-    ) {
-      // Nếu user chọn ảnh mới (base64), chuyển về file
-      const arr = avatar.split(",");
-      const mime = arr[0].match(/:(.*?);/)[1];
-      const bstr = atob(arr[1]);
-      let n = bstr.length;
-      const u8arr = new Uint8Array(n);
-      while (n--) u8arr[n] = bstr.charCodeAt(n);
-      const file = new File([u8arr], "avatar.jpg", { type: mime });
-      formData.append("avatar", file);
-    }
+
     try {
-      // const res = await updateProfile(formData, dispatch);
-      // if (res && res.message) {
-      //   setMessage(res.message);
-      // } else {
-      //   setMessage("Cập nhật thành công!");
-      // }
+      let avatarUrl = user?.avatar; // Keep current avatar URL by default
+
+      // If user selected a new avatar, upload it to Cloudinary
+      if (avatarFile) {
+        try {
+          // Get upload signature from backend
+          const response = await getUploadSignature();
+          const { signature, timestamp, cloudname, apikey } = response;
+
+          // Upload image to Cloudinary
+          avatarUrl = await uploadImageToCloudinary(
+            avatarFile,
+            signature,
+            timestamp,
+            cloudname,
+            apikey
+          );
+        } catch (error) {
+          console.error("Upload error:", error);
+          setError("Không thể upload ảnh đại diện. Vui lòng thử lại.");
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Prepare profile data
+      const profileData = {
+        lastname,
+        firstname,
+        birthday,
+        phone,
+        avatar: avatarUrl,
+      };
+
+      // Update user profile
+      const response = await updateUserProfile(profileData);
+
+      if (response && response.user) {
+        // Update Redux store with new user data
+        dispatch(setCurrentUser({ user: response.user }));
+        setMessage("Cập nhật thành công!");
+      } else {
+        setMessage("Cập nhật thành công!");
+      }
+
+      // Redirect to profile page after successful update
+      setTimeout(() => {
+        navigate("/profile");
+      }, 2000);
     } catch (err) {
       setError(
         err?.response?.data?.message || "Có lỗi xảy ra, vui lòng thử lại."
@@ -128,17 +157,6 @@ function EditProfile() {
             </span>
           </label>
         </div>
-        <div className="flex flex-col gap-2">
-          <label className="font-semibold text-sm">Tên người dùng</label>
-          <input
-            type="text"
-            className="border border-gray-300 rounded-xl px-4 py-2 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            placeholder="Tên người dùng"
-            autoComplete="username"
-          />
-        </div>
         <div className="flex flex-col sm:flex-row gap-4 flex-wrap">
           <div className="flex-1 flex flex-col gap-2">
             <label className="font-semibold text-sm">Họ</label>
@@ -174,18 +192,15 @@ function EditProfile() {
           />
         </div>
         <div className="flex flex-col gap-2">
-          <label className="font-semibold text-sm">Tiểu sử</label>
-          <textarea
-            className="border border-gray-300 rounded-xl px-4 py-3 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
-            placeholder="Tiểu sử"
-            maxLength={150}
-            rows={3}
-            value={bio}
-            onChange={handleBioChange}
+          <label className="font-semibold text-sm">Số điện thoại</label>
+          <input
+            type="text"
+            className="border border-gray-300 rounded-xl px-4 py-2 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
+            placeholder="Số điện thoại"
+            maxLength={15}
+            value={phone}
+            onChange={handlePhoneChange}
           />
-          <div className="text-xs text-gray-400 text-right mt-1">
-            {bioCount} / 150
-          </div>
         </div>
         <div className="flex justify-end">
           <button
