@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import FixedRegistrationCard from "./FixedRegistrationCard";
 import { getCourseReviews } from "@/api/reviewApi";
+import { getUpcomingClassesByCourse } from "@/api/classApi";
 
 const CourseDetail = ({ course, isLoading = false }) => {
   const [showRegister, setShowRegister] = useState(false);
@@ -17,6 +18,10 @@ const CourseDetail = ({ course, isLoading = false }) => {
   const [currentSort, setCurrentSort] = useState("newest");
   const [hasMore, setHasMore] = useState(true);
   const limit = 2; // Fixed limit per page
+
+  // Class schedule states for live-meet courses
+  const [classes, setClasses] = useState([]);
+  const [loadingClasses, setLoadingClasses] = useState(false);
 
   // Fetch reviews function (generic, supports append for load more)
   const fetchReviews = async (
@@ -48,10 +53,30 @@ const CourseDetail = ({ course, isLoading = false }) => {
     }
   };
 
+  // Fetch upcoming classes for live-meet courses
+  const fetchClasses = async (courseId) => {
+    if (!courseId) return;
+
+    setLoadingClasses(true);
+    try {
+      const response = await getUpcomingClassesByCourse(courseId);
+      setClasses(response.classes || []);
+    } catch (error) {
+      console.error("Error fetching upcoming classes:", error);
+      setClasses([]);
+    } finally {
+      setLoadingClasses(false);
+    }
+  };
+
   // Initial fetch when course loads
   useEffect(() => {
     if (course?._id) {
       fetchReviews(course._id);
+      // Fetch classes if it's a live-meet course
+      if (course.type === "live-meet") {
+        fetchClasses(course._id);
+      }
     }
   }, [course]);
 
@@ -72,9 +97,13 @@ const CourseDetail = ({ course, isLoading = false }) => {
 
   // Update tabs label dynamically
   const tabs = [
-    { id: "muc-tieu", label: "Mục tiêu khóa học" },
+    { id: "muc-tieu", label: "Lợi ích khóa học" },
     { id: "thong-tin", label: "Thông tin khóa học" },
-    { id: "chuong-trinh", label: "Chương trình học" },
+    {
+      id: "chuong-trinh",
+      label:
+        course?.type === "live-meet" ? "Lịch khai giảng" : "Chương trình học",
+    },
     { id: "danh-gia", label: `Đánh giá (${reviewsCount})` },
   ];
 
@@ -84,14 +113,6 @@ const CourseDetail = ({ course, isLoading = false }) => {
       [topicId]: !prev[topicId],
     }));
   };
-
-  const features = course?.features || [
-    "Đánh cơ bản về mục tiêu đạt điểm TOEIC Speaking - Writing tại mức đầu ra 240-300+",
-    "Bài giảng hướng dẫn chi tiết làm đăng câu hỏi TOEIC Speaking- Writing",
-    "Làm quen với cấu hình các hội, chủ đề trọng TOEIC Speaking- Writing với hàng trăm",
-    "Bài thi mẫu trả lời- nghe- đọc am, đồng thời luyện nghe- viết câu trả lời cho",
-    "Bổ sung cập nhật, làm mới nội dung, email, bài luận hiện tại",
-  ];
 
   // Loading state đơn giản
   if (isLoading) {
@@ -163,7 +184,7 @@ const CourseDetail = ({ course, isLoading = false }) => {
 
               {/* Features - Bullet points */}
               <ul className="space-y-3 text-sm">
-                {features.map((feature, idx) => (
+                {course?.features.map((feature, idx) => (
                   <li key={idx} className="flex items-start">
                     <span className="text-green-400 font-bold mr-3 mt-1 flex-shrink-0">
                       ✓
@@ -202,9 +223,9 @@ const CourseDetail = ({ course, isLoading = false }) => {
           <div className="py-8 space-y-6">
             {activeTab === "muc-tieu" && (
               <div className="bg-white rounded-lg p-6 shadow-sm">
-                <h3 className="text-xl font-bold mb-4">Mục tiêu khóa học</h3>
+                <h3 className="text-xl font-bold mb-4">Lợi ích khóa học</h3>
                 <ul className="space-y-3">
-                  {features.map((feature, idx) => (
+                  {course?.features.map((feature, idx) => (
                     <li key={idx} className="flex items-start">
                       <span className="text-green-500 font-bold mr-3 mt-1">
                         ✓
@@ -344,9 +365,7 @@ const CourseDetail = ({ course, isLoading = false }) => {
                 </div>
               ) : (
                 <div className="bg-white rounded-lg p-6 shadow-sm">
-                  <h3 className="text-xl font-bold mb-4">
-                    Thông tin khóa học trực tiếp
-                  </h3>
+                  <h3 className="text-xl font-bold mb-4">Thông tin khóa học</h3>
                   <div className="space-y-4">
                     <div className="bg-blue-50 p-4 rounded-lg">
                       <h4 className="font-semibold text-gray-700 mb-3">
@@ -392,127 +411,258 @@ const CourseDetail = ({ course, isLoading = false }) => {
               ))}
 
             {activeTab === "chuong-trinh" && (
-              <div className="bg-white rounded-lg p-6 shadow-sm">
-                <h3 className="text-xl font-bold mb-4">Chương trình học</h3>
+              <div className="bg-white rounded-lg shadow-sm">
+                {course?.type === "live-meet" ? (
+                  // Lịch khai giảng cho live-meet course
+                  <div>
+                    {/* Header */}
+                    <div className="bg-blue-600 text-white p-4 text-center text-lg font-semibold">
+                      Lịch khai giảng
+                    </div>
 
-                {/* Hiển thị curriculum từ API */}
-                {course?.curriculum && course.curriculum.length > 0 ? (
-                  <div className="space-y-4">
-                    {course.curriculum.map((topic) => (
-                      <div
-                        key={topic._id}
-                        className="border border-gray-200 rounded-lg"
-                      >
-                        {/* Topic Header */}
-                        <div
-                          className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 transition-colors"
-                          onClick={() => toggleTopic(topic._id)}
-                        >
-                          <div className="flex items-center">
-                            <svg
-                              className={`w-5 h-5 mr-3 transition-transform ${
-                                expandedTopics[topic._id] ? "rotate-180" : ""
-                              }`}
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M19 9l-7 7-7-7"
-                              />
-                            </svg>
-                            <span className="font-medium text-gray-900">
-                              {topic.title}
-                            </span>
-                          </div>
-                          <span className="text-sm text-gray-500">
-                            {topic.lessons?.length ||
-                              topic.stats?.totalLessons ||
-                              0}{" "}
-                            bài
-                          </span>
-                        </div>
-
-                        {/* Topic Lessons */}
-                        {expandedTopics[topic._id] && topic.lessons && (
-                          <div className="border-t border-gray-200 bg-gray-50">
-                            {topic.lessons.map((lesson, lessonIndex) => (
-                              <div
-                                key={lesson._id}
-                                className="flex items-center justify-between p-4 border-b border-gray-200 last:border-b-0 hover:bg-gray-100 transition-colors"
+                    {/* Table */}
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead className="bg-gray-100">
+                          <tr>
+                            <th className="px-4 py-3 text-left font-semibold text-gray-700">
+                              Level
+                            </th>
+                            <th className="px-4 py-3 text-left font-semibold text-gray-700">
+                              Lớp
+                            </th>
+                            <th className="px-4 py-3 text-left font-semibold text-gray-700">
+                              Thời gian học
+                            </th>
+                            <th className="px-4 py-3 text-left font-semibold text-gray-700">
+                              Lịch Khai giảng
+                            </th>
+                            <th className="px-4 py-3 text-left font-semibold text-gray-700">
+                              Đăng ký
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200">
+                          {loadingClasses ? (
+                            <tr>
+                              <td
+                                colSpan="5"
+                                className="px-4 py-8 text-center text-gray-500"
                               >
-                                <div className="flex items-center">
-                                  <span className="w-6 h-6 rounded-full bg-gray-200 text-gray-600 text-xs flex items-center justify-center mr-3 font-medium">
-                                    {lessonIndex + 1}
-                                  </span>
-                                  <div>
-                                    <span className="text-gray-700 font-medium">
-                                      {lesson.title}
-                                    </span>
-                                    {lesson.description && (
-                                      <p className="text-sm text-gray-500 mt-1">
-                                        {lesson.description}
-                                      </p>
-                                    )}
-                                    {lesson.duration && (
-                                      <span className="text-xs text-gray-400 mt-1 block">
-                                        {lesson.duration} phút
-                                      </span>
-                                    )}
-                                  </div>
+                                <div className="flex items-center justify-center space-x-2">
+                                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                                  <span>Đang tải lịch khai giảng...</span>
                                 </div>
-
-                                {/* Lock Icon for paid lessons */}
-                                {lesson.isLocked && (
-                                  <svg
-                                    className="w-4 h-4 text-gray-400"
-                                    fill="currentColor"
-                                    viewBox="0 0 20 20"
+                              </td>
+                            </tr>
+                          ) : classes.length > 0 ? (
+                            classes.map((classItem, index) => (
+                              <tr
+                                key={classItem._id || index}
+                                className={
+                                  index % 2 === 0 ? "bg-white" : "bg-gray-50"
+                                }
+                              >
+                                <td className="px-4 py-4">
+                                  <span className="text-blue-600 font-medium">
+                                    {course.level === "beginner" &&
+                                      "Level Pre (0-450)"}
+                                    {course.level === "intermediate" &&
+                                      "Level A (450-650)"}
+                                    {course.level === "advanced" &&
+                                      "Level B (650-800)"}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-4 font-medium text-gray-900">
+                                  {classItem.classCode}
+                                </td>
+                                <td className="px-4 py-4 text-gray-700">
+                                  <div>
+                                    {classItem.schedule?.daysVN
+                                      ? classItem.schedule.daysVN.join(", ")
+                                      : classItem.schedule?.days
+                                          ?.map((day) => {
+                                            const dayMap = {
+                                              Monday: "Thứ 2",
+                                              Tuesday: "Thứ 3",
+                                              Wednesday: "Thứ 4",
+                                              Thursday: "Thứ 5",
+                                              Friday: "Thứ 6",
+                                              Saturday: "Thứ 7",
+                                              Sunday: "Chủ nhật",
+                                            };
+                                            return dayMap[day];
+                                          })
+                                          .join(", ")}
+                                  </div>
+                                  <div className="text-sm text-gray-500">
+                                    {`${classItem.schedule?.startTime} - ${classItem.schedule?.endTime}`}
+                                  </div>
+                                </td>
+                                <td className="px-4 py-4 text-gray-700">
+                                  {classItem.schedule?.startDate &&
+                                    new Date(
+                                      classItem.schedule.startDate
+                                    ).toLocaleDateString("vi-VN")}
+                                </td>
+                                <td className="px-4 py-4">
+                                  <button
+                                    className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors"
+                                    onClick={() => {
+                                      // Handle enrollment logic here
+                                      console.log(
+                                        "Enroll in class:",
+                                        classItem._id
+                                      );
+                                    }}
                                   >
-                                    <path
-                                      fillRule="evenodd"
-                                      d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
-                                      clipRule="evenodd"
-                                    />
-                                  </svg>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                                    Đăng ký
+                                  </button>
+                                </td>
+                              </tr>
+                            ))
+                          ) : (
+                            <tr>
+                              <td
+                                colSpan="5"
+                                className="px-4 py-8 text-center text-gray-500"
+                              >
+                                Hiện tại chưa có lịch khai giảng cho khóa học
+                                này
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 ) : (
-                  // Fallback cho course không có curriculum data
-                  <div className="space-y-4">
-                    <div className="border-l-4 border-blue-500 pl-4 py-2">
-                      <h4 className="font-semibold mb-1">
-                        Chương 1: Giới thiệu TOEIC Speaking & Writing
-                      </h4>
-                      <p className="text-gray-600 text-sm">
-                        Tổng quan về cấu trúc bài thi
-                      </p>
-                    </div>
-                    <div className="border-l-4 border-blue-500 pl-4 py-2">
-                      <h4 className="font-semibold mb-1">
-                        Chương 2: TOEIC Speaking Part 1-6
-                      </h4>
-                      <p className="text-gray-600 text-sm">
-                        Chiến lược và thực hành từng part
-                      </p>
-                    </div>
-                    <div className="border-l-4 border-blue-500 pl-4 py-2">
-                      <h4 className="font-semibold mb-1">
-                        Chương 3: TOEIC Writing Part 1-3
-                      </h4>
-                      <p className="text-gray-600 text-sm">
-                        Kỹ năng viết email và essay
-                      </p>
-                    </div>
+                  // Chương trình học cho pre-recorded course
+                  <div className="p-6">
+                    <h3 className="text-xl font-bold mb-4">Chương trình học</h3>
+
+                    {/* Hiển thị curriculum từ API */}
+                    {course?.curriculum && course.curriculum.length > 0 ? (
+                      <div className="space-y-4">
+                        {course.curriculum.map((topic) => (
+                          <div
+                            key={topic._id}
+                            className="border border-gray-200 rounded-lg"
+                          >
+                            {/* Topic Header */}
+                            <div
+                              className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 transition-colors"
+                              onClick={() => toggleTopic(topic._id)}
+                            >
+                              <div className="flex items-center">
+                                <svg
+                                  className={`w-5 h-5 mr-3 transition-transform ${
+                                    expandedTopics[topic._id]
+                                      ? "rotate-180"
+                                      : ""
+                                  }`}
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M19 9l-7 7-7-7"
+                                  />
+                                </svg>
+                                <span className="font-medium text-gray-900">
+                                  {topic.title}
+                                </span>
+                              </div>
+                              <span className="text-sm text-gray-500">
+                                {topic.lessons?.length ||
+                                  topic.stats?.totalLessons ||
+                                  0}{" "}
+                                bài
+                              </span>
+                            </div>
+
+                            {/* Topic Lessons */}
+                            {expandedTopics[topic._id] && topic.lessons && (
+                              <div className="border-t border-gray-200 bg-gray-50">
+                                {topic.lessons.map((lesson, lessonIndex) => (
+                                  <div
+                                    key={lesson._id}
+                                    className="flex items-center justify-between p-4 border-b border-gray-200 last:border-b-0 hover:bg-gray-100 transition-colors"
+                                  >
+                                    <div className="flex items-center">
+                                      <span className="w-6 h-6 rounded-full bg-gray-200 text-gray-600 text-xs flex items-center justify-center mr-3 font-medium">
+                                        {lessonIndex + 1}
+                                      </span>
+                                      <div>
+                                        <span className="text-gray-700 font-medium">
+                                          {lesson.title}
+                                        </span>
+                                        {lesson.description && (
+                                          <p className="text-sm text-gray-500 mt-1">
+                                            {lesson.description}
+                                          </p>
+                                        )}
+                                        {lesson.duration && (
+                                          <span className="text-xs text-gray-400 mt-1 block">
+                                            {lesson.duration} phút
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+
+                                    {/* Lock Icon for paid lessons */}
+                                    {lesson.isLocked && (
+                                      <svg
+                                        className="w-4 h-4 text-gray-400"
+                                        fill="currentColor"
+                                        viewBox="0 0 20 20"
+                                      >
+                                        <path
+                                          fillRule="evenodd"
+                                          d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 616 0z"
+                                          clipRule="evenodd"
+                                        />
+                                      </svg>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      // Fallback cho course không có curriculum data
+                      <div className="space-y-4">
+                        <div className="border-l-4 border-blue-500 pl-4 py-2">
+                          <h4 className="font-semibold mb-1">
+                            Chương 1: Giới thiệu TOEIC Speaking & Writing
+                          </h4>
+                          <p className="text-gray-600 text-sm">
+                            Tổng quan về cấu trúc bài thi
+                          </p>
+                        </div>
+                        <div className="border-l-4 border-blue-500 pl-4 py-2">
+                          <h4 className="font-semibold mb-1">
+                            Chương 2: TOEIC Speaking Part 1-6
+                          </h4>
+                          <p className="text-gray-600 text-sm">
+                            Chiến lược và thực hành từng part
+                          </p>
+                        </div>
+                        <div className="border-l-4 border-blue-500 pl-4 py-2">
+                          <h4 className="font-semibold mb-1">
+                            Chương 3: TOEIC Writing Part 1-3
+                          </h4>
+                          <p className="text-gray-600 text-sm">
+                            Kỹ năng viết email và essay
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
