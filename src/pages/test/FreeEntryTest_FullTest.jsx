@@ -28,9 +28,9 @@ const FreeEntryTest_FullTest = () => {
     const fetchData = async () => {
       try {
         const res = await axiosInstance.get(
-          "/toeic-home/free-entry-test/fulltest"
+          "/toeic-home/free-entry-test/full-test"
         );
-
+        console.log("res=", res);
         const rawData = Array.isArray(res) ? res : [];
 
         // 🔄 Flatten dữ liệu group => từng câu hỏi riêng
