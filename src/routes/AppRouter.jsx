@@ -13,6 +13,8 @@ import ToeicLayout from "@/components/layouts/ToeicLayout";
 import FreeEntryTest_FullTest from "@/pages/test/FreeEntryTest_FullTest";
 import LichKhaiGiang from "@/pages/course/LichKhaiGiang";
 import CourseDetailPage from "@/pages/course/CourseDetailPage";
+import MySchedulePage from "@/pages/course/MySchedulePage";
+import ClassDetailPage from "@/pages/course/ClassDetailPage";
 
 import ProtectedRouter from "./ProtectedRouter";
 
@@ -102,11 +104,13 @@ function AppRouter() {
             </ToeicLayout>
           }
         />
+        <Route path="/my-schedule" element={<MySchedulePage />} />
+        <Route path="/classes/:classId" element={<ClassDetailPage />} />
       </Route>
 
       {/* Route mặc định, có thể redirect về login hoặc trang chủ */}
       <Route path="/" element={<Navigate to="/toeic-home" replace />} />
-      <Route path="/example" element={<Home />} />
+      <Route path="/example" element={<MySchedulePage />} />
       {/* Route cho trang không tìm thấy */}
       <Route
         path="*"
