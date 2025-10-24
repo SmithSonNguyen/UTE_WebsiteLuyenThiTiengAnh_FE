@@ -1,18 +1,22 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import Login from "@/pages/auth/Login";
-import Register from "@/pages/auth/Register";
-import ForgotPassword from "@/pages/auth/ForgotPassword";
-import Profile from "@/pages/profile/Profile";
-import Home from "@/pages/Home";
-import EditProfile from "@/pages/profile/EditProfile";
-import ToeicHome from "@/pages/ToeicHome";
-import FreeEntryTest from "@/pages/test/FreeEntryTest";
-import TestOnline from "@/pages/test/TestOnline";
-import QuestionDisplay from "@/components/test/QuestionDisplay";
-import ToeicLayout from "@/components/layouts/ToeicLayout";
-import FreeEntryTest_FullTest from "@/pages/test/FreeEntryTest_FullTest";
-import LichKhaiGiang from "@/pages/course/LichKhaiGiang";
+import Login from "@/pages/Login";
+import Register from "../pages/Register";
+import ForgotPassword from "../pages/ForgotPassword";
+import Profile from "../pages/profile/Profile";
+import Home from "../pages/Home";
+import EditProfile from "../pages/profile/EditProfile";
+import ToeicHome from "../pages/ToeicHome";
+import FreeEntryTest from "../pages/FreeEntryTest";
+import TestOnline from "@/pages/TestOnline";
+import DisplayFullTest from "@/components/test/DisplayFullTest";
+import DisplayResultTest from "@/components/test/DisplayResultTest";
+import ToeicLayout from "../components/layouts/ToeicLayout";
+import VocabularyPage from "@/pages/VocabularyPage";
+import FreeEntryTest_FullTest from "../pages/FreeEntryTest_FullTest";
+import LichKhaiGiang from "../pages/LichKhaiGiang";
 import CourseDetailPage from "@/pages/course/CourseDetailPage";
+import MySchedulePage from "@/pages/course/MySchedulePage";
+import ClassDetailPage from "@/pages/course/ClassDetailPage";
 
 import ProtectedRouter from "./ProtectedRouter";
 
@@ -63,11 +67,28 @@ function AppRouter() {
           </ToeicLayout>
         }
       />
+      {/* Vocabulary main page */}
+      <Route
+        path="/toeic-home/vocabulary"
+        element={
+          <ToeicLayout>
+            <VocabularyPage />
+          </ToeicLayout>
+        }
+      />
       <Route
         path="/toeic-home/test-online/:examId"
         element={
           <ToeicLayout>
-            <QuestionDisplay />
+            <DisplayFullTest />
+          </ToeicLayout>
+        }
+      />
+      <Route
+        path="/toeic-home/test-online/:examId/result"
+        element={
+          <ToeicLayout>
+            <DisplayResultTest />
           </ToeicLayout>
         }
       />
@@ -102,11 +123,13 @@ function AppRouter() {
             </ToeicLayout>
           }
         />
+        <Route path="/my-schedule" element={<MySchedulePage />} />
+        <Route path="/classes/:classId" element={<ClassDetailPage />} />
       </Route>
 
       {/* Route mặc định, có thể redirect về login hoặc trang chủ */}
       <Route path="/" element={<Navigate to="/toeic-home" replace />} />
-      <Route path="/example" element={<Home />} />
+      <Route path="/example" element={<MySchedulePage />} />
       {/* Route cho trang không tìm thấy */}
       <Route
         path="*"

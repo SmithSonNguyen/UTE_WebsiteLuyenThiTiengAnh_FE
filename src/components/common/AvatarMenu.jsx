@@ -69,10 +69,10 @@ export default function AvatarMenu() {
         {open && (
           <div
             ref={menuRef}
-            className="absolute top-12 right-0 bg-white shadow-lg rounded-md text-left min-w-[200px]"
+            className="absolute top-12 right-0 bg-white shadow-lg rounded-md text-left min-w-[200px] overflow-hidden"
           >
             <button
-              className="block w-full text-left py-1 hover:bg-gray-100 white-space-nowrap px-4 py-2"
+              className="block w-full text-left hover:bg-gray-100 white-space-nowrap px-4 py-2 rounded-t-md"
               onClick={() => {
                 setOpen(false); // Đóng menu
                 navigate("/profile"); // Chuyển sang trang cá nhân
@@ -81,7 +81,7 @@ export default function AvatarMenu() {
               Trang cá nhân
             </button>
             <button
-              className="block w-full text-left py-1 hover:bg-gray-100 white-space-nowrap px-4 py-2"
+              className="block w-full text-left hover:bg-gray-100 white-space-nowrap px-4 py-2 rounded-b-md"
               onClick={handleLogoutClick}
             >
               Đăng xuất

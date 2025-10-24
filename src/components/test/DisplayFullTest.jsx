@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
 import { ChevronLeft, ChevronRight, Flag } from "lucide-react";
 import axiosInstance from "@/utils/axiosInstance";
+import score from "@/utils/score";
 
 const PART_INFO = {
   1: { name: "Photographs", hasImage: true },
@@ -13,6 +16,15 @@ const PART_INFO = {
 };
 
 const FreeEntryTest_FullTest = () => {
+  // Lấy examId từ URL params hoặc props
+  const { examId } = useParams();
+  const navigate = useNavigate();
+  const currentUser = useSelector((state) => state?.auth?.login?.currentUser);
+
+  // Debug Redux state on component mount
+  useEffect(() => {
+    console.log("Component mounted - Current user:", currentUser);
+  }, [currentUser]);
   const [questions, setQuestions] = useState([]);
   const [groups, setGroups] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -21,6 +33,7 @@ const FreeEntryTest_FullTest = () => {
   const [timeLeft, setTimeLeft] = useState(120 * 60);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const audioRef = useRef(null);
 
   const currentQ = questions[currentIndex];
@@ -33,8 +46,13 @@ const FreeEntryTest_FullTest = () => {
         setIsLoading(true);
         setError(null);
 
-        console.log("Fetching test data...");
-        const res = await axiosInstance.get("/tests/ETS-2024-01/questions");
+        // Kiểm tra examId có tồn tại không
+        if (!examId) {
+          throw new Error("Không tìm thấy ID bài thi. Vui lòng kiểm tra URL.");
+        }
+
+        console.log("Fetching test data for exam:", examId);
+        const res = await axiosInstance.get(`/tests/${examId}/questions`);
 
         console.log("Full response:", res);
         console.log("Response data:", res?.data);
@@ -235,6 +253,197 @@ const FreeEntryTest_FullTest = () => {
     return `${m}:${s}`;
   };
 
+  const handleSubmit = async () => {
+    try {
+      if (!examId) {
+        console.error("No examId found");
+        return;
+      }
+
+      setIsSubmitting(true);
+      console.log("=== SUBMIT STARTED ===");
+      console.log("ExamId:", examId);
+      console.log("Total questions:", questions.length);
+      console.log("Total answers:", Object.keys(answers).length);
+
+      // Xây map từ số câu hỏi -> lựa chọn của người dùng
+      const numberToUserAnswer = new Map();
+
+      questions.forEach((q) => {
+        if (answers[q._id]) {
+          numberToUserAnswer.set(Number(q.number), answers[q._id]);
+        }
+      });
+
+      console.log(
+        "User answers map:",
+        Array.from(numberToUserAnswer.entries())
+      );
+
+      // Gọi API kết quả để lấy đáp án đúng theo từng câu
+      console.log("Fetching results from API...");
+      const res = await axiosInstance.get(`/tests/${examId}/result`);
+      console.log("API Response:", res);
+
+      const responseData = res?.data || res;
+      console.log("Response data:", responseData);
+
+      // Chuẩn hóa data trả về thành danh sách section có mảng questions
+      let sections = [];
+      if (Array.isArray(responseData)) {
+        sections = responseData;
+      } else if (Array.isArray(responseData?.result)) {
+        sections = responseData.result;
+      } else if (Array.isArray(responseData?.result?.correctAnswers)) {
+        sections = responseData.result.correctAnswers;
+      } else if (Array.isArray(responseData?.data)) {
+        sections = responseData.data;
+      } else if (Array.isArray(responseData?.sections)) {
+        sections = responseData.sections;
+      }
+
+      console.log("Sections parsed:", sections.length);
+      console.log("Sections structure:", sections);
+
+      // Đếm số câu đúng theo từng kỹ năng
+      let listeningCorrect = 0;
+      let readingCorrect = 0;
+      const detailedAnswers = [];
+
+      sections.forEach((section, sectionIdx) => {
+        console.log(`Processing section ${sectionIdx}:`, section);
+
+        const sectionType =
+          section?.type ||
+          (section?.part && section.part <= 4 ? "listening" : "reading");
+        const qs = Array.isArray(section?.questions) ? section.questions : [];
+
+        console.log(
+          `Section ${sectionIdx} - Type: ${sectionType}, Questions: ${qs.length}`
+        );
+
+        qs.forEach((q) => {
+          const userAnswer = numberToUserAnswer.get(q.number);
+          const correctAnswer = q.answer;
+          const isCorrect =
+            userAnswer &&
+            correctAnswer &&
+            String(userAnswer).trim() === String(correctAnswer).trim();
+
+          console.log(
+            `Q${q.number}: User=${userAnswer}, Correct=${correctAnswer}, Match=${isCorrect}`
+          );
+
+          if (sectionType === "listening") {
+            if (isCorrect) listeningCorrect += 1;
+          } else {
+            if (isCorrect) readingCorrect += 1;
+          }
+
+          // Lưu chi tiết để hiển thị
+          const foundQ = questions.find((x) => x.number === q.number);
+          detailedAnswers.push({
+            number: q.number,
+            part: foundQ?.part || section?.part,
+            type: sectionType,
+            userAnswer: userAnswer || null,
+            correctAnswer: correctAnswer || null,
+            isCorrect: !!isCorrect,
+          });
+        });
+      });
+
+      console.log("=== SCORING RESULTS ===");
+      console.log("Listening correct:", listeningCorrect);
+      console.log("Reading correct:", readingCorrect);
+
+      // Tính điểm theo bảng quy đổi
+      const listeningScore = score.calculateListeningScore(listeningCorrect);
+      const readingScore = score.calculateReadingScore(readingCorrect);
+      const totalScore = listeningScore + readingScore;
+      const totalCorrect = listeningCorrect + readingCorrect;
+
+      console.log("Listening score:", listeningScore);
+      console.log("Reading score:", readingScore);
+      console.log("Total score:", totalScore);
+
+      // Chuẩn bị payload để POST lên backend
+      const answersPayload = questions.map((q) => ({
+        questionNumber: q.number,
+        userAnswer: answers[q._id] || null,
+      }));
+
+      const postPayload = {
+        answers: answersPayload,
+        mark: totalScore,
+        rightAnswerNumber: totalCorrect,
+      };
+
+      console.log("=== SAVING USER ANSWERS ===");
+      console.log("POST Payload:", postPayload);
+
+      // Gọi API POST để lưu kết quả
+      try {
+        const saveRes = await axiosInstance.post(
+          `/tests/${examId}`,
+          postPayload
+        );
+        console.log("Save response:", saveRes.data);
+      } catch (saveError) {
+        console.error("Error saving answers:", saveError);
+        // Không throw lỗi ở đây để vẫn cho phép xem kết quả
+        // Có thể hiển thị warning cho user nếu cần
+      }
+
+      // Chuẩn bị dữ liệu kết quả
+      const resultState = {
+        summary: {
+          listeningCorrect,
+          readingCorrect,
+          listeningScore,
+          readingScore,
+          totalScore,
+        },
+        detailedAnswers,
+        meta: {
+          examId,
+          answeredCount: Object.keys(answers).length,
+          totalQuestions: questions.length,
+        },
+      };
+
+      console.log("=== FINAL RESULT STATE ===");
+      console.log(JSON.stringify(resultState, null, 2));
+
+      // Lưu tạm vào sessionStorage
+      try {
+        const resultKey = `toeic_result_${examId}`;
+        sessionStorage.setItem(resultKey, JSON.stringify(resultState));
+        console.log("Saved to sessionStorage:", resultKey);
+      } catch (e) {
+        console.warn("Cannot write result to sessionStorage:", e);
+      }
+
+      // Điều hướng sang trang kết quả
+      console.log("Navigating to result page...");
+      navigate(`/toeic-home/test-online/${examId}/result`, {
+        state: resultState,
+      });
+
+      console.log("=== SUBMIT COMPLETED ===");
+    } catch (err) {
+      console.error("=== SUBMIT ERROR ===");
+      console.error("Error details:", err);
+      console.error("Error message:", err?.message);
+      console.error("Error response:", err?.response);
+      alert(
+        err?.response?.data?.message ||
+          "Không thể nộp bài vào lúc này. Vui lòng thử lại."
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
   // Loading state
   if (isLoading) {
     return (
@@ -437,7 +646,7 @@ const FreeEntryTest_FullTest = () => {
                 {currentQ.options?.map((opt, idx) => {
                   const optionLabel = String.fromCharCode(65 + idx);
                   const showFullText = currentQ.part >= 3;
-                  const isSelected = answers[currentQ._id] === opt;
+                  const isSelected = answers[currentQ._id] === optionLabel;
                   return (
                     <label
                       key={idx}
@@ -451,7 +660,7 @@ const FreeEntryTest_FullTest = () => {
                         type="radio"
                         name={`q-${currentQ._id}`}
                         checked={isSelected}
-                        onChange={() => handleAnswer(currentQ._id, opt)}
+                        onChange={() => handleAnswer(currentQ._id, optionLabel)}
                         className="mr-3 w-4 h-4 accent-blue-600"
                       />
                       <span
@@ -529,7 +738,8 @@ const FreeEntryTest_FullTest = () => {
                           </p>
                           <div className="space-y-2">
                             {q.options?.map((opt, i) => {
-                              const isSelected = answers[q._id] === opt;
+                              const optionLabel = String.fromCharCode(65 + i);
+                              const isSelected = answers[q._id] === optionLabel;
                               return (
                                 <label
                                   key={i}
@@ -543,7 +753,9 @@ const FreeEntryTest_FullTest = () => {
                                     type="radio"
                                     name={`q-${q._id}`}
                                     checked={isSelected}
-                                    onChange={() => handleAnswer(q._id, opt)}
+                                    onChange={() =>
+                                      handleAnswer(q._id, optionLabel)
+                                    }
                                     className="mr-3 w-4 h-4 accent-blue-600"
                                   />
                                   <span
@@ -609,8 +821,16 @@ const FreeEntryTest_FullTest = () => {
                 {formatTime(timeLeft)}
               </p>
             </div>
-            <button className="w-full mb-6 bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 rounded-xl text-sm font-bold hover:from-blue-700 hover:to-blue-800 transition-all shadow-md hover:shadow-lg">
-              NỘP BÀI
+            <button
+              onClick={handleSubmit}
+              disabled={isSubmitting}
+              className={`w-full mb-6 py-3 rounded-xl text-sm font-bold transition-all shadow-md hover:shadow-lg ${
+                isSubmitting
+                  ? "bg-gray-300 text-gray-600 cursor-not-allowed"
+                  : "bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800"
+              }`}
+            >
+              {isSubmitting ? "Đang nộp bài..." : "NỘP BÀI"}
             </button>
             <div className="space-y-5">
               {Object.entries(PART_INFO).map(([partNum, info]) => {
