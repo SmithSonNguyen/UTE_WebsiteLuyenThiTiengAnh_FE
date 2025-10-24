@@ -8,8 +8,10 @@ import EditProfile from "../pages/profile/EditProfile";
 import ToeicHome from "../pages/ToeicHome";
 import FreeEntryTest from "../pages/FreeEntryTest";
 import TestOnline from "@/pages/TestOnline";
-import QuestionDisplay from "@/components/test/QuestionDisplay";
+import DisplayFullTest from "@/components/test/DisplayFullTest";
+import DisplayResultTest from "@/components/test/DisplayResultTest";
 import ToeicLayout from "../components/layouts/ToeicLayout";
+import VocabularyPage from "@/pages/VocabularyPage";
 import FreeEntryTest_FullTest from "../pages/FreeEntryTest_FullTest";
 import LichKhaiGiang from "../pages/LichKhaiGiang";
 import CourseDetailPage from "@/pages/course/CourseDetailPage";
@@ -63,11 +65,28 @@ function AppRouter() {
           </ToeicLayout>
         }
       />
+      {/* Vocabulary main page */}
+      <Route
+        path="/toeic-home/vocabulary"
+        element={
+          <ToeicLayout>
+            <VocabularyPage />
+          </ToeicLayout>
+        }
+      />
       <Route
         path="/toeic-home/test-online/:examId"
         element={
           <ToeicLayout>
-            <QuestionDisplay />
+            <DisplayFullTest />
+          </ToeicLayout>
+        }
+      />
+      <Route
+        path="/toeic-home/test-online/:examId/result"
+        element={
+          <ToeicLayout>
+            <DisplayResultTest />
           </ToeicLayout>
         }
       />

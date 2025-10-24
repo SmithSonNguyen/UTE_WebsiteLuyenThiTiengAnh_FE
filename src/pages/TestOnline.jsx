@@ -236,7 +236,7 @@ const TestOnline = () => {
 
                   {/* Start Button */}
                   <button
-                    onClick={() => handleStartExam(exam._id)}
+                    onClick={() => handleStartExam(exam.testId)}
                     className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors duration-200 flex items-center justify-center text-sm"
                   >
                     <Play className="h-3 w-3 mr-1" />

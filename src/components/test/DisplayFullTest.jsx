@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
 import { ChevronLeft, ChevronRight, Flag } from "lucide-react";
 import axiosInstance from "@/utils/axiosInstance";
+import score from "@/utils/score";
 
 const PART_INFO = {
   1: { name: "Photographs", hasImage: true },
@@ -13,6 +16,15 @@ const PART_INFO = {
 };
 
 const FreeEntryTest_FullTest = () => {
+  // Lấy examId từ URL params hoặc props
+  const { examId } = useParams();
+  const navigate = useNavigate();
+  const currentUser = useSelector((state) => state?.auth?.login?.currentUser);
+
+  // Debug Redux state on component mount
+  useEffect(() => {
+    console.log("Component mounted - Current user:", currentUser);
+  }, [currentUser]);
   const [questions, setQuestions] = useState([]);
   const [groups, setGroups] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -21,6 +33,7 @@ const FreeEntryTest_FullTest = () => {
   const [timeLeft, setTimeLeft] = useState(120 * 60);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const audioRef = useRef(null);
 
   const currentQ = questions[currentIndex];
@@ -33,24 +46,31 @@ const FreeEntryTest_FullTest = () => {
         setIsLoading(true);
         setError(null);
 
-        console.log("Fetching test data...");
-        const res = await axiosInstance.get("/tests/ETS-2024-01/questions");
+        // Kiểm tra examId có tồn tại không
+        if (!examId) {
+          throw new Error("Không tìm thấy ID bài thi. Vui lòng kiểm tra URL.");
+        }
+
+        console.log("Fetching test data for exam:", examId);
+        const res = await axiosInstance.get(`/tests/${examId}/questions`);
 
         console.log("Full response:", res);
         console.log("Response data:", res?.data);
 
         // Kiểm tra response structure
         if (!res) {
-          throw new Error("Không nhận được phản hồi từ server. Vui lòng kiểm tra kết nối mạng.");
+          throw new Error(
+            "Không nhận được phản hồi từ server. Vui lòng kiểm tra kết nối mạng."
+          );
         }
 
         // Xử lý nhiều format response khác nhau
         // axiosInstance có thể trả về res trực tiếp (không có .data) hoặc res.data
         let rawData = [];
         const responseData = res.data || res; // Nếu không có res.data thì dùng res
-        
+
         console.log("Response data to parse:", responseData);
-        
+
         if (Array.isArray(responseData)) {
           // Trường hợp 1: responseData là array trực tiếp
           rawData = responseData;
@@ -60,7 +80,10 @@ const FreeEntryTest_FullTest = () => {
         } else if (responseData.data && Array.isArray(responseData.data)) {
           // Trường hợp 3: responseData.data là array
           rawData = responseData.data;
-        } else if (responseData.questions && Array.isArray(responseData.questions)) {
+        } else if (
+          responseData.questions &&
+          Array.isArray(responseData.questions)
+        ) {
           // Trường hợp 4: responseData.questions là array
           rawData = responseData.questions;
         }
@@ -68,7 +91,9 @@ const FreeEntryTest_FullTest = () => {
         console.log("Raw data after parsing:", rawData);
 
         if (!Array.isArray(rawData) || rawData.length === 0) {
-          throw new Error("Không tìm thấy câu hỏi nào cho bài test này. Dữ liệu API có thể chưa được load.");
+          throw new Error(
+            "Không tìm thấy câu hỏi nào cho bài test này. Dữ liệu API có thể chưa được load."
+          );
         }
 
         // Flatten dữ liệu: chuyển từ sections sang danh sách câu hỏi
@@ -81,12 +106,14 @@ const FreeEntryTest_FullTest = () => {
 
           return section.questions.map((q, idx) => ({
             ...q,
-            _id: `${section._id || section.id || 'section'}-${q.number}`,
+            _id: `${section._id || section.id || "section"}-${q.number}`,
             part: section.part || 1,
             mediaUrl: section.mediaUrl || "",
-            imageUrls: Array.isArray(section.imageUrl) 
-              ? section.imageUrl 
-              : (section.imageUrls ? section.imageUrls : []),
+            imageUrls: Array.isArray(section.imageUrl)
+              ? section.imageUrl
+              : section.imageUrls
+              ? section.imageUrls
+              : [],
             paragraph: section.paragraph || "",
             groupId: section._id || section.id || `group-${idx}`,
             groupIndex: idx,
@@ -96,7 +123,9 @@ const FreeEntryTest_FullTest = () => {
         console.log("Flattened questions:", flattened);
 
         if (flattened.length === 0) {
-          throw new Error("Không thể xử lý dữ liệu câu hỏi. Vui lòng kiểm tra format API.");
+          throw new Error(
+            "Không thể xử lý dữ liệu câu hỏi. Vui lòng kiểm tra format API."
+          );
         }
 
         // Sắp xếp câu hỏi theo number
@@ -109,12 +138,14 @@ const FreeEntryTest_FullTest = () => {
           if (!section.questions || !Array.isArray(section.questions)) return;
 
           const sectionPart = section.part || 1;
-          
+
           if (sectionPart < 3) {
             // Part 1-2: mỗi câu là một nhóm
             section.questions.forEach((q) => {
               const found = flattened.find(
-                (fq) => fq._id === `${section._id || section.id || 'section'}-${q.number}`
+                (fq) =>
+                  fq._id ===
+                  `${section._id || section.id || "section"}-${q.number}`
               );
               if (found) grouped.push([found]);
             });
@@ -129,30 +160,32 @@ const FreeEntryTest_FullTest = () => {
 
         console.log("Grouped questions:", grouped);
         setGroups(grouped);
-        
+
         console.log("Data loaded successfully:", {
           totalQuestions: flattened.length,
-          totalGroups: grouped.length
+          totalGroups: grouped.length,
         });
-
       } catch (err) {
         console.error("Fetch error details:", {
           message: err.message,
           stack: err.stack,
-          response: err.response ? {
-            status: err.response.status,
-            statusText: err.response.statusText,
-            data: err.response.data,
-          } : "No response available",
+          response: err.response
+            ? {
+                status: err.response.status,
+                statusText: err.response.statusText,
+                data: err.response.data,
+              }
+            : "No response available",
         });
 
         // Hiển thị lỗi chi tiết hơn
         let errorMessage = "Không thể tải đề thi. ";
-        
+
         if (err.response) {
           // Server trả về lỗi
           if (err.response.status === 401) {
-            errorMessage += "Bạn chưa đăng nhập hoặc phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.";
+            errorMessage +=
+              "Bạn chưa đăng nhập hoặc phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.";
           } else if (err.response.status === 404) {
             errorMessage += "Không tìm thấy đề thi này.";
           } else if (err.response.status === 500) {
@@ -162,7 +195,8 @@ const FreeEntryTest_FullTest = () => {
           }
         } else if (err.request) {
           // Request được gửi nhưng không nhận được response
-          errorMessage += "Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.";
+          errorMessage +=
+            "Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.";
         } else {
           // Lỗi khác
           errorMessage += err.message;
@@ -209,7 +243,7 @@ const FreeEntryTest_FullTest = () => {
     if (idx >= 0 && idx < questions.length) {
       setCurrentIndex(idx);
       // Scroll to top khi chuyển câu
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
 
@@ -219,13 +253,207 @@ const FreeEntryTest_FullTest = () => {
     return `${m}:${s}`;
   };
 
+  const handleSubmit = async () => {
+    try {
+      if (!examId) {
+        console.error("No examId found");
+        return;
+      }
+
+      setIsSubmitting(true);
+      console.log("=== SUBMIT STARTED ===");
+      console.log("ExamId:", examId);
+      console.log("Total questions:", questions.length);
+      console.log("Total answers:", Object.keys(answers).length);
+
+      // Xây map từ số câu hỏi -> lựa chọn của người dùng
+      const numberToUserAnswer = new Map();
+
+      questions.forEach((q) => {
+        if (answers[q._id]) {
+          numberToUserAnswer.set(Number(q.number), answers[q._id]);
+        }
+      });
+
+      console.log(
+        "User answers map:",
+        Array.from(numberToUserAnswer.entries())
+      );
+
+      // Gọi API kết quả để lấy đáp án đúng theo từng câu
+      console.log("Fetching results from API...");
+      const res = await axiosInstance.get(`/tests/${examId}/result`);
+      console.log("API Response:", res);
+
+      const responseData = res?.data || res;
+      console.log("Response data:", responseData);
+
+      // Chuẩn hóa data trả về thành danh sách section có mảng questions
+      let sections = [];
+      if (Array.isArray(responseData)) {
+        sections = responseData;
+      } else if (Array.isArray(responseData?.result)) {
+        sections = responseData.result;
+      } else if (Array.isArray(responseData?.result?.correctAnswers)) {
+        sections = responseData.result.correctAnswers;
+      } else if (Array.isArray(responseData?.data)) {
+        sections = responseData.data;
+      } else if (Array.isArray(responseData?.sections)) {
+        sections = responseData.sections;
+      }
+
+      console.log("Sections parsed:", sections.length);
+      console.log("Sections structure:", sections);
+
+      // Đếm số câu đúng theo từng kỹ năng
+      let listeningCorrect = 0;
+      let readingCorrect = 0;
+      const detailedAnswers = [];
+
+      sections.forEach((section, sectionIdx) => {
+        console.log(`Processing section ${sectionIdx}:`, section);
+
+        const sectionType =
+          section?.type ||
+          (section?.part && section.part <= 4 ? "listening" : "reading");
+        const qs = Array.isArray(section?.questions) ? section.questions : [];
+
+        console.log(
+          `Section ${sectionIdx} - Type: ${sectionType}, Questions: ${qs.length}`
+        );
+
+        qs.forEach((q) => {
+          const userAnswer = numberToUserAnswer.get(q.number);
+          const correctAnswer = q.answer;
+          const isCorrect =
+            userAnswer &&
+            correctAnswer &&
+            String(userAnswer).trim() === String(correctAnswer).trim();
+
+          console.log(
+            `Q${q.number}: User=${userAnswer}, Correct=${correctAnswer}, Match=${isCorrect}`
+          );
+
+          if (sectionType === "listening") {
+            if (isCorrect) listeningCorrect += 1;
+          } else {
+            if (isCorrect) readingCorrect += 1;
+          }
+
+          // Lưu chi tiết để hiển thị
+          const foundQ = questions.find((x) => x.number === q.number);
+          detailedAnswers.push({
+            number: q.number,
+            part: foundQ?.part || section?.part,
+            type: sectionType,
+            userAnswer: userAnswer || null,
+            correctAnswer: correctAnswer || null,
+            isCorrect: !!isCorrect,
+          });
+        });
+      });
+
+      console.log("=== SCORING RESULTS ===");
+      console.log("Listening correct:", listeningCorrect);
+      console.log("Reading correct:", readingCorrect);
+
+      // Tính điểm theo bảng quy đổi
+      const listeningScore = score.calculateListeningScore(listeningCorrect);
+      const readingScore = score.calculateReadingScore(readingCorrect);
+      const totalScore = listeningScore + readingScore;
+      const totalCorrect = listeningCorrect + readingCorrect;
+
+      console.log("Listening score:", listeningScore);
+      console.log("Reading score:", readingScore);
+      console.log("Total score:", totalScore);
+
+      // Chuẩn bị payload để POST lên backend
+      const answersPayload = questions.map((q) => ({
+        questionNumber: q.number,
+        userAnswer: answers[q._id] || null,
+      }));
+
+      const postPayload = {
+        answers: answersPayload,
+        mark: totalScore,
+        rightAnswerNumber: totalCorrect,
+      };
+
+      console.log("=== SAVING USER ANSWERS ===");
+      console.log("POST Payload:", postPayload);
+
+      // Gọi API POST để lưu kết quả
+      try {
+        const saveRes = await axiosInstance.post(
+          `/tests/${examId}`,
+          postPayload
+        );
+        console.log("Save response:", saveRes.data);
+      } catch (saveError) {
+        console.error("Error saving answers:", saveError);
+        // Không throw lỗi ở đây để vẫn cho phép xem kết quả
+        // Có thể hiển thị warning cho user nếu cần
+      }
+
+      // Chuẩn bị dữ liệu kết quả
+      const resultState = {
+        summary: {
+          listeningCorrect,
+          readingCorrect,
+          listeningScore,
+          readingScore,
+          totalScore,
+        },
+        detailedAnswers,
+        meta: {
+          examId,
+          answeredCount: Object.keys(answers).length,
+          totalQuestions: questions.length,
+        },
+      };
+
+      console.log("=== FINAL RESULT STATE ===");
+      console.log(JSON.stringify(resultState, null, 2));
+
+      // Lưu tạm vào sessionStorage
+      try {
+        const resultKey = `toeic_result_${examId}`;
+        sessionStorage.setItem(resultKey, JSON.stringify(resultState));
+        console.log("Saved to sessionStorage:", resultKey);
+      } catch (e) {
+        console.warn("Cannot write result to sessionStorage:", e);
+      }
+
+      // Điều hướng sang trang kết quả
+      console.log("Navigating to result page...");
+      navigate(`/toeic-home/test-online/${examId}/result`, {
+        state: resultState,
+      });
+
+      console.log("=== SUBMIT COMPLETED ===");
+    } catch (err) {
+      console.error("=== SUBMIT ERROR ===");
+      console.error("Error details:", err);
+      console.error("Error message:", err?.message);
+      console.error("Error response:", err?.response);
+      alert(
+        err?.response?.data?.message ||
+          "Không thể nộp bài vào lúc này. Vui lòng thử lại."
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
   // Loading state
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
         <div className="text-center">
           <div className="flex items-center justify-center gap-3 mb-4">
-            <svg className="animate-spin h-10 w-10 text-blue-600" viewBox="0 0 24 24">
+            <svg
+              className="animate-spin h-10 w-10 text-blue-600"
+              viewBox="0 0 24 24"
+            >
               <circle
                 className="opacity-25"
                 cx="12"
@@ -241,7 +469,9 @@ const FreeEntryTest_FullTest = () => {
                 d="M4 12a8 8 0 018-8v8h8a8 8 0 01-16 0z"
               />
             </svg>
-            <span className="text-gray-700 text-xl font-semibold">Đang tải đề thi...</span>
+            <span className="text-gray-700 text-xl font-semibold">
+              Đang tải đề thi...
+            </span>
           </div>
           <p className="text-gray-500 text-sm">Vui lòng đợi trong giây lát</p>
         </div>
@@ -269,7 +499,9 @@ const FreeEntryTest_FullTest = () => {
               />
             </svg>
           </div>
-          <h2 className="text-xl font-bold text-gray-800 text-center mb-3">Có lỗi xảy ra</h2>
+          <h2 className="text-xl font-bold text-gray-800 text-center mb-3">
+            Có lỗi xảy ra
+          </h2>
           <p className="text-red-600 text-center mb-6">{error}</p>
           <button
             onClick={() => window.location.reload()}
@@ -306,7 +538,11 @@ const FreeEntryTest_FullTest = () => {
         <h1 className="font-bold text-2xl text-gray-800">TOEIC Full Test</h1>
         <button
           onClick={() => {
-            if (window.confirm("Bạn có chắc muốn thoát? Dữ liệu sẽ không được lưu.")) {
+            if (
+              window.confirm(
+                "Bạn có chắc muốn thoát? Dữ liệu sẽ không được lưu."
+              )
+            ) {
               window.history.back();
             }
           }}
@@ -321,8 +557,12 @@ const FreeEntryTest_FullTest = () => {
         <div className="flex flex-wrap gap-3 max-w-7xl mx-auto">
           {Object.entries(PART_INFO).map(([partNum, info]) => {
             const isActive = currentQ.part === parseInt(partNum);
-            const questionsInPart = questions.filter((q) => q.part === parseInt(partNum));
-            const answeredCount = questionsInPart.filter((q) => answers[q._id]).length;
+            const questionsInPart = questions.filter(
+              (q) => q.part === parseInt(partNum)
+            );
+            const answeredCount = questionsInPart.filter(
+              (q) => answers[q._id]
+            ).length;
             const totalCount = questionsInPart.length;
 
             if (totalCount === 0) return null;
@@ -331,7 +571,9 @@ const FreeEntryTest_FullTest = () => {
               <button
                 key={partNum}
                 onClick={() => {
-                  const idx = questions.findIndex((q) => q.part === parseInt(partNum));
+                  const idx = questions.findIndex(
+                    (q) => q.part === parseInt(partNum)
+                  );
                   if (idx !== -1) goToQuestion(idx);
                 }}
                 className={`flex-1 min-w-[140px] px-4 py-3 rounded-xl font-semibold text-sm transition-all ${
@@ -342,10 +584,18 @@ const FreeEntryTest_FullTest = () => {
               >
                 <div className="text-center">
                   <div className="font-bold">Part {partNum}</div>
-                  <div className={`text-xs mt-1 ${isActive ? "text-blue-100" : "text-gray-500"}`}>
+                  <div
+                    className={`text-xs mt-1 ${
+                      isActive ? "text-blue-100" : "text-gray-500"
+                    }`}
+                  >
                     {info.name}
                   </div>
-                  <div className={`text-xs mt-1 font-semibold ${isActive ? "text-white" : "text-blue-600"}`}>
+                  <div
+                    className={`text-xs mt-1 font-semibold ${
+                      isActive ? "text-white" : "text-blue-600"
+                    }`}
+                  >
                     {answeredCount}/{totalCount}
                   </div>
                 </div>
@@ -368,7 +618,11 @@ const FreeEntryTest_FullTest = () => {
                 </p>
               )}
               {currentQ.mediaUrl && (
-                <audio ref={audioRef} controls className="mb-6 w-full rounded-lg">
+                <audio
+                  ref={audioRef}
+                  controls
+                  className="mb-6 w-full rounded-lg"
+                >
                   <source src={currentQ.mediaUrl} type="audio/mpeg" />
                 </audio>
               )}
@@ -392,7 +646,7 @@ const FreeEntryTest_FullTest = () => {
                 {currentQ.options?.map((opt, idx) => {
                   const optionLabel = String.fromCharCode(65 + idx);
                   const showFullText = currentQ.part >= 3;
-                  const isSelected = answers[currentQ._id] === opt;
+                  const isSelected = answers[currentQ._id] === optionLabel;
                   return (
                     <label
                       key={idx}
@@ -406,10 +660,14 @@ const FreeEntryTest_FullTest = () => {
                         type="radio"
                         name={`q-${currentQ._id}`}
                         checked={isSelected}
-                        onChange={() => handleAnswer(currentQ._id, opt)}
+                        onChange={() => handleAnswer(currentQ._id, optionLabel)}
                         className="mr-3 w-4 h-4 accent-blue-600"
                       />
-                      <span className={`font-medium ${isSelected ? "text-blue-700" : "text-gray-700"}`}>
+                      <span
+                        className={`font-medium ${
+                          isSelected ? "text-blue-700" : "text-gray-700"
+                        }`}
+                      >
                         {showFullText ? opt : optionLabel}
                       </span>
                     </label>
@@ -480,7 +738,8 @@ const FreeEntryTest_FullTest = () => {
                           </p>
                           <div className="space-y-2">
                             {q.options?.map((opt, i) => {
-                              const isSelected = answers[q._id] === opt;
+                              const optionLabel = String.fromCharCode(65 + i);
+                              const isSelected = answers[q._id] === optionLabel;
                               return (
                                 <label
                                   key={i}
@@ -494,12 +753,16 @@ const FreeEntryTest_FullTest = () => {
                                     type="radio"
                                     name={`q-${q._id}`}
                                     checked={isSelected}
-                                    onChange={() => handleAnswer(q._id, opt)}
+                                    onChange={() =>
+                                      handleAnswer(q._id, optionLabel)
+                                    }
                                     className="mr-3 w-4 h-4 accent-blue-600"
                                   />
                                   <span
                                     className={`${
-                                      isSelected ? "text-blue-700 font-medium" : "text-gray-700"
+                                      isSelected
+                                        ? "text-blue-700 font-medium"
+                                        : "text-gray-700"
                                     }`}
                                   >
                                     {opt}
@@ -551,25 +814,44 @@ const FreeEntryTest_FullTest = () => {
         <div className="w-72 border-l bg-white shadow-lg">
           <div className="sticky top-0 p-5 h-screen overflow-y-auto">
             <div className="mb-6 p-4 bg-gradient-to-br from-red-50 to-orange-50 rounded-xl border border-red-200">
-              <p className="font-semibold text-gray-700 text-sm mb-1">Thời gian còn lại</p>
-              <p className="text-2xl text-red-600 font-bold">{formatTime(timeLeft)}</p>
+              <p className="font-semibold text-gray-700 text-sm mb-1">
+                Thời gian còn lại
+              </p>
+              <p className="text-2xl text-red-600 font-bold">
+                {formatTime(timeLeft)}
+              </p>
             </div>
-            <button className="w-full mb-6 bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 rounded-xl text-sm font-bold hover:from-blue-700 hover:to-blue-800 transition-all shadow-md hover:shadow-lg">
-              NỘP BÀI
+            <button
+              onClick={handleSubmit}
+              disabled={isSubmitting}
+              className={`w-full mb-6 py-3 rounded-xl text-sm font-bold transition-all shadow-md hover:shadow-lg ${
+                isSubmitting
+                  ? "bg-gray-300 text-gray-600 cursor-not-allowed"
+                  : "bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800"
+              }`}
+            >
+              {isSubmitting ? "Đang nộp bài..." : "NỘP BÀI"}
             </button>
             <div className="space-y-5">
               {Object.entries(PART_INFO).map(([partNum, info]) => {
-                const partQuestions = questions.filter((q) => q.part === parseInt(partNum));
+                const partQuestions = questions.filter(
+                  (q) => q.part === parseInt(partNum)
+                );
                 if (partQuestions.length === 0) return null;
 
                 return (
-                  <div key={partNum} className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                  <div
+                    key={partNum}
+                    className="bg-gray-50 rounded-xl p-4 border border-gray-200"
+                  >
                     <p className="font-bold text-gray-800 mb-3 text-sm">
                       Part {partNum}: {info.name}
                     </p>
                     <div className="grid grid-cols-5 gap-2">
                       {partQuestions.map((q) => {
-                        const globalIndex = questions.findIndex((x) => x._id === q._id);
+                        const globalIndex = questions.findIndex(
+                          (x) => x._id === q._id
+                        );
                         const isAnswered = !!answers[q._id];
                         const isFlagged = !!flags[q._id];
                         const isCurrent = currentIndex === globalIndex;
@@ -582,7 +864,9 @@ const FreeEntryTest_FullTest = () => {
                               isAnswered
                                 ? "bg-green-500 text-white shadow-sm hover:bg-green-600"
                                 : "bg-white text-gray-700 border-2 border-gray-300 hover:border-blue-400"
-                            } ${isCurrent ? "ring-4 ring-blue-400 scale-110" : ""}`}
+                            } ${
+                              isCurrent ? "ring-4 ring-blue-400 scale-110" : ""
+                            }`}
                           >
                             {q.number}
                             {isFlagged && (
