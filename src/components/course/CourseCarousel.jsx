@@ -143,10 +143,10 @@ const CourseCarousel = ({
           >
             {getCurrentPageCourses().map((course) => (
               <CourseCard
-                key={course.id}
+                key={course._id}
                 course={course}
                 onViewDetail={(c) => {
-                  navigate(`/toeic-home/course/${c.id}`);
+                  navigate(`/toeic-home/course/${c._id}`);
                 }}
               />
             ))}

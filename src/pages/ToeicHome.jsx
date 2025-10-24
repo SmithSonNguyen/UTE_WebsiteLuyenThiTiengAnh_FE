@@ -3,6 +3,7 @@ import Button from "../components/common/Button";
 import FaqSectionToeicHome from "../components/layouts/FaqSectionToeicHome";
 import CourseCard from "@/components/course/CourseCard";
 import CourseCarousel from "../components/course/CourseCarousel";
+import { getFeaturedCourses } from "@/api/courseApi";
 
 const ToeicHome = () => {
   const [courses, setCourses] = useState([]);
@@ -10,61 +11,15 @@ const ToeicHome = () => {
   // Trong file ToeicHome.js, thay thế phần setCourses trong useEffect bằng dữ liệu mẫu đầy đủ sau:
 
   useEffect(() => {
-    // Fetch từ API: fetch('/api/courses').then(res => res.json()).then(setCourses);
-    setCourses([
-      {
-        id: 1,
-        title: "TOEIC Speaking & Writing [Tự Học]",
-        subtitle: "Từ 0 đến 300+",
-        type: "pre-recorded",
-        rating: { average: 4.9, reviewsCount: 68 },
-        studentsCount: 223,
-        price: 1800000,
-        discountPrice: 999000,
-        discountPercent: 45,
-        description:
-          "Học online với bài giảng sẵn, quiz và tài liệu hỗ trợ tự học hiệu quả.",
-      },
-      {
-        id: 2,
-        title: "TOEIC Speaking & Writing [Live Meet]",
-        subtitle: "Từ 0 đến 300+",
-        type: "live-meet",
-        rating: { average: 4.8, reviewsCount: 45 },
-        studentsCount: 150,
-        price: 2000000,
-        discountPrice: 1200000,
-        discountPercent: 40,
-        description:
-          "Lớp học trực tiếp qua Google Meet, tương tác với giảng viên giàu kinh nghiệm.",
-      },
-      {
-        id: 3,
-        title: "TOEIC Listening & Reading [Tự Học]",
-        subtitle: "Từ 400 đến 700+",
-        type: "pre-recorded",
-        rating: { average: 4.7, reviewsCount: 120 },
-        studentsCount: 350,
-        price: 1500000,
-        discountPrice: 850000,
-        discountPercent: 43,
-        description:
-          "Khóa học video chi tiết với bài tập nghe-đọc, phù hợp tự học tại nhà.",
-      },
-      {
-        id: 4,
-        title: "TOEIC Full 4 Skills [Live Meet]",
-        subtitle: "Từ 500 đến 850+",
-        type: "live-meet",
-        rating: { average: 4.9, reviewsCount: 89 },
-        studentsCount: 280,
-        price: 3000000,
-        discountPrice: 2100000,
-        discountPercent: 30,
-        description:
-          "Lộ trình toàn diện 4 kỹ năng qua lớp live, kèm feedback cá nhân hóa.",
-      },
-    ]);
+    const fetchCourses = async () => {
+      try {
+        const response = await getFeaturedCourses();
+        setCourses(response);
+      } catch (error) {
+        console.error("Error fetching featured courses:", error);
+      }
+    };
+    fetchCourses();
   }, []);
 
   return (

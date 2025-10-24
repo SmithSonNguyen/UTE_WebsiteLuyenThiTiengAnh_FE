@@ -31,8 +31,8 @@ function EditProfile() {
   const [birthday, setBirthday] = useState(
     formatDateISOtoInput(user?.birthday)
   );
-  const [bio, setBio] = useState(user?.bio || "");
-  const [bioCount, setBioCount] = useState((user?.bio || "").length);
+  const [phone, setPhone] = useState(user?.phone || "");
+  //const [bioCount, setBioCount] = useState((user?.bio || "").length);
 
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -49,9 +49,8 @@ function EditProfile() {
     }
   };
 
-  const handleBioChange = (e) => {
-    setBio(e.target.value);
-    setBioCount(e.target.value.length);
+  const handlePhoneChange = (e) => {
+    setPhone(e.target.value);
   };
 
   const handleSubmit = async (e) => {
@@ -91,7 +90,7 @@ function EditProfile() {
         lastname,
         firstname,
         birthday,
-        bio,
+        phone,
         avatar: avatarUrl,
       };
 
@@ -101,7 +100,7 @@ function EditProfile() {
       if (response && response.user) {
         // Update Redux store with new user data
         dispatch(setCurrentUser({ user: response.user }));
-        setMessage(response.message || "Cập nhật thành công!");
+        setMessage("Cập nhật thành công!");
       } else {
         setMessage("Cập nhật thành công!");
       }
@@ -193,18 +192,15 @@ function EditProfile() {
           />
         </div>
         <div className="flex flex-col gap-2">
-          <label className="font-semibold text-sm">Tiểu sử</label>
-          <textarea
-            className="border border-gray-300 rounded-xl px-4 py-3 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
-            placeholder="Tiểu sử"
-            maxLength={150}
-            rows={3}
-            value={bio}
-            onChange={handleBioChange}
+          <label className="font-semibold text-sm">Số điện thoại</label>
+          <input
+            type="text"
+            className="border border-gray-300 rounded-xl px-4 py-2 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
+            placeholder="Số điện thoại"
+            maxLength={15}
+            value={phone}
+            onChange={handlePhoneChange}
           />
-          <div className="text-xs text-gray-400 text-right mt-1">
-            {bioCount} / 150
-          </div>
         </div>
         <div className="flex justify-end">
           <button

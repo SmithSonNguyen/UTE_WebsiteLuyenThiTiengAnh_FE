@@ -5,9 +5,9 @@ import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { Link } from "react-router-dom";
-import FormWrapper from "../components/common/FormWrapper";
-import Input from "../components/common/Input";
-import Button from "../components/common/Button";
+import FormWrapper from "../../components/common/FormWrapper";
+import Input from "../../components/common/Input";
+import Button from "../../components/common/Button";
 
 const schema = yup.object({
   name: yup.string().required("Name is required"),

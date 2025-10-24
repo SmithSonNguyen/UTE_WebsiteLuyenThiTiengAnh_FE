@@ -5,7 +5,7 @@ const ExamDropdownToeicHome = () => {
   const [selectedExam, setSelectedExam] = useState("TOEIC"); // ✅ mặc định TOEIC
 
   const exams = [
-    { name: "TOEIC", href: "/toeic" },
+    { name: "TOEIC", href: "/toeic-home" },
     { name: "IELTS", href: "/ielts" },
     { name: "HSK", href: "/hsk" },
   ];

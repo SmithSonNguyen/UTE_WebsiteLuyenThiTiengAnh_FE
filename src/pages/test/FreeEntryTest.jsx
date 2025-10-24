@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Radio, Button } from "antd";
-import HeaderToeicHome from "../components/layouts/HeaderToeicHome";
-import Footer from "../components/common/Footer";
+import HeaderToeicHome from "../../components/layouts/HeaderToeicHome";
+import Footer from "../../components/common/Footer";
 import { useNavigate } from "react-router-dom";
 
 export default function FreeEntryTest() {
@@ -135,11 +135,6 @@ export default function FreeEntryTest() {
           </Button>
         </div>
       </div>
-
-      {/* Footer */}
-      <a>
-        <Footer />
-      </a>
     </>
   );
 }
