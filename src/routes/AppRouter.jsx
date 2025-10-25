@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Login from "@/pages/auth/Login";
-import Register from "@/pages/auth/Register";
+import RegisterWithOTP from "@/pages/auth/RegisterWithOTP";
 import ForgotPassword from "@/pages/auth/ForgotPassword";
 import Profile from "@/pages/profile/Profile";
 import Home from "@/pages/Home";
@@ -22,7 +22,7 @@ function AppRouter() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
+      <Route path="/register" element={<RegisterWithOTP />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
 
       {/* TOEIC routes with shared layout */}
@@ -104,8 +104,22 @@ function AppRouter() {
             </ToeicLayout>
           }
         />
-        <Route path="/my-schedule" element={<MySchedulePage />} />
-        <Route path="/classes/:classId" element={<ClassDetailPage />} />
+        <Route
+          path="/my-schedule"
+          element={
+            <ToeicLayout>
+              <MySchedulePage />
+            </ToeicLayout>
+          }
+        />
+        <Route
+          path="/classes/:classId"
+          element={
+            <ToeicLayout>
+              <ClassDetailPage />
+            </ToeicLayout>
+          }
+        />
       </Route>
 
       {/* Route mặc định, có thể redirect về login hoặc trang chủ */}

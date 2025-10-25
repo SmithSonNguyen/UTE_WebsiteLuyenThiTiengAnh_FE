@@ -2,50 +2,10 @@
 // Import React và các hook cần thiết
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom"; // React Router cho params và nav
+import { getClassForStudent } from "@/api/classApi"; // API lấy thông tin lớp học
 
 // Dữ liệu mẫu (fake data dựa trên schema Enrollment/Class)
 // Trong thực tế, fetch từ API /classes/:classId với accessToken và requireEnrollment middleware
-const mockClassData = {
-  _id: "class2",
-  classCode: "I002",
-  courseId: {
-    _id: "course2",
-    name: "Intermediate Speaking",
-    level: "intermediate",
-    description:
-      "Khóa học tập trung vào kỹ năng nói tiếng Anh trung cấp, với các bài tập thực hành hàng tuần.",
-    resources: [
-      { name: "PDF Lesson 1", url: "/resources/lesson1.pdf" },
-      { name: "Video Intro", url: "https://youtube.com/watch?v=example" },
-    ],
-  },
-  instructor: {
-    _id: "inst2",
-    name: "Giảng viên Minh",
-    email: "minh@englishapp.com",
-    bio: "Giảng viên với 5 năm kinh nghiệm dạy IELTS Speaking.",
-  },
-  schedule: {
-    days: ["Tuesday", "Thursday"],
-    meetLink: "https://meet.google.com/abc-def-ghi",
-    startTime: "20:00",
-    endTime: "21:30",
-    startDate: new Date("2025-10-22"), // Ngày mai: 22/10/2025
-    endDate: new Date("2026-01-22"),
-    durationWeeks: 12,
-  },
-  capacity: { maxStudents: 15, currentStudents: 12 },
-  status: "ongoing",
-};
-
-const mockEnrollmentData = {
-  progress: {
-    sessionsAttended: 8,
-    totalSessions: 24,
-    completionPercentage: 33,
-  },
-  notes: "Ghi chú từ buổi 1: Tập trung vào idioms.", // Field tùy chọn
-};
 
 // Virtual daysVN
 const dayMap = {
@@ -65,7 +25,7 @@ const ClassDetailPage = () => {
   const { classId } = useParams(); // Lấy classId từ URL
   const navigate = useNavigate();
   const [classData, setClassData] = useState(null);
-  const [enrollmentData, setEnrollmentData] = useState(null);
+  //const [enrollmentData, setEnrollmentData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [currentNote, setCurrentNote] = useState("");
@@ -77,11 +37,13 @@ const ClassDetailPage = () => {
       try {
         // Giả sử API trả về { class: mockClassData, enrollment: mockEnrollmentData }
         // Trong thực tế: const res = await axios.get(`/api/classes/${classId}`, { headers: { Authorization: `Bearer ${token}` } });
-        setClassData(mockClassData);
-        setEnrollmentData(mockEnrollmentData);
+        const res = await getClassForStudent(classId);
+        setClassData(res);
+        //setEnrollmentData(res.enrollment);
       } catch (err) {
         setError(
-          "Không thể tải thông tin lớp học. Bạn có quyền truy cập không?"
+          err.message ||
+            "Không thể tải thông tin lớp học. Bạn có quyền truy cập không?"
         );
         // Nếu 403, navigate('/unauthorized');
       } finally {
@@ -112,8 +74,9 @@ const ClassDetailPage = () => {
     );
   }
 
-  const { schedule, courseId, instructor, capacity, classCode } = classData;
-  const { progress, notes } = enrollmentData;
+  const { schedule, courseId, instructor, capacity, classCode, status } =
+    classData;
+
   const daysVN = getDaysVN(schedule.days);
 
   return (
@@ -124,12 +87,12 @@ const ClassDetailPage = () => {
           <div>
             <Link
               to="/my-schedule"
-              className="text-blue-600 hover:text-blue-800 mb-2 inline-block"
+              className="text-blue-600 hover:text-blue-800 mb-2 inline-block text-sm"
             >
               ← Quay về Lịch Học
             </Link>
             <h1 className="text-3xl font-bold text-gray-900">
-              {classCode} - {courseId.name}
+              {classCode} - {courseId.title}
             </h1>
             <p className="text-gray-600 mt-2">{courseId.description}</p>
           </div>
@@ -171,13 +134,21 @@ const ClassDetailPage = () => {
               <div className="flex justify-between">
                 <span className="text-gray-600">Ngày bắt đầu:</span>
                 <span className="font-medium">
-                  {schedule.startDate.toLocaleDateString("vi-VN")}
+                  {new Date(schedule.startDate).toLocaleDateString("vi-VN", {
+                    day: "2-digit",
+                    month: "2-digit",
+                    year: "numeric",
+                  })}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Ngày kết thúc:</span>
                 <span className="font-medium">
-                  {schedule.endDate.toLocaleDateString("vi-VN")}
+                  {new Date(schedule.endDate).toLocaleDateString("vi-VN", {
+                    day: "2-digit",
+                    month: "2-digit",
+                    year: "numeric",
+                  })}
                 </span>
               </div>
               <div className="flex justify-between">
@@ -206,25 +177,25 @@ const ClassDetailPage = () => {
                   Hoàn thành
                 </span>
                 <span className="text-lg font-bold text-gray-900">
-                  {progress.completionPercentage}%
+                  {status.progressPercent}%
                 </span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2.5">
                 <div
                   className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
-                  style={{ width: `${progress.completionPercentage}%` }}
+                  style={{ width: `${status.progressPercent}%` }}
                 ></div>
               </div>
               <div className="grid grid-cols-2 gap-4 text-center">
                 <div>
                   <div className="text-2xl font-bold text-gray-900">
-                    {progress.sessionsAttended}
+                    {status.sessionsAttended}
                   </div>
                   <div className="text-sm text-gray-500">Buổi Đã Học</div>
                 </div>
                 <div>
                   <div className="text-2xl font-bold text-gray-900">
-                    {progress.totalSessions}
+                    {status.totalSessions}
                   </div>
                   <div className="text-sm text-gray-500">Tổng Buổi</div>
                 </div>
@@ -243,14 +214,22 @@ const ClassDetailPage = () => {
             <div className="space-y-2">
               <div className="flex items-center">
                 <div className="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center mr-3">
-                  <span className="text-sm font-medium">M</span>{" "}
-                  {/* Avatar placeholder */}
+                  <img
+                    src={
+                      instructor.profile.avatar ||
+                      "/src/assets/defaultavatar.png"
+                    }
+                    alt={instructor.name}
+                    className="w-12 h-12 rounded-full"
+                  />
                 </div>
                 <div>
                   <h3 className="font-medium text-gray-900">
-                    {instructor.name}
+                    {instructor.profile.lastname} {instructor.profile.firstname}
                   </h3>
-                  <p className="text-sm text-gray-600">{instructor.bio}</p>
+                  <p className="text-sm text-gray-600">
+                    {instructor.profile.bio}
+                  </p>
                 </div>
               </div>
               <button

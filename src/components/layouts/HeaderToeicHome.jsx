@@ -22,7 +22,7 @@ const HeaderToeicHome = () => {
           {/* Left */}
           <div className="flex items-center gap-4">
             {/* Logo */}
-            <a href="/vi/">
+            <a href="/toeic-home">
               <div className="relative rounded-[140px] bg-white px-3 py-2.5 shadow-sm hover:shadow-md transition">
                 <img
                   src="../../../public/Superman_shield.svg.png"
