@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "lib": ["DOM", "DOM.Iterable", "ESNext"],
+    "jsx": "react-jsx",
+
+
+    "allowJs": true,                // Cho phép giữ file .js / .jsx
+    "checkJs": false,               // Không bắt lỗi trong file JS
+    "skipLibCheck": true,
+    "module": "ESNext",
+    "moduleResolution": "Node",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true
+  },
+  "include": ["src/ui/**/*", "src/**/*.ts", "src/**/*.tsx"], // Chỉ check TSX/TS + folder ui
+  "exclude": ["node_modules"]
+}
