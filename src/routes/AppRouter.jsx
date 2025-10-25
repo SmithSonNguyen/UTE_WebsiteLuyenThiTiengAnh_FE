@@ -16,6 +16,7 @@ import CourseDetailPage from "@/pages/course/CourseDetailPage";
 import MySchedulePage from "@/pages/course/MySchedulePage";
 import ClassDetailPage from "@/pages/course/ClassDetailPage";
 import RegisterWithOTP from "@/pages/auth/RegisterWithOTP";
+import InstructorDashboard from "../pages/instructor/InstructorDashboard";
 
 import ProtectedRouter from "./ProtectedRouter";
 
@@ -139,6 +140,9 @@ function AppRouter() {
           }
         />
       </Route>
+
+      {/* Instructor Dashboard */}
+      <Route path="/instructor" element={<InstructorDashboard />} />
 
       {/* Route mặc định, có thể redirect về login hoặc trang chủ */}
       <Route path="/" element={<Navigate to="/toeic-home" replace />} />
