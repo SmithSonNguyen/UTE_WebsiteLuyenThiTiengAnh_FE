@@ -46,6 +46,17 @@ export const getClassDetail = async (classId) => {
   }
 };
 
+// Lấy thông tin lớp học cho học viên (bao gồm enrollment status)
+export const getClassForStudent = async (classId) => {
+  try {
+    const response = await axiosInstance.get(`/classes/${classId}/student`);
+    return response.result;
+  } catch (error) {
+    console.error("Error fetching class for student:", error);
+    throw error;
+  }
+};
+
 // Lấy danh sách lớp học sắp khai giảng theo courseId
 export const getUpcomingClassesByCourse = async (courseId) => {
   try {

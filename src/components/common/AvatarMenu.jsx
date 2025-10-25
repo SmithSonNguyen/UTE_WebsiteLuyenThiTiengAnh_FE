@@ -36,12 +36,12 @@ export default function AvatarMenu() {
     try {
       await logoutUser();
       dispatch(logoutSuccess());
-      navigate("/login");
+      navigate("/toeic-home");
     } catch (error) {
       console.error("Logout error:", error);
       // Vẫn logout ở client nếu API lỗi
       dispatch(logoutSuccess());
-      navigate("/login");
+      navigate("/toeic-home");
     } finally {
       setIsLoggingOut(false);
       setShowLogoutConfirm(false);
@@ -71,21 +71,55 @@ export default function AvatarMenu() {
             ref={menuRef}
             className="absolute top-12 right-0 bg-white shadow-lg rounded-md text-left min-w-[200px] overflow-hidden"
           >
-            <button
-              className="block w-full text-left hover:bg-gray-100 white-space-nowrap px-4 py-2 rounded-t-md"
-              onClick={() => {
-                setOpen(false); // Đóng menu
-                navigate("/profile"); // Chuyển sang trang cá nhân
-              }}
-            >
-              Trang cá nhân
-            </button>
-            <button
-              className="block w-full text-left hover:bg-gray-100 white-space-nowrap px-4 py-2 rounded-b-md"
-              onClick={handleLogoutClick}
-            >
-              Đăng xuất
-            </button>
+            {avatar ? (
+              <>
+                <button
+                  className="block w-full text-left hover:bg-gray-100 whitespace-nowrap px-4 py-2 rounded-t-md"
+                  onClick={() => {
+                    setOpen(false); // Đóng menu
+                    navigate("/profile"); // Chuyển sang trang cá nhân
+                  }}
+                >
+                  Trang cá nhân
+                </button>
+                <button
+                  className="block w-full text-left hover:bg-gray-100 whitespace-nowrap px-4 py-2 rounded-t-md"
+                  onClick={() => {
+                    setOpen(false); // Đóng menu
+                    navigate("/my-schedule"); // Chuyển sang trang lịch học của tôi
+                  }}
+                >
+                  Lịch học của tôi
+                </button>
+                <button
+                  className="block w-full text-left hover:bg-gray-100 whitespace-nowrap px-4 py-2 rounded-b-md"
+                  onClick={handleLogoutClick}
+                >
+                  Đăng xuất
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  className="block w-full text-left hover:bg-gray-100 whitespace-nowrap px-4 py-2 rounded-md"
+                  onClick={() => {
+                    setOpen(false); // Đóng menu
+                    navigate("/login"); // Chuyển sang trang đăng nhập
+                  }}
+                >
+                  Đăng nhập
+                </button>
+                <button
+                  className="block w-full text-left hover:bg-gray-100 whitespace-nowrap px-4 py-2 rounded-md"
+                  onClick={() => {
+                    setOpen(false); // Đóng menu
+                    navigate("/register"); // Chuyển sang trang đăng ký
+                  }}
+                >
+                  Đăng ký
+                </button>
+              </>
+            )}
           </div>
         )}
       </div>

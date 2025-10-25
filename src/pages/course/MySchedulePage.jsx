@@ -2,6 +2,7 @@
 // Import React và các hook cần thiết (giả sử dùng React Router cho nav)
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom"; // Nếu dùng React Router
+import { useSelector } from "react-redux";
 import { getMySchedule } from "@/api/enrollmentApi"; // Giả sử có API này
 
 // Virtual daysVN từ schema
@@ -150,17 +151,254 @@ const generateSessions = (enrollments, period, fakeToday = null) => {
   return sessions.sort((a, b) => a.sessionDate - b.sessionDate);
 };
 
+// Skeleton components
+const TableSkeleton = () => (
+  <div className="bg-white rounded-lg shadow-md overflow-hidden">
+    <table className="min-w-full divide-y divide-gray-200">
+      <thead className="bg-gray-50">
+        <tr>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Ngày
+          </th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Lớp Học
+          </th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Thời Gian
+          </th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Hành Động
+          </th>
+        </tr>
+      </thead>
+      <tbody className="bg-white divide-y">
+        {[...Array(5)].map((_, i) => (
+          <tr key={i}>
+            <td className="px-6 py-4 whitespace-nowrap">
+              <div className="animate-pulse">
+                <div className="h-4 bg-gray-200 rounded w-24 mb-1"></div>
+                <div className="h-3 bg-gray-200 rounded w-20"></div>
+              </div>
+            </td>
+            <td className="px-6 py-4 whitespace-nowrap">
+              <div className="animate-pulse space-y-2">
+                <div className="h-3 bg-gray-200 rounded w-32"></div>
+                <div className="h-3 bg-gray-200 rounded w-48"></div>
+                <div className="h-3 bg-gray-200 rounded w-40"></div>
+              </div>
+            </td>
+            <td className="px-6 py-4 whitespace-nowrap">
+              <div className="animate-pulse">
+                <div className="h-4 bg-gray-200 rounded w-28"></div>
+              </div>
+            </td>
+            <td className="px-6 py-4 whitespace-nowrap">
+              <div className="animate-pulse">
+                <div className="h-4 bg-gray-200 rounded w-16"></div>
+              </div>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+);
+
+const ProgressSkeleton = () => (
+  <div className="bg-white rounded-lg shadow-md p-6 space-y-4">
+    <div className="flex justify-between items-center">
+      <div className="h-4 bg-gray-200 rounded w-20 animate-pulse"></div>
+      <div className="h-6 bg-gray-200 rounded w-8 animate-pulse"></div>
+    </div>
+    <div className="w-full bg-gray-200 rounded-full h-2.5 animate-pulse"></div>
+    <div className="grid grid-cols-2 gap-4 mt-4">
+      <div className="text-center">
+        <div className="h-8 bg-gray-200 rounded w-12 mx-auto animate-pulse"></div>
+        <div className="h-3 bg-gray-200 rounded w-20 mx-auto mt-1 animate-pulse"></div>
+      </div>
+      <div className="text-center">
+        <div className="h-8 bg-gray-200 rounded w-12 mx-auto animate-pulse"></div>
+        <div className="h-3 bg-gray-200 rounded w-20 mx-auto mt-1 animate-pulse"></div>
+      </div>
+    </div>
+  </div>
+);
+
+const UpcomingSkeleton = () => (
+  <div className="bg-white rounded-lg shadow-md p-6 space-y-3 max-h-64 overflow-y-auto">
+    {[...Array(3)].map((_, i) => (
+      <div
+        key={i}
+        className="flex items-center p-3 bg-gray-50 rounded-lg animate-pulse"
+      >
+        <div className="w-2 h-2 rounded-full mr-3 bg-gray-200"></div>
+        <div className="flex-1 space-y-1">
+          <div className="h-3 bg-gray-200 rounded w-48"></div>
+          <div className="h-3 bg-gray-200 rounded w-24"></div>
+        </div>
+        <div className="h-4 bg-gray-200 rounded w-20"></div>
+      </div>
+    ))}
+  </div>
+);
+
+// Empty State Component
+const EmptyState = ({ userName }) => (
+  <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
+    <div className="max-w-7xl mx-auto mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Lịch Học Của Tôi</h1>
+          <p className="text-lg text-gray-600 mt-5">Xin chào, {userName}!</p>
+        </div>
+        <Link
+          to="/classes/register"
+          className="mt-4 sm:mt-0 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium"
+        >
+          Đăng Ký Khóa Mới
+        </Link>
+      </div>
+
+      {/* Filter - Static */}
+      <div className="flex justify-center sm:justify-end gap-4">
+        {/* Test Date Input */}
+        <div className="flex items-center gap-2">
+          <label className="text-sm text-gray-600">Test Date:</label>
+          <input
+            type="date"
+            value=""
+            onChange={() => {}} // Disabled in empty state
+            disabled
+            className="border border-gray-300 rounded-md px-3 py-1 text-sm focus:ring-2 focus:ring-blue-500 opacity-50"
+          />
+        </div>
+
+        <select
+          value="week"
+          onChange={() => {}} // Disabled in empty state
+          disabled
+          className="border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-blue-500 opacity-50"
+        >
+          <option value="week">Tuần này</option>
+          <option value="month">Tháng này</option>
+          <option value="all">Tất cả</option>
+        </select>
+      </div>
+    </div>
+
+    <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
+      {/* Left Column - Empty Table */}
+      <div className="lg:col-span-2 space-y-6">
+        <h2 className="text-2xl font-semibold text-gray-900 mb-4">
+          Thời Khóa Biểu
+        </h2>
+        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Ngày
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Lớp Học
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Thời Gian
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Hành Động
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y">
+              <tr>
+                <td
+                  colSpan={4}
+                  className="px-6 py-12 text-center text-gray-500"
+                >
+                  <div className="flex flex-col items-center space-y-4">
+                    <div className="text-6xl">📚</div>
+                    <h3 className="text-xl font-semibold text-gray-900">
+                      Bạn chưa đăng ký khóa học nào
+                    </h3>
+                    <p className="text-lg text-gray-600 max-w-md">
+                      Hãy bắt đầu hành trình học TOEIC của bạn bằng cách đăng ký
+                      một khóa học ngay hôm nay!
+                    </p>
+                    <Link
+                      to="/classes/register"
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-semibold text-lg"
+                    >
+                      Đăng ký khóa học ngay
+                    </Link>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Right Column: Progress & Upcoming - Empty */}
+      <div className="space-y-6">
+        {/* Progress Overview - Empty */}
+        <div>
+          <h2 className="text-2xl font-semibold text-gray-900 mb-4">
+            Tiến Độ Học Tập
+          </h2>
+          <div className="bg-white rounded-lg shadow-md p-6 text-center space-y-4">
+            <div className="text-6xl">📈</div>
+            <h3 className="text-xl font-semibold text-gray-900">
+              Chưa có tiến độ
+            </h3>
+            <p className="text-gray-600">
+              Đăng ký khóa học để theo dõi tiến độ học tập của bạn.
+            </p>
+          </div>
+        </div>
+
+        {/* Upcoming Events - Empty */}
+        <div>
+          <h2 className="text-2xl font-semibold text-gray-900 mb-4">
+            Các khóa học trực tuyến đã đăng ký
+          </h2>
+          <div className="bg-white rounded-lg shadow-md p-6 text-center space-y-4">
+            <div className="text-6xl">🎯</div>
+            <h3 className="text-xl font-semibold text-gray-900">
+              Chưa có khóa học nào
+            </h3>
+            <p className="text-gray-600">
+              Khám phá và đăng ký các khóa học TOEIC phù hợp với bạn.
+            </p>
+            {/* <Link
+              to="/classes/register"
+              className="block bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg font-medium text-center"
+            >
+              Khám phá khóa học
+            </Link> */}
+          </div>
+        </div>
+
+        {/* Quick Actions */}
+      </div>
+    </div>
+  </div>
+);
+
 // Component chính (giữ nguyên, chỉ fix nhỏ instructor name nếu cần)
 const MySchedulePage = () => {
-  const [userName] = useState("Nguyễn Văn A"); // Lấy từ auth context
   const [filterPeriod, setFilterPeriod] = useState("week"); // 'week', 'month', 'all'
   const [enrollments, setEnrollments] = useState([]); // Từ API
   const [fakeDate, setFakeDate] = useState(""); // Fake date for testing
+  const [isLoading, setIsLoading] = useState(true); // Loading state
   const navigate = useNavigate();
+  const user = useSelector((state) => state.auth.login?.currentUser);
+  const userName = `${user.lastname} ${user.firstname}`;
 
   // Update useEffect để fetch API
   useEffect(() => {
     const fetchData = async () => {
+      setIsLoading(true);
       try {
         const res = await getMySchedule();
         setEnrollments(res); // Data từ API (array enrollments)
@@ -168,10 +406,12 @@ const MySchedulePage = () => {
         console.error("Lỗi fetch lịch:", err);
         if (err.response?.status === 401) navigate("/login");
         // Hoặc set error state: setError('Không tải được lịch học');
+      } finally {
+        setIsLoading(false);
       }
     };
     fetchData();
-  }, [filterPeriod, navigate]); // Note: filterPeriod ở dep, nhưng fetch không phụ thuộc, có thể remove nếu không cần refetch
+  }, [navigate]); // Removed filterPeriod from deps to avoid unnecessary refetch; regenerate sessions on filter change instead
 
   // Tính tổng progress
   const totalSessions = enrollments.reduce(
@@ -194,6 +434,122 @@ const MySchedulePage = () => {
     fakeDate || null
   );
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
+        {/* Header - Static, no skeleton needed */}
+        <div className="max-w-7xl mx-auto mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">
+                Lịch Học Của Tôi
+              </h1>
+              <p className="text-lg text-gray-600 mt-5">
+                Xin chào, {userName}!
+              </p>
+            </div>
+            <Link
+              to="/classes/register"
+              className="mt-4 sm:mt-0 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium"
+            >
+              Đăng Ký Khóa Mới
+            </Link>
+          </div>
+
+          {/* Filter - Static */}
+          <div className="flex justify-center sm:justify-end gap-4">
+            {/* Test Date Input */}
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-gray-600">Test Date:</label>
+              <input
+                type="date"
+                value={fakeDate}
+                onChange={(e) => setFakeDate(e.target.value)}
+                className="border border-gray-300 rounded-md px-3 py-1 text-sm focus:ring-2 focus:ring-blue-500"
+              />
+              {fakeDate && (
+                <button
+                  onClick={() => setFakeDate("")}
+                  className="text-red-500 hover:text-red-700 text-sm"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+
+            <select
+              value={filterPeriod}
+              onChange={(e) => setFilterPeriod(e.target.value)}
+              className="border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="week">Tuần này</option>
+              <option value="month">Tháng này</option>
+              <option value="all">Tất cả</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Thời Khóa Biểu Chính (Left Column) */}
+          <div className="lg:col-span-2 space-y-6">
+            <h2 className="text-2xl font-semibold text-gray-900 mb-4">
+              Thời Khóa Biểu
+            </h2>
+            <TableSkeleton />
+          </div>
+
+          {/* Right Column: Progress & Upcoming */}
+          <div className="space-y-6">
+            {/* Progress Overview */}
+            <div>
+              <h2 className="text-2xl font-semibold text-gray-900 mb-4">
+                Tiến Độ Học Tập
+              </h2>
+              <ProgressSkeleton />
+            </div>
+
+            {/* Upcoming Events */}
+            <div>
+              <h2 className="text-2xl font-semibold text-gray-900 mb-4">
+                Các khóa học trực tuyến đã đăng ký
+              </h2>
+              <UpcomingSkeleton />
+            </div>
+
+            {/* Quick Actions - Static, no skeleton */}
+            <div>
+              <h2 className="text-2xl font-semibold text-gray-900 mb-4">
+                Hành Động Nhanh
+              </h2>
+              <div className="bg-white rounded-lg shadow-md p-6 space-y-3">
+                <button
+                  onClick={() => navigate("/contact-instructor")}
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-lg text-sm font-medium"
+                >
+                  Liên Hệ Giảng Viên
+                </button>
+                <button
+                  onClick={() => navigate("/report-absence")}
+                  className="w-full bg-gray-600 hover:bg-gray-700 text-white py-2 px-4 rounded-lg text-sm font-medium"
+                >
+                  Báo Cáo Vắng Mặt
+                </button>
+                <button className="w-full border border-gray-300 hover:bg-gray-50 py-2 px-4 rounded-lg text-sm font-medium text-gray-700">
+                  Xuất Lịch Sang Google Calendar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Empty state if no enrollments
+  if (enrollments.length === 0) {
+    return <EmptyState userName={userName} />;
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
       {/* Header */}
@@ -203,7 +559,7 @@ const MySchedulePage = () => {
             <h1 className="text-3xl font-bold text-gray-900">
               Lịch Học Của Tôi
             </h1>
-            <p className="text-lg text-gray-600 mt-1">Xin chào, {userName}!</p>
+            <p className="text-lg text-gray-600 mt-5">Xin chào, {userName}!</p>
           </div>
           <Link
             to="/classes/register"
