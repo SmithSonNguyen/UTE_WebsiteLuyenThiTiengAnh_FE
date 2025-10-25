@@ -1,6 +1,6 @@
 // src/pages/Login.jsx
 // Sử dụng form với email/password, nút submit, link đến Register/Forgot.
-import React from "react";
+import React, { useEffect } from "react"; // Thêm useEffect
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
@@ -8,7 +8,7 @@ import { Link, useNavigate } from "react-router-dom";
 import FormWrapper from "@/components/common/FormWrapper";
 import Input from "@/components/common/Input";
 import Button from "@/components/common/Button";
-import { loginUser } from "@/redux/authSlice"; // import thunk
+import { loginUser, clearLoginError } from "@/redux/authSlice"; // import thunk
 import { useDispatch, useSelector } from "react-redux";
 
 const schema = yup.object({
@@ -26,6 +26,9 @@ const Login = () => {
     (state) => state.auth.login
   );
 
+  useEffect(() => {
+    dispatch(clearLoginError());
+  }, [dispatch]); // Chỉ chạy một lần khi mount
   const {
     register,
     handleSubmit,
@@ -69,9 +72,11 @@ const Login = () => {
             {typeof errorMessage === "string" ? errorMessage : "Login failed"}
           </p>
         )}
-        <Button type="submit" loading={isLoading}>
-          Login
-        </Button>
+        <div className="flex justify-center">
+          <Button type="submit" loading={isLoading}>
+            Login
+          </Button>
+        </div>
       </form>
 
       <div className="text-center mt-4">

@@ -1,9 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Login from "../pages/auth/Login";
-import Register from "../pages/auth/Register";
 import ForgotPassword from "../pages/auth/ForgotPassword";
 import Profile from "../pages/profile/Profile";
-import Home from "../pages/Home";
 import EditProfile from "../pages/profile/EditProfile";
 import ToeicHome from "../pages/ToeicHome";
 import FreeEntryTest from "../pages/test/FreeEntryTest";
@@ -17,6 +15,8 @@ import LichKhaiGiang from "../pages/course/LichKhaiGiang";
 import CourseDetailPage from "@/pages/course/CourseDetailPage";
 import MySchedulePage from "@/pages/course/MySchedulePage";
 import ClassDetailPage from "@/pages/course/ClassDetailPage";
+import RegisterWithOTP from "@/pages/auth/RegisterWithOTP";
+import InstructorDashboard from "../pages/instructor/InstructorDashboard";
 
 import ProtectedRouter from "./ProtectedRouter";
 
@@ -24,7 +24,7 @@ function AppRouter() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
+      <Route path="/register" element={<RegisterWithOTP />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
 
       {/* TOEIC routes with shared layout */}
@@ -123,9 +123,26 @@ function AppRouter() {
             </ToeicLayout>
           }
         />
-        <Route path="/my-schedule" element={<MySchedulePage />} />
-        <Route path="/classes/:classId" element={<ClassDetailPage />} />
+        <Route
+          path="/my-schedule"
+          element={
+            <ToeicLayout>
+              <MySchedulePage />
+            </ToeicLayout>
+          }
+        />
+        <Route
+          path="/classes/:classId"
+          element={
+            <ToeicLayout>
+              <ClassDetailPage />
+            </ToeicLayout>
+          }
+        />
       </Route>
+
+      {/* Instructor Dashboard */}
+      <Route path="/instructor" element={<InstructorDashboard />} />
 
       {/* Route mặc định, có thể redirect về login hoặc trang chủ */}
       <Route path="/" element={<Navigate to="/toeic-home" replace />} />

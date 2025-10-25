@@ -38,6 +38,10 @@ const authSlice = createSlice({
     },
   },
   reducers: {
+    clearLoginError: (state) => {
+      state.login.error = null;
+      state.login.errorMessage = null;
+    },
     // loginStart: (state) => {
     //   state.login.isLoading = true;
     // },
@@ -105,6 +109,7 @@ const authSlice = createSlice({
 });
 
 export const {
+  clearLoginError,
   // registerStart,
   // registerSuccess,
   // registerFailed,
