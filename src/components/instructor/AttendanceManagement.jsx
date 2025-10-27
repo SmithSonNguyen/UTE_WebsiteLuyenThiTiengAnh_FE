@@ -1,4 +1,11 @@
 import React, { useState, useEffect } from "react";
+import { toast } from "react-toastify";
+import { getInstructorClasses } from "../../api/instructorApi";
+import {
+  getClassStudents,
+  getAttendanceByDate,
+  saveAttendance,
+} from "../../api/attendanceApi";
 
 const AttendanceManagement = () => {
   const [selectedClass, setSelectedClass] = useState("");
@@ -9,80 +16,83 @@ const AttendanceManagement = () => {
   const [loading, setLoading] = useState(false);
   const [classes, setClasses] = useState([]);
 
-  // Mock data
+  // Fetch classes from API
   useEffect(() => {
-    const mockClasses = [
-      { id: 1, name: "TOEIC 450 - Sáng", code: "TOEIC450-S01" },
-      { id: 2, name: "TOEIC 650 - Chiều", code: "TOEIC650-C01" },
-      { id: 3, name: "TOEIC 850 - Tối", code: "TOEIC850-T01" },
-    ];
-    setClasses(mockClasses);
+    fetchClasses();
   }, []);
 
-  const loadStudents = () => {
-    setLoading(true);
-    // Mock students data
-    const mockStudents = [
-      {
-        id: 1,
-        studentId: "SV001",
-        name: "Nguyễn Văn An",
-        email: "an.nguyen@email.com",
-        phone: "0123456789",
-        isPresent: false,
-        note: "",
-      },
-      {
-        id: 2,
-        studentId: "SV002",
-        name: "Trần Thị Bình",
-        email: "binh.tran@email.com",
-        phone: "0123456790",
-        isPresent: false,
-        note: "",
-      },
-      {
-        id: 3,
-        studentId: "SV003",
-        name: "Lê Văn Cường",
-        email: "cuong.le@email.com",
-        phone: "0123456791",
-        isPresent: false,
-        note: "",
-      },
-      {
-        id: 4,
-        studentId: "SV004",
-        name: "Phạm Thị Dung",
-        email: "dung.pham@email.com",
-        phone: "0123456792",
-        isPresent: false,
-        note: "",
-      },
-      {
-        id: 5,
-        studentId: "SV005",
-        name: "Hoàng Văn Em",
-        email: "em.hoang@email.com",
-        phone: "0123456793",
-        isPresent: false,
-        note: "",
-      },
-    ];
-
-    setTimeout(() => {
-      setStudents(mockStudents);
-      setLoading(false);
-    }, 500);
+  const fetchClasses = async () => {
+    try {
+      const response = await getInstructorClasses();
+      const classesData = response.result || [];
+      setClasses(
+        classesData.map((cls) => ({
+          id: cls._id,
+          name: `${cls.courseId.title} - ${cls.classCode}`,
+          code: cls.classCode,
+        }))
+      );
+    } catch (error) {
+      console.error("Error fetching classes:", error);
+      toast.error("Không thể tải danh sách lớp học");
+    }
   };
 
-  const handleClassChange = (classId) => {
-    setSelectedClass(classId);
-    if (classId) {
+  const loadStudents = async () => {
+    if (!selectedClass) return;
+
+    setLoading(true);
+    try {
+      // Lấy danh sách sinh viên trong lớp
+      const studentsData = await getClassStudents(selectedClass);
+
+      // Lấy điểm danh hiện tại cho ngày đã chọn
+      let attendanceData = null;
+      try {
+        attendanceData = await getAttendanceByDate(selectedClass, selectedDate);
+      } catch (error) {
+        // Nếu chưa có điểm danh cho ngày này, tạo mới
+        console.log("No attendance found for this date, creating new");
+      }
+
+      // Mapping students với thông tin điểm danh (nếu có)
+      const studentsWithAttendance = studentsData.students.map((student) => {
+        const attendanceRecord = attendanceData?.records.find(
+          (record) => record.studentId === student._id
+        );
+
+        return {
+          id: student._id,
+          studentId: student._id,
+          name: student.name,
+          email: student.email,
+          phone: student.phone,
+          isPresent: attendanceRecord?.isPresent || false,
+          note: attendanceRecord?.note || "",
+        };
+      });
+
+      setStudents(studentsWithAttendance);
+    } catch (error) {
+      console.error("Error loading students:", error);
+      toast.error("Không thể tải danh sách sinh viên");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load students when class or date changes
+  useEffect(() => {
+    if (selectedClass) {
       loadStudents();
     } else {
       setStudents([]);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedClass, selectedDate]);
+
+  const handleClassChange = (classId) => {
+    setSelectedClass(classId);
   };
 
   const handleAttendanceChange = (studentId, isPresent) => {
@@ -113,19 +123,28 @@ const AttendanceManagement = () => {
     );
   };
 
-  const handleSaveAttendance = () => {
-    const attendanceData = {
-      classId: selectedClass,
-      date: selectedDate,
-      students: students.map((student) => ({
-        studentId: student.id,
-        isPresent: student.isPresent,
-        note: student.note,
-      })),
-    };
+  const handleSaveAttendance = async () => {
+    if (!selectedClass || students.length === 0) {
+      toast.error("Vui lòng chọn lớp và có sinh viên để điểm danh");
+      return;
+    }
 
-    console.log("Saving attendance:", attendanceData);
-    alert("Điểm danh đã được lưu thành công!");
+    try {
+      const attendanceData = {
+        date: selectedDate,
+        students: students.map((student) => ({
+          studentId: student.studentId,
+          isPresent: student.isPresent,
+          note: student.note,
+        })),
+      };
+
+      await saveAttendance(selectedClass, attendanceData);
+      toast.success("Điểm danh đã được lưu thành công!");
+    } catch (error) {
+      console.error("Error saving attendance:", error);
+      toast.error("Không thể lưu điểm danh. Vui lòng thử lại!");
+    }
   };
 
   const presentCount = students.filter((s) => s.isPresent).length;

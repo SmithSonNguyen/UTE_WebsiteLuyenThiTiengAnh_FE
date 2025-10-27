@@ -82,3 +82,17 @@ export const getUpcomingClassesByLevel = async (level) => {
     throw error;
   }
 };
+
+// Cập nhật link lớp học (dành cho giảng viên)
+export const updateClassLink = async (classId, meetLink) => {
+  try {
+    const response = await axiosInstance.post(
+      `/classes/${classId}/update-link`,
+      { meetLink } // Gửi như object thay vì value trực tiếp
+    );
+    return response.result; // Consistent với các API khác
+  } catch (error) {
+    console.error("Error updating class link:", error);
+    throw error;
+  }
+};

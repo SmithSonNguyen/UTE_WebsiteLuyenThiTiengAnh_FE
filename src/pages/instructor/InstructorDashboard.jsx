@@ -31,9 +31,18 @@ const InstructorDashboard = () => {
       {/* Instructor Navigation */}
       <div className="bg-white border-b">
         <div className="max-w-screen-3xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between mb-4">
-            <h1 className="text-2xl font-bold text-gray-900">
-              Dashboard Giảng viên
+          <div className="flex items-center justify-left mb-4">
+            <a href="/instructor">
+              <div className="relative rounded-[140px] bg-white px-3 py-2.5 shadow-sm hover:shadow-md transition">
+                <img
+                  src="../../../public/Superman_shield.svg.png"
+                  alt="Logo DTT"
+                  className="h-2 w-auto md:h-6 lg:h-7 2xl:h-8 object-contain"
+                />
+              </div>
+            </a>
+            <h1 className="text-2xl font-bold text-gray-900 ml-4">
+              Bảng điều khiển của giảng viên
             </h1>
           </div>
 
