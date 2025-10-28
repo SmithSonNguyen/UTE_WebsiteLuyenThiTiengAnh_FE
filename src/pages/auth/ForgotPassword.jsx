@@ -3,6 +3,7 @@ import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { Link, useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
 import FormWrapper from "../../components/common/FormWrapper";
 import Input from "../../components/common/Input";
 import Button from "../../components/common/Button";
@@ -12,6 +13,8 @@ import {
   resetPassword,
 } from "@/api/otpApi";
 import { toast } from "react-toastify";
+import getTokenRole from "@/utils/getTokenRole";
+import isTokenValid from "@/utils/isTokenValid";
 
 const emailSchema = yup.object({
   email: yup.string().email("Invalid email").required("Email is required"),
@@ -36,6 +39,20 @@ const ForgotPassword = () => {
   const [countdown, setCountdown] = useState(0);
   const [errorMessage, setErrorMessage] = useState("");
   const navigate = useNavigate();
+
+  const { accessToken } = useSelector((state) => state.auth.login);
+
+  // Kiểm tra nếu đã đăng nhập thì redirect
+  useEffect(() => {
+    if (accessToken && isTokenValid(accessToken)) {
+      const role = getTokenRole(accessToken);
+      if (role === "instructor") {
+        navigate("/instructor", { replace: true });
+      } else {
+        navigate("/toeic-home", { replace: true });
+      }
+    }
+  }, [accessToken, navigate]);
 
   const {
     register: registerEmail,

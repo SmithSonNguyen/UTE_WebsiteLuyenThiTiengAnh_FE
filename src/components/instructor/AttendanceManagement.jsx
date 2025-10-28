@@ -15,6 +15,8 @@ const AttendanceManagement = () => {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(false);
   const [classes, setClasses] = useState([]);
+  const [scheduleError, setScheduleError] = useState(""); // Thêm state cho lỗi schedule
+  const [classInfo, setClassInfo] = useState(null); // Thêm state cho thông tin lớp
 
   // Fetch classes from API
   useEffect(() => {
@@ -42,17 +44,35 @@ const AttendanceManagement = () => {
     if (!selectedClass) return;
 
     setLoading(true);
+    setScheduleError(""); // Reset lỗi schedule
+
     try {
       // Lấy danh sách sinh viên trong lớp
       const studentsData = await getClassStudents(selectedClass);
+      setClassInfo(studentsData.classInfo); // Lưu thông tin lớp
 
       // Lấy điểm danh hiện tại cho ngày đã chọn
       let attendanceData = null;
       try {
         attendanceData = await getAttendanceByDate(selectedClass, selectedDate);
       } catch (error) {
+        // Xử lý error message đúng cách
+        let errorMessage = "Có lỗi xảy ra khi kiểm tra lịch học";
+        if (error?.error) {
+          // ✅ Lấy error field chi tiết
+          errorMessage = error.error;
+        } else if (error?.message) {
+          // ✅ Fallback với message
+          errorMessage = error.message;
+        } else if (typeof error === "string") {
+          errorMessage = error;
+        }
+
+        setScheduleError(errorMessage);
+        setStudents([]); // Clear students khi có lỗi schedule
+        return;
+
         // Nếu chưa có điểm danh cho ngày này, tạo mới
-        console.log("No attendance found for this date, creating new");
       }
 
       // Mapping students với thông tin điểm danh (nếu có)
@@ -75,7 +95,11 @@ const AttendanceManagement = () => {
       setStudents(studentsWithAttendance);
     } catch (error) {
       console.error("Error loading students:", error);
-      toast.error("Không thể tải danh sách sinh viên");
+      if (error.response?.data?.error) {
+        toast.error(error.response.data.error);
+      } else {
+        toast.error("Không thể tải danh sách sinh viên");
+      }
     } finally {
       setLoading(false);
     }
@@ -129,6 +153,11 @@ const AttendanceManagement = () => {
       return;
     }
 
+    if (scheduleError) {
+      toast.error("Không thể lưu điểm danh khi có lỗi lịch học");
+      return;
+    }
+
     try {
       const attendanceData = {
         date: selectedDate,
@@ -143,7 +172,11 @@ const AttendanceManagement = () => {
       toast.success("Điểm danh đã được lưu thành công!");
     } catch (error) {
       console.error("Error saving attendance:", error);
-      toast.error("Không thể lưu điểm danh. Vui lòng thử lại!");
+      if (error.response?.data?.error) {
+        toast.error(error.response.data.error);
+      } else {
+        toast.error("Không thể lưu điểm danh. Vui lòng thử lại!");
+      }
     }
   };
 
@@ -217,6 +250,40 @@ const AttendanceManagement = () => {
             </div>
           )}
         </div>
+
+        {/* Class Schedule Info */}
+        {classInfo && (
+          <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <h4 className="text-sm font-medium text-blue-900 mb-2">
+              📅 Thông tin lịch học
+            </h4>
+            <div className="text-sm text-blue-800">
+              <span className="font-medium">Lớp:</span> {classInfo.classCode} -{" "}
+              {classInfo.courseTitle}
+            </div>
+          </div>
+        )}
+
+        {/* Schedule Error Warning */}
+        {scheduleError && (
+          <div className="mt-4 p-4 bg-red-50 rounded-lg border border-red-200">
+            <div className="flex items-start">
+              <div className="flex-shrink-0">
+                <span className="text-red-600">⚠️</span>
+              </div>
+              <div className="ml-3">
+                <h4 className="text-sm font-medium text-red-900">
+                  Không thể điểm danh
+                </h4>
+                <p className="text-sm text-red-800 mt-1">
+                  {typeof scheduleError === "string"
+                    ? scheduleError
+                    : "Có lỗi xảy ra với lịch học"}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Stats */}
@@ -388,16 +455,36 @@ const AttendanceManagement = () => {
             </div>
           </div>
         </div>
+      ) : selectedClass && scheduleError ? (
+        <div className="text-center py-12">
+          <div className="text-red-500">
+            <div className="text-4xl mb-4">📅</div>
+            <div className="text-lg font-medium mb-2">Không thể điểm danh</div>
+            <div className="text-sm text-gray-600 max-w-md mx-auto">
+              Ngày được chọn không nằm trong lịch học của lớp. Vui lòng chọn
+              ngày khác.
+            </div>
+          </div>
+        </div>
       ) : selectedClass ? (
         <div className="text-center py-12">
           <div className="text-gray-500">
-            Không có sinh viên nào trong lớp này
+            <div className="text-4xl mb-4">👥</div>
+            <div className="text-lg font-medium mb-2">Không có sinh viên</div>
+            <div className="text-sm">
+              Không có sinh viên nào trong lớp này hoặc chưa có sinh viên đăng
+              ký.
+            </div>
           </div>
         </div>
       ) : (
         <div className="text-center py-12">
           <div className="text-gray-500">
-            Vui lòng chọn lớp học để bắt đầu điểm danh
+            <div className="text-4xl mb-4">🎓</div>
+            <div className="text-lg font-medium mb-2">Chọn lớp học</div>
+            <div className="text-sm">
+              Vui lòng chọn lớp học để bắt đầu điểm danh
+            </div>
           </div>
         </div>
       )}

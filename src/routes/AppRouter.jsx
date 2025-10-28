@@ -17,8 +17,11 @@ import MySchedulePage from "@/pages/course/MySchedulePage";
 import ClassDetailPage from "@/pages/course/ClassDetailPage";
 import RegisterWithOTP from "@/pages/auth/RegisterWithOTP";
 import InstructorDashboard from "../pages/instructor/InstructorDashboard";
+import RoleBasedRedirect from "../components/common/RoleBasedRedirect";
 
 import ProtectedRouter from "./ProtectedRouter";
+import InstructorProtectedRouter from "./InstructorProtectedRouter";
+import StudentProtectedRouter from "./StudentProtectedRouter";
 
 function AppRouter() {
   return (
@@ -106,7 +109,7 @@ function AppRouter() {
         }
       />
 
-      <Route element={<ProtectedRouter />}>
+      <Route element={<StudentProtectedRouter />}>
         <Route
           path="/profile"
           element={
@@ -141,11 +144,13 @@ function AppRouter() {
         />
       </Route>
 
-      {/* Instructor Dashboard */}
-      <Route path="/instructor" element={<InstructorDashboard />} />
+      {/* Instructor Dashboard - Protected by InstructorProtectedRouter */}
+      <Route element={<InstructorProtectedRouter />}>
+        <Route path="/instructor" element={<InstructorDashboard />} />
+      </Route>
 
-      {/* Route mặc định, có thể redirect về login hoặc trang chủ */}
-      <Route path="/" element={<Navigate to="/toeic-home" replace />} />
+      {/* Route mặc định, redirect thông minh dựa trên role */}
+      <Route path="/" element={<RoleBasedRedirect />} />
       <Route path="/example" element={<MySchedulePage />} />
       {/* Route cho trang không tìm thấy */}
       <Route
