@@ -3,11 +3,14 @@ import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { Link, useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
 import FormWrapper from "../../components/common/FormWrapper";
 import Input from "../../components/common/Input";
 import Button from "../../components/common/Button";
 import { sendOTPApi, verifyOTPRegister } from "../../api/otpApi";
 import { toast } from "react-toastify";
+import getTokenRole from "@/utils/getTokenRole";
+import isTokenValid from "@/utils/isTokenValid";
 
 const schema = yup.object({
   lastname: yup.string().required("Last name is required"),
@@ -38,6 +41,20 @@ const RegisterWithOTP = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const navigate = useNavigate();
+
+  const { accessToken } = useSelector((state) => state.auth.login);
+
+  // Kiểm tra nếu đã đăng nhập thì redirect
+  useEffect(() => {
+    if (accessToken && isTokenValid(accessToken)) {
+      const role = getTokenRole(accessToken);
+      if (role === "instructor") {
+        navigate("/instructor", { replace: true });
+      } else {
+        navigate("/toeic-home", { replace: true });
+      }
+    }
+  }, [accessToken, navigate]);
 
   const {
     register: registerForm,

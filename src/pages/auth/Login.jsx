@@ -10,6 +10,8 @@ import Input from "@/components/common/Input";
 import Button from "@/components/common/Button";
 import { loginUser, clearLoginError } from "@/redux/authSlice"; // import thunk
 import { useDispatch, useSelector } from "react-redux";
+import getTokenRole from "@/utils/getTokenRole";
+import isTokenValid from "@/utils/isTokenValid";
 
 const schema = yup.object({
   email: yup.string().email("Invalid email").required("Email is required"),
@@ -22,9 +24,21 @@ const schema = yup.object({
 const Login = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { isLoading, error, errorMessage } = useSelector(
+  const { isLoading, error, errorMessage, accessToken } = useSelector(
     (state) => state.auth.login
   );
+
+  // Kiểm tra nếu đã đăng nhập thì redirect
+  useEffect(() => {
+    if (accessToken && isTokenValid(accessToken)) {
+      const role = getTokenRole(accessToken);
+      if (role === "instructor") {
+        navigate("/instructor", { replace: true });
+      } else {
+        navigate("/toeic-home", { replace: true });
+      }
+    }
+  }, [accessToken, navigate]);
 
   useEffect(() => {
     dispatch(clearLoginError());
@@ -41,8 +55,15 @@ const Login = () => {
     try {
       const resultAction = await dispatch(loginUser(data));
       if (loginUser.fulfilled.match(resultAction)) {
-        // login thành công
-        navigate("/"); // chuyển hướng về trang chính
+        // login thành công - kiểm tra role để redirect
+        const token = resultAction.payload.access_token;
+        const role = getTokenRole(token);
+
+        if (role === "instructor") {
+          navigate("/instructor"); // redirect đến instructor dashboard
+        } else {
+          navigate("/toeic-home"); // redirect đến trang chủ cho student
+        }
       } else {
         // login thất bại, error sẽ hiển thị từ Redux
         console.log(resultAction.payload);
