@@ -18,6 +18,9 @@ import ClassDetailPage from "@/pages/course/ClassDetailPage";
 import RegisterWithOTP from "@/pages/auth/RegisterWithOTP";
 import InstructorDashboard from "../pages/instructor/InstructorDashboard";
 import RoleBasedRedirect from "../components/common/RoleBasedRedirect";
+import PaymentSuccess from "@/pages/payment/PaymentSuccess";
+import PaymentFailed from "@/pages/payment/PaymentFailed";
+import PaymentError from "@/pages/payment/PaymentError";
 
 import ProtectedRouter from "./ProtectedRouter";
 import InstructorProtectedRouter from "./InstructorProtectedRouter";
@@ -29,6 +32,10 @@ function AppRouter() {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<RegisterWithOTP />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
+      {/* Payment result routes */}
+      <Route path="/payment/success" element={<PaymentSuccess />} />
+      <Route path="/payment/failed" element={<PaymentFailed />} />
+      <Route path="/payment/error" element={<PaymentError />} />
 
       {/* TOEIC routes with shared layout */}
       <Route

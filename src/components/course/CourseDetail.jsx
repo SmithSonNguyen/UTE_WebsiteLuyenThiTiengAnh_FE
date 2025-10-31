@@ -2,9 +2,15 @@ import React, { useState, useEffect } from "react";
 import FixedRegistrationCard from "./FixedRegistrationCard";
 import { getCourseReviews } from "@/api/reviewApi";
 import { getUpcomingClassesByCourse } from "@/api/classApi";
+import { useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
+import { createPayment } from "@/api/paymentApi"; // Import payment API
+import { toast } from "react-hot-toast";
 
 const CourseDetail = ({ course, isLoading = false }) => {
+  const navigate = useNavigate();
   const [showRegister, setShowRegister] = useState(false);
+  const accessTokenFromRedux = useSelector((state) => state?.auth?.login?.accessToken);
   const [activeTab, setActiveTab] = useState("muc-tieu");
   const [expandedTopics, setExpandedTopics] = useState({});
 
@@ -19,9 +25,174 @@ const CourseDetail = ({ course, isLoading = false }) => {
   const [hasMore, setHasMore] = useState(true);
   const limit = 2; // Fixed limit per page
 
+  // 🆕 Payment states
+  const [processingPayment, setProcessingPayment] = useState(false);
+  const [selectedClassId, setSelectedClassId] = useState(null);
+
   // Class schedule states for live-meet courses
   const [classes, setClasses] = useState([]);
   const [loadingClasses, setLoadingClasses] = useState(false);
+
+  /**
+   * 🆕 Handle enrollment payment
+   * @param {Object} classItem - Class data từ API
+   */
+  const handleEnrollClass = async (classItem) => {
+    try {
+      // 1. Kiểm tra user đã đăng nhập chưa
+      const accessToken = accessTokenFromRedux || localStorage.getItem("accessToken");
+
+      if (!accessToken) {
+        toast.error("Vui lòng đăng nhập để đăng ký khóa học");
+        // Redirect to login page
+        navigate("/login", {
+          state: {
+            from: `/courses/${course._id}`,
+            message: "Vui lòng đăng nhập để đăng ký khóa học",
+          },
+        });
+        return;
+      }
+
+      // 2. Validate class data
+      if (!classItem?._id) {
+        toast.error("Thông tin lớp học không hợp lệ");
+        return;
+      }
+
+      // 3. Check if class is full
+      if (
+        classItem.capacity.currentStudents >= classItem.capacity.maxStudents
+      ) {
+        toast.error("Lớp học đã đầy. Vui lòng chọn lớp khác.");
+        return;
+      }
+
+      // 4. Check if class has started
+      const now = new Date();
+      const startDate = new Date(classItem.schedule.startDate);
+      if (now > startDate) {
+        toast("Lớp học đã bắt đầu. Tiếp tục chuyển đến thanh toán theo yêu cầu.");
+      }
+
+      setProcessingPayment(true);
+      setSelectedClassId(classItem._id);
+
+      // 5. Prepare payment data
+      const paymentData = {
+        classId: classItem._id,
+        courseId: course._id,
+        amount: course.discountPrice || course.price, // Số tiền VND
+        orderInfo: `Thanh toán lớp ${classItem.classCode} - ${course.title}`,
+      };
+
+      console.log("💳 Creating payment:", paymentData);
+
+      // 6. Call payment API
+      const result = await createPayment(paymentData);
+
+      console.log("✅ Payment created:", result);
+
+      // 7. Redirect to VNPay
+      if (result.vnpayUrl) {
+        toast.success("Đang chuyển đến trang thanh toán...");
+
+        // Lưu thông tin để quay lại sau khi thanh toán
+        localStorage.setItem(
+          "pendingPayment",
+          JSON.stringify({
+            paymentId: result.paymentId,
+            classId: classItem._id,
+            courseId: course._id,
+            classCode: classItem.classCode,
+            timestamp: Date.now(),
+          })
+        );
+
+        // Redirect to VNPay
+        window.location.href = result.vnpayUrl;
+      } else {
+        throw new Error("Không nhận được URL thanh toán");
+      }
+    } catch (error) {
+      console.error("❌ Enrollment error:", error);
+
+      // Handle specific errors
+      if (error.message?.includes("đã đăng ký")) {
+        toast.error("Bạn đã đăng ký lớp học này rồi");
+      } else if (error.message?.includes("đã đầy")) {
+        toast.error("Lớp học đã đầy");
+      } else if (error.message?.includes("Unauthorized")) {
+        toast.error("Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.");
+        navigate("/login");
+      } else {
+        toast.error(error.message || "Có lỗi xảy ra khi tạo thanh toán");
+      }
+    } finally {
+      setProcessingPayment(false);
+      setSelectedClassId(null);
+    }
+  };
+
+  /**
+   * 🆕 Handle pre-recorded course enrollment
+   */
+  const handleEnrollCourse = async () => {
+    try {
+      const accessToken = localStorage.getItem("accessToken");
+
+      if (!accessToken) {
+        toast.error("Vui lòng đăng nhập để mua khóa học");
+        navigate("/login", {
+          state: {
+            from: `/courses/${course._id}`,
+            message: "Vui lòng đăng nhập để mua khóa học",
+          },
+        });
+        return;
+      }
+
+      setProcessingPayment(true);
+
+      const paymentData = {
+        courseId: course._id,
+        amount: course.discountPrice || course.price,
+        orderInfo: `Thanh toán khóa học ${course.title}`,
+      };
+
+      console.log("💳 Creating payment:", paymentData);
+
+      const result = await createPayment(paymentData);
+
+      if (result.vnpayUrl) {
+        toast.success("Đang chuyển đến trang thanh toán...");
+
+        localStorage.setItem(
+          "pendingPayment",
+          JSON.stringify({
+            paymentId: result.paymentId,
+            courseId: course._id,
+            timestamp: Date.now(),
+          })
+        );
+
+        window.location.href = result.vnpayUrl;
+      } else {
+        throw new Error("Không nhận được URL thanh toán");
+      }
+    } catch (error) {
+      console.error("❌ Enrollment error:", error);
+
+      if (error.message?.includes("Unauthorized")) {
+        toast.error("Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.");
+        navigate("/login");
+      } else {
+        toast.error(error.message || "Có lỗi xảy ra khi tạo thanh toán");
+      }
+    } finally {
+      setProcessingPayment(false);
+    }
+  };
 
   // Fetch reviews function (generic, supports append for load more)
   const fetchReviews = async (
@@ -456,71 +627,120 @@ const CourseDetail = ({ course, isLoading = false }) => {
                               </td>
                             </tr>
                           ) : classes.length > 0 ? (
-                            classes.map((classItem, index) => (
-                              <tr
-                                key={classItem._id || index}
-                                className={
-                                  index % 2 === 0 ? "bg-white" : "bg-gray-50"
-                                }
-                              >
-                                <td className="px-4 py-4">
-                                  <span className="text-blue-600 font-medium">
-                                    {course.level === "beginner" &&
-                                      "Level Pre (0-450)"}
-                                    {course.level === "intermediate" &&
-                                      "Level A (450-650)"}
-                                    {course.level === "advanced" &&
-                                      "Level B (650-800)"}
-                                  </span>
-                                </td>
-                                <td className="px-4 py-4 font-medium text-gray-900">
-                                  {classItem.classCode}
-                                </td>
-                                <td className="px-4 py-4 text-gray-700">
-                                  <div>
-                                    {classItem.schedule?.daysVN
-                                      ? classItem.schedule.daysVN.join(", ")
-                                      : classItem.schedule?.days
-                                          ?.map((day) => {
-                                            const dayMap = {
-                                              Monday: "Thứ 2",
-                                              Tuesday: "Thứ 3",
-                                              Wednesday: "Thứ 4",
-                                              Thursday: "Thứ 5",
-                                              Friday: "Thứ 6",
-                                              Saturday: "Thứ 7",
-                                              Sunday: "Chủ nhật",
-                                            };
-                                            return dayMap[day];
-                                          })
-                                          .join(", ")}
-                                  </div>
-                                  <div className="text-sm text-gray-500">
-                                    {`${classItem.schedule?.startTime} - ${classItem.schedule?.endTime}`}
-                                  </div>
-                                </td>
-                                <td className="px-4 py-4 text-gray-700">
-                                  {classItem.schedule?.startDate &&
-                                    new Date(
-                                      classItem.schedule.startDate
-                                    ).toLocaleDateString("vi-VN")}
-                                </td>
-                                <td className="px-4 py-4">
-                                  <button
-                                    className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors"
-                                    onClick={() => {
-                                      // Handle enrollment logic here
-                                      console.log(
-                                        "Enroll in class:",
-                                        classItem._id
-                                      );
-                                    }}
-                                  >
-                                    Đăng ký
-                                  </button>
-                                </td>
-                              </tr>
-                            ))
+                            classes.map((classItem, index) => {
+                              const isProcessing =
+                                processingPayment &&
+                                selectedClassId === classItem._id;
+                              const isFull =
+                                classItem.capacity.currentStudents >=
+                                classItem.capacity.maxStudents;
+                              const hasStarted =
+                                new Date() >
+                                new Date(classItem.schedule.startDate);
+                              return (
+                                <tr
+                                  key={classItem._id || index}
+                                  className={
+                                    index % 2 === 0 ? "bg-white" : "bg-gray-50"
+                                  }
+                                >
+                                  <td className="px-4 py-4">
+                                    <span className="text-blue-600 font-medium">
+                                      {course.level === "beginner" &&
+                                        "Level Pre (0-450)"}
+                                      {course.level === "intermediate" &&
+                                        "Level A (450-650)"}
+                                      {course.level === "advanced" &&
+                                        "Level B (650-800)"}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-4 font-medium text-gray-900">
+                                    {classItem.classCode}
+                                    <div className="text-xs text-gray-500 mt-1">
+                                      {classItem.capacity.currentStudents}/
+                                      {classItem.capacity.maxStudents} học viên
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-4 text-gray-700">
+                                    <div>
+                                      {classItem.schedule?.daysVN
+                                        ? classItem.schedule.daysVN.join(", ")
+                                        : classItem.schedule?.days
+                                            ?.map((day) => {
+                                              const dayMap = {
+                                                Monday: "Thứ 2",
+                                                Tuesday: "Thứ 3",
+                                                Wednesday: "Thứ 4",
+                                                Thursday: "Thứ 5",
+                                                Friday: "Thứ 6",
+                                                Saturday: "Thứ 7",
+                                                Sunday: "Chủ nhật",
+                                              };
+                                              return dayMap[day];
+                                            })
+                                            .join(", ")}
+                                    </div>
+                                    <div className="text-sm text-gray-500">
+                                      {`${classItem.schedule?.startTime} - ${classItem.schedule?.endTime}`}
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-4 text-gray-700">
+                                    {classItem.schedule?.startDate &&
+                                      new Date(
+                                        classItem.schedule.startDate
+                                      ).toLocaleDateString("vi-VN")}
+                                  </td>
+                                  <td className="px-4 py-4">
+                                    {/* 🆕 Updated button with payment logic */}
+                                    <button
+                                      className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
+                                        isFull || isProcessing
+                                          ? "bg-gray-400 cursor-not-allowed"
+                                          : "bg-red-600 hover:bg-red-700 text-white"
+                                      }`}
+                                      onClick={() =>
+                                        handleEnrollClass(classItem)
+                                      }
+                                      disabled={
+                                        isFull || isProcessing
+                                      }
+                                    >
+                                      {isProcessing ? (
+                                        <span className="flex items-center">
+                                          <svg
+                                            className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                          >
+                                            <circle
+                                              className="opacity-25"
+                                              cx="12"
+                                              cy="12"
+                                              r="10"
+                                              stroke="currentColor"
+                                              strokeWidth="4"
+                                            ></circle>
+                                            <path
+                                              className="opacity-75"
+                                              fill="currentColor"
+                                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                            ></path>
+                                          </svg>
+                                          Đang xử lý...
+                                        </span>
+                                      ) : isFull ? (
+                                        "Đã đầy"
+                                      ) : hasStarted ? (
+                                        "Đăng ký (đã bắt đầu)"
+                                      ) : (
+                                        "Đăng ký"
+                                      )}
+                                    </button>
+                                  </td>
+                                </tr>
+                              );
+                            })
                           ) : (
                             <tr>
                               <td
@@ -885,7 +1105,8 @@ const CourseDetail = ({ course, isLoading = false }) => {
             {/* pt-4 để align với content */}
             <FixedRegistrationCard
               course={course}
-              onRegister={() => setShowRegister(!showRegister)}
+              onRegister={handleEnrollCourse} // 🆕 Pass handler
+              isProcessing={processingPayment} // 🆕 Pass loading state
             />
           </div>
         </div>
@@ -894,11 +1115,45 @@ const CourseDetail = ({ course, isLoading = false }) => {
       {/* Mobile Registration - Sticky dưới tabs */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg z-40 p-4">
         <button
-          onClick={() => setShowRegister(!showRegister)}
-          className="w-full bg-blue-600 text-white py-3 rounded-lg font-bold text-base hover:bg-blue-700 transition-colors"
+          onClick={handleEnrollCourse}
+          disabled={processingPayment}
+          className={`w-full py-3 rounded-lg font-bold text-base transition-colors ${
+            processingPayment
+              ? "bg-gray-400 cursor-not-allowed"
+              : "bg-blue-600 hover:bg-blue-700 text-white"
+          }`}
         >
-          ĐĂNG KÝ HỌC NGAY -{" "}
-          {course?.discountPrice?.toLocaleString() || "989.000"}đ
+          {processingPayment ? (
+            <span className="flex items-center justify-center">
+              <svg
+                className="animate-spin -ml-1 mr-2 h-5 w-5 text-white"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                ></circle>
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
+              </svg>
+              Đang xử lý...
+            </span>
+          ) : (
+            `ĐĂNG KÝ HỌC NGAY - ${(
+              course?.discountPrice ||
+              course?.price ||
+              989000
+            ).toLocaleString()}đ`
+          )}
         </button>
       </div>
 
