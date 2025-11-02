@@ -26,19 +26,18 @@ const QuizGame = ({ words, onComplete, onRetry, onNextLesson }) => {
     const generateQuestions = () => {
       const normalizedWords = words.map((w, index) => ({
         id: index,
-        vocab: w.vocab || w.english, // tên từ vựng
-        meaning: w.meaning_vi || w.vietnamese, // nghĩa tiếng Việt
-        example: w.example_en || w.exampleEn || "", // câu ví dụ tiếng anh
+        vocab: w.vocab || w.english,
+        meaning: w.meaning_vi || w.vietnamese,
+        example: w.example_en || w.exampleEn || "",
       }));
 
       const questionsGenerated = [];
 
       normalizedWords.forEach((word) => {
-        // Nếu có example_en → tạo dạng Điền vào chỗ trống
-        if (word.example && word.example.trim() !== "") {
-          // Regex xóa phiên âm và chỉ lấy chữ cái trong vocab để thay thế
-          const baseVocab = word.vocab.replace(/\/.*?\//g, "").trim();
+        // Loại bỏ phần phát âm khi so sánh
+        const baseVocab = word.vocab.replace(/\/.*?\//g, "").trim();
 
+        if (word.example && word.example.trim() !== "") {
           const exampleWithBlank = word.example.replace(
             new RegExp(baseVocab, "gi"),
             "______"
@@ -60,7 +59,6 @@ const QuizGame = ({ words, onComplete, onRetry, onNextLesson }) => {
             options,
           });
         } else {
-          // Trường hợp không có example_en → Quiz chọn nghĩa
           const allWrongMeanings = normalizedWords
             .filter((w) => w.id !== word.id)
             .map((w) => w.meaning);
@@ -113,7 +111,8 @@ const QuizGame = ({ words, onComplete, onRetry, onNextLesson }) => {
       setAnswerStatus(null);
     } else {
       setGameComplete(true);
-      onComplete(score);
+      // Gọi onComplete với score và total questions để parent component tính toán
+      onComplete(score, questions.length);
     }
   };
 
@@ -142,12 +141,13 @@ const QuizGame = ({ words, onComplete, onRetry, onNextLesson }) => {
 
   if (gameComplete) {
     const percentage = (score / questions.length) * 100;
-    const isPassed = percentage >= 60;
+    // Điều kiện pass: đạt ít nhất 5/6 câu (≈83.33%) hoặc >= 80%
+    const isPassed = percentage >= 80 || score >= 5;
 
     const getTextColor = () => {
-      if (percentage >= 80) return "text-white"; // For gradient-success
-      if (percentage >= 60) return "text-gray-900"; // For gradient-warm
-      return "text-white"; // For gradient-secondary
+      if (percentage >= 80) return "text-white";
+      if (percentage >= 60) return "text-gray-900";
+      return "text-white";
     };
 
     return (
@@ -175,6 +175,16 @@ const QuizGame = ({ words, onComplete, onRetry, onNextLesson }) => {
               />
             ))}
           </div>
+          
+          {/* Hiển thị thông báo nếu pass */}
+          {isPassed && (
+            <div className="mb-6 p-4 bg-white/10 rounded-lg">
+              <p className="text-lg font-semibold">
+                🎉 Congratulations! You've unlocked the next lesson!
+              </p>
+            </div>
+          )}
+          
           <div className="flex gap-4 justify-center">
             <Button
               variant="outline"

@@ -1,12 +1,25 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Radio, Button } from "antd";
-import HeaderToeicHome from "../../components/layouts/HeaderToeicHome";
-import Footer from "../../components/common/Footer";
 import { useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
 
 export default function FreeEntryTest() {
   const [selectedTest, setSelectedTest] = useState(null);
   const navigate = useNavigate();
+
+  // ✅ Lấy user từ Redux
+  const currentUser = useSelector((state) => state?.auth?.login?.currentUser);
+  const accessToken = useSelector((state) => state?.auth?.login?.accessToken);
+
+  // ✅ Check authentication
+  const isAuthenticated = !!(currentUser || accessToken);
+
+  // Debug
+  useEffect(() => {
+    console.log("FreeEntryTest - Current user:", currentUser);
+    console.log("FreeEntryTest - Access token exists:", !!accessToken);
+    console.log("FreeEntryTest - Is authenticated:", isAuthenticated);
+  }, [currentUser, accessToken, isAuthenticated]);
 
   const handleSubmit = () => {
     if (selectedTest == "TOEIC Full Test") {
@@ -16,7 +29,7 @@ export default function FreeEntryTest() {
     } else if (selectedTest == "TOEIC Entry Test 4 KN") {
       navigate("/toeic-home/free-entry-test/entry-test-4kn");
     } else {
-      alert("Please select a test option before submitting.");
+      alert("Vui lòng chọn một bài thi trước khi bắt đầu.");
     }
   };
 
@@ -24,12 +37,47 @@ export default function FreeEntryTest() {
     setSelectedTest(testName);
   };
 
+  // ✅ Not authenticated screen
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center bg-white p-8 rounded-xl shadow-lg max-w-md mx-4">
+          <div className="text-6xl mb-4">🔒</div>
+          <h2 className="text-2xl font-bold text-gray-800 mb-3">
+            Yêu cầu đăng nhập
+          </h2>
+          <p className="text-gray-600 mb-6">
+            Vui lòng đăng nhập để làm bài thi đầu vào và theo dõi kết quả của
+            bạn.
+          </p>
+          <button
+            onClick={() => (window.location.href = "/login")}
+            className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors"
+          >
+            Đến trang đăng nhập
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <>
+    <div className="min-h-screen bg-gray-50">
       <div className="max-w-4xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
-        <h1 className="text-3xl font-extrabold text-gray-900 mb-8 text-center">
-          Chọn Bài Thi TOEIC
-        </h1>
+        {/* Header with user info */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-extrabold text-gray-900 text-center">
+            Chọn Bài Thi TOEIC
+          </h1>
+          {currentUser && (
+            <p className="text-sm text-gray-500 text-center mt-2">
+              Đang đăng nhập:{" "}
+              <span className="font-semibold text-gray-700">
+                {currentUser.email || currentUser.username || currentUser.name}
+              </span>
+            </p>
+          )}
+        </div>
 
         <div className="space-y-6">
           {/* TOEIC Full Test */}
@@ -135,6 +183,6 @@ export default function FreeEntryTest() {
           </Button>
         </div>
       </div>
-    </>
+    </div>
   );
 }

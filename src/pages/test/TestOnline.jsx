@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
 import { Search, Clock, Users, Star, Play, Check } from "lucide-react";
-import { getFilteredTests } from "@/api/testApi"; // Import the API function
+import { getFilteredTests } from "@/api/testApi";
 
 const TestOnline = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -11,8 +12,21 @@ const TestOnline = () => {
   const [selectedCategory, setSelectedCategory] = useState("tat-ca");
   const [selectedYear, setSelectedYear] = useState("");
   const [availableYears, setAvailableYears] = useState([]);
-  // const [availableCategories, setAvailableCategories] = useState([]);
   const navigate = useNavigate();
+
+  // ✅ Lấy user từ Redux
+  const currentUser = useSelector((state) => state?.auth?.login?.currentUser);
+  const accessToken = useSelector((state) => state?.auth?.login?.accessToken);
+
+  // ✅ Check authentication
+  const isAuthenticated = !!(currentUser || accessToken);
+
+  // Debug
+  useEffect(() => {
+    console.log("TestOnline - Current user:", currentUser);
+    console.log("TestOnline - Access token exists:", !!accessToken);
+    console.log("TestOnline - Is authenticated:", isAuthenticated);
+  }, [currentUser, accessToken, isAuthenticated]);
 
   // Categories theo yêu cầu TOEIC
   const categories = [
@@ -26,6 +40,12 @@ const TestOnline = () => {
 
   // Fetch tests with filters
   const fetchTests = useCallback(async () => {
+    if (!isAuthenticated) {
+      console.log("User not authenticated, skipping fetch");
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
@@ -44,7 +64,6 @@ const TestOnline = () => {
         // Set available filters if provided
         if (response.filters) {
           setAvailableYears(response.filters.availableYears || []);
-          // setAvailableCategories(response.filters.availableCategories || []);
         }
       }
     } catch (error) {
@@ -54,7 +73,7 @@ const TestOnline = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedCategory, selectedYear, searchTerm]);
+  }, [selectedCategory, selectedYear, searchTerm, isAuthenticated]);
 
   // Fetch data when filters change
   useEffect(() => {
@@ -63,12 +82,37 @@ const TestOnline = () => {
     }, 300); // Debounce search
 
     return () => clearTimeout(timeoutId);
-  }, [selectedCategory, selectedYear, searchTerm, fetchTests]);
+  }, [fetchTests]);
 
   const handleStartExam = (examId) => {
     navigate(`/toeic-home/test-online/${examId}`);
   };
 
+  // ✅ Not authenticated screen
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center bg-white p-8 rounded-xl shadow-lg max-w-md">
+          <div className="text-6xl mb-4">🔒</div>
+          <h2 className="text-2xl font-bold text-gray-800 mb-3">
+            Yêu cầu đăng nhập
+          </h2>
+          <p className="text-gray-600 mb-6">
+            Vui lòng đăng nhập để truy cập thư viện đề thi và theo dõi tiến độ
+            học tập của bạn.
+          </p>
+          <button
+            onClick={() => (window.location.href = "/login")}
+            className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors"
+          >
+            Đến trang đăng nhập
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Loading state
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -80,6 +124,7 @@ const TestOnline = () => {
     );
   }
 
+  // Error state
   if (error) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -106,8 +151,19 @@ const TestOnline = () => {
                 <p className="mt-2 text-gray-600">
                   Chọn đề thi phù hợp và bắt đầu luyện tập
                 </p>
+                {currentUser && (
+                  <p className="text-sm text-gray-500 mt-2">
+                    Đang đăng nhập:{" "}
+                    <span className="font-semibold text-gray-700">
+                      {currentUser.email ||
+                        currentUser.username ||
+                        currentUser.name}
+                    </span>
+                  </p>
+                )}
               </div>
             </div>
+
             {/* Categories */}
             <div className="mb-6">
               <div className="flex flex-wrap gap-2">
@@ -278,7 +334,7 @@ const TestOnline = () => {
                   </svg>
                 </div>
                 <p className="font-medium text-gray-900 text-lg">
-                  tiendung17062k4
+                  {currentUser?.username || currentUser?.email || "User"}
                 </p>
               </div>
 
