@@ -311,7 +311,7 @@ const ClassDetailPage = () => {
                 Ghi Chú Cho Lớp {classCode}
               </h3>
               <textarea
-                value={currentNote || notes || ""}
+                value={currentNote || ""}
                 onChange={(e) => setCurrentNote(e.target.value)}
                 className="w-full p-3 border border-gray-300 rounded-md mb-4 focus:ring-2 focus:ring-green-500"
                 placeholder="Ghi lại từ vựng, ý chính, bài tập..."

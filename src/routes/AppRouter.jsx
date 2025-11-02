@@ -21,10 +21,11 @@ import RoleBasedRedirect from "../components/common/RoleBasedRedirect";
 import PaymentSuccess from "@/pages/payment/PaymentSuccess";
 import PaymentFailed from "@/pages/payment/PaymentFailed";
 import PaymentError from "@/pages/payment/PaymentError";
-
+import Assurance from "@/pages/Assurance";
 import ProtectedRouter from "./ProtectedRouter";
 import InstructorProtectedRouter from "./InstructorProtectedRouter";
 import StudentProtectedRouter from "./StudentProtectedRouter";
+import FreeEntryTestResult from "@/pages/test/FreeEntryTestResult";
 
 function AppRouter() {
   return (
@@ -53,6 +54,17 @@ function AppRouter() {
           <ToeicLayout>
             {/* <ProtectedRouter> */}
             <FreeEntryTest />
+            {/* </ProtectedRouter> */}
+          </ToeicLayout>
+        }
+      />
+      <Route
+        path="/toeic-home/free-entry-test/result"
+        // cái này để mà chỉ khi user đăng kí rồi mới được sử dụng, có thể bỏ cmt ở ProtectedRouter ra
+        element={
+          <ToeicLayout>
+            {/* <ProtectedRouter> */}
+            <FreeEntryTestResult />
             {/* </ProtectedRouter> */}
           </ToeicLayout>
         }
@@ -99,6 +111,14 @@ function AppRouter() {
         element={
           <ToeicLayout>
             <DisplayResultTest />
+          </ToeicLayout>
+        }
+      />
+      <Route
+        path="/toeic-home/assurance"
+        element={
+          <ToeicLayout>
+            <Assurance />
           </ToeicLayout>
         }
       />

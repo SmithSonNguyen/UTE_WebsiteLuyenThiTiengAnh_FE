@@ -5,13 +5,14 @@ import Button from "../components/common/Button";
 import FaqSectionToeicHome from "../components/layouts/FaqSectionToeicHome";
 import CourseCarousel from "../components/course/CourseCarousel";
 import { getFeaturedCourses } from "@/api/courseApi";
-import { getMySchedule } from "@/api/enrollmentApi"; // Import API để lấy enrollments
+import { getMySchedule } from "@/api/enrollmentApi";
+import bannerImage from "@/assets/banner.png";
 
 const ToeicHome = () => {
   const [courses, setCourses] = useState([]);
-  const [todaySessions, setTodaySessions] = useState([]); // Lịch hôm nay
-  const [enrollments, setEnrollments] = useState([]); // Từ API
-  const [isLoadingSchedule, setIsLoadingSchedule] = useState(false); // State loading cho lịch
+  const [todaySessions, setTodaySessions] = useState([]);
+  const [enrollments, setEnrollments] = useState([]);
+  const [isLoadingSchedule, setIsLoadingSchedule] = useState(false);
   const currentUser = useSelector((state) => state.auth.login.currentUser);
   const navigate = useNavigate();
 
@@ -27,7 +28,6 @@ const ToeicHome = () => {
     fetchCourses();
   }, []);
 
-  // Fetch lịch học hôm nay nếu đã đăng nhập
   useEffect(() => {
     if (!currentUser) return;
 
@@ -37,7 +37,7 @@ const ToeicHome = () => {
         const enrollments = await getMySchedule();
         const todaySessions = generateTodaySessions(enrollments);
         setTodaySessions(todaySessions);
-        setEnrollments(enrollments); // Lưu enrollments vào state
+        setEnrollments(enrollments);
       } catch (error) {
         console.error("Error fetching today's schedule:", error);
       } finally {
@@ -47,10 +47,9 @@ const ToeicHome = () => {
     fetchTodaySchedule();
   }, [currentUser]);
 
-  // Function để generate chỉ sessions hôm nay (tái sử dụng logic từ MySchedulePage)
   const generateTodaySessions = (enrollments) => {
     const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()); // Chỉ ngày hôm nay (00:00)
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
     const sessions = [];
 
@@ -94,7 +93,6 @@ const ToeicHome = () => {
       const classEnd = createDateOnly(schedule.endDate);
       if (!classStart || !classEnd) return;
 
-      // Tìm tuần đầu tiên chứa startDate
       const firstWeekStart = new Date(classStart);
       const startDay = firstWeekStart.getDay();
       firstWeekStart.setDate(
@@ -107,7 +105,7 @@ const ToeicHome = () => {
         schedule.days.forEach((dayEn) => {
           const dayNum = dayNumMap[dayEn];
           const targetDate = new Date(currentWeekStart);
-          const diffDays = dayNum - 1; // Offset từ Monday
+          const diffDays = dayNum - 1;
           targetDate.setDate(currentWeekStart.getDate() + diffDays);
 
           if (targetDate >= classStart && targetDate <= classEnd) {
@@ -140,10 +138,20 @@ const ToeicHome = () => {
       const userName = `${currentUser.lastname} ${currentUser.firstname}`;
 
       if (isLoadingSchedule) {
-        // Hiển thị skeleton thay vì chỉ có text "Đang tải..."
         return (
-          <section className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-10">
-            <div className="container mx-auto px-6 text-left max-w-7xl">
+          <section className="relative bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-10 overflow-hidden">
+            {/* Background Image with Overlay */}
+            <div className="absolute inset-0">
+              <img
+                src={bannerImage}
+                alt="TOEIC Banner"
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-900/80 to-indigo-900/80"></div>
+            </div>
+
+            {/* Content */}
+            <div className="container mx-auto px-6 text-left max-w-7xl relative z-10">
               <h1 className="text-4xl md:text-4xl font-bold mb-10">
                 Xin chào, {userName}!
               </h1>
@@ -151,12 +159,11 @@ const ToeicHome = () => {
                 Lịch học hôm nay ({new Date().toLocaleDateString("vi-VN")})
               </h2>
 
-              {/* Skeleton UI */}
               <div className="space-y-4 animate-pulse">
                 {[1].map((i) => (
                   <div
                     key={i}
-                    className="bg-white/20 rounded-lg p-4 flex flex-col gap-2"
+                    className="bg-white/20 backdrop-blur-sm rounded-lg p-4 flex flex-col gap-2"
                   >
                     <div className="h-5 bg-white/30 rounded w-2/3"></div>
                     <div className="h-4 bg-white/30 rounded w-1/3"></div>
@@ -168,10 +175,20 @@ const ToeicHome = () => {
           </section>
         );
       } else if (enrollments.length === 0) {
-        // Chưa đăng ký khóa học nào
         return (
-          <section className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-10">
-            <div className="container mx-auto px-6 text-left max-w-7xl">
+          <section className="relative bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-10 overflow-hidden">
+            {/* Background Image with Overlay */}
+            <div className="absolute inset-0">
+              <img
+                src={bannerImage}
+                alt="TOEIC Banner"
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-900/80 to-indigo-900/80"></div>
+            </div>
+
+            {/* Content */}
+            <div className="container mx-auto px-6 text-left max-w-7xl relative z-10">
               <h1 className="text-4xl md:text-4xl font-bold mb-10">
                 Xin chào, {userName}!
               </h1>
@@ -185,7 +202,7 @@ const ToeicHome = () => {
               <div className="flex justify-center">
                 <Button
                   size="lg"
-                  className="bg-yellow-400 text-black font-semibold"
+                  className="bg-yellow-400 text-black font-semibold hover:bg-yellow-500 transition-colors"
                 >
                   Đăng ký học ngay
                 </Button>
@@ -195,8 +212,19 @@ const ToeicHome = () => {
         );
       } else if (todaySessions.length === 0) {
         return (
-          <section className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-10">
-            <div className="container mx-auto px-6 text-left max-w-7xl">
+          <section className="relative bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-10 overflow-hidden">
+            {/* Background Image with Overlay */}
+            <div className="absolute inset-0">
+              <img
+                src={bannerImage}
+                alt="TOEIC Banner"
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-900/80 to-indigo-900/80"></div>
+            </div>
+
+            {/* Content */}
+            <div className="container mx-auto px-6 text-left max-w-7xl relative z-10">
               <h1 className="text-4xl md:text-4xl font-bold mb-10">
                 Xin chào, {userName}!
               </h1>
@@ -206,24 +234,28 @@ const ToeicHome = () => {
               <p className="text-lg md:text-xl mb-8 text-blue-100">
                 Bạn không có lịch học hôm nay.
               </p>
-              {/* <Button
-                size="lg"
-                className="bg-yellow-400 text-black font-semibold"
-              >
-                Đăng ký học ngay
-              </Button> */}
             </div>
           </section>
         );
       } else {
-        // Hiển thị lịch hôm nay nếu có
         return (
-          <section className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-10">
-            <div className="container mx-auto px-6 text-left max-w-7xl">
-              <h1 className="text-4xl md:text-4xl font-bold mb-10">
+          <section className="relative bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-10 overflow-hidden">
+            {/* Background Image with Overlay */}
+            <div className="absolute inset-0">
+              <img
+                src={bannerImage}
+                alt="TOEIC Banner"
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-900/80 to-indigo-900/80"></div>
+            </div>
+
+            {/* Content */}
+            <div className="container mx-auto px-6 text-left max-w-7xl relative z-10">
+              <h1 className="text-4xl md:text-4xl font-bold mb-10 drop-shadow-lg">
                 Xin chào, {userName}!
               </h1>
-              <h2 className="text-2xl md:text-2xl font-semibold mb-4">
+              <h2 className="text-2xl md:text-2xl font-semibold mb-4 drop-shadow-lg">
                 Lịch học hôm nay ({new Date().toLocaleDateString("vi-VN")})
               </h2>
               <div className="space-y-4 mb-8">
@@ -232,7 +264,7 @@ const ToeicHome = () => {
                   return (
                     <div
                       key={session._id}
-                      className="bg-white/10 rounded-lg p-4"
+                      className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20 hover:bg-white/20 transition-all"
                     >
                       <p className="text-lg font-semibold">
                         {classId.courseId?.title || "Khóa học TOEIC"}
@@ -248,7 +280,7 @@ const ToeicHome = () => {
                         onClick={() =>
                           window.open(classId.schedule.meetLink, "_blank")
                         }
-                        className="mt-2 bg-green-400 text-black px-4 py-2 rounded text-sm font-semibold hover:bg-green-500"
+                        className="mt-2 bg-green-400 text-black px-4 py-2 rounded text-sm font-semibold hover:bg-green-500 transition-colors"
                       >
                         Tham gia ngay
                       </button>
@@ -256,32 +288,75 @@ const ToeicHome = () => {
                   );
                 })}
               </div>
-              {/* <Button
-                size="lg"
-                className="bg-yellow-400 text-black font-semibold"
-                onClick={() => navigate("/my-schedule")}
-              >
-                Lịch học của tôi
-              </Button> */}
             </div>
           </section>
         );
       }
     } else {
-      // Hero mặc định khi chưa đăng nhập
+      // Hero mặc định khi chưa đăng nhập - với banner
       return (
-        <section className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-20">
-          <div className="container mx-auto px-6 text-center">
-            <h1 className="text-4xl md:text-5xl font-bold mb-6">
+        <section className="relative bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-32 md:py-40 lg:py-48 overflow-hidden">
+          {/* Background Image with Overlay */}
+          <div className="absolute inset-0">
+            <img
+              src={bannerImage}
+              alt="TOEIC Banner"
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/30 to-indigo-500/30 backdrop-blur-sm"></div>
+          </div>
+
+          {/* Content */}
+          <div className="container mx-auto px-6 text-center relative z-10 max-w-7xl">
+            {/* Tiêu đề chính - TO, SANG, HIỆN ĐẠI */}
+            <h1
+              className="
+      text-5xl sm:text-6xl md:text-7xl lg:text-8xl 
+      font-bold 
+      mb-6 
+      leading-tight 
+      tracking-tight 
+      drop-shadow-2xl 
+      bg-clip-text text-transparent 
+      bg-gradient-to-r from-white to-yellow-200
+      animate-fade-in
+    "
+              style={{ fontFamily: '"Poppins", "Montserrat", sans-serif' }}
+            >
               Luyện Thi TOEIC Online Cùng DTT
             </h1>
-            <p className="text-lg md:text-xl mb-8">
+
+            {/* Mô tả - RÕ RÀNG, DỄ ĐỌC */}
+            <p
+              className="
+      text-lg sm:text-xl md:text-2xl lg:text-3xl 
+      mb-10 
+      font-medium 
+      leading-relaxed 
+      drop-shadow-lg 
+      max-w-4xl mx-auto 
+      text-blue-50
+    "
+              style={{
+                fontFamily: "Inter, system-ui, -apple-system, sans-serif",
+              }}
+            >
               Nền tảng học DTT thông minh – cá nhân hóa lộ trình, rút ngắn thời
               gian ôn luyện.
             </p>
+
+            {/* Nút CTA */}
             <Button
               size="lg"
-              className="bg-yellow-400 text-black font-semibold"
+              className="
+        bg-yellow-400 text-black font-bold 
+        hover:bg-yellow-300 
+        transition-all duration-300 
+        shadow-2xl 
+        text-lg px-10 py-4 
+        transform hover:scale-105
+        rounded-full
+      "
             >
               Đăng ký ngay
             </Button>
