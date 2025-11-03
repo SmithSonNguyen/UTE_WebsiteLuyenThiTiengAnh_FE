@@ -15,7 +15,7 @@ export default function ResultTOEIC() {
     console.log("=== RESULT PAGE LOADED ===");
     console.log("examId from params:", examId);
     console.log("location.state:", location?.state);
-    
+
     // Ưu tiên lấy từ location.state
     const fromState = location?.state;
     if (fromState?.summary && fromState?.detailedAnswers && fromState?.meta) {
@@ -25,17 +25,20 @@ export default function ResultTOEIC() {
       setHasData(true);
       return;
     }
-    
+
     // Fallback: đọc từ sessionStorage
     try {
       const storageKey = `toeic_result_${examId}`;
       console.log("Trying to load from sessionStorage:", storageKey);
       const raw = sessionStorage.getItem(storageKey);
-      
+
       if (raw) {
-        console.log("Raw data from sessionStorage:", raw.substring(0, 200) + "...");
+        console.log(
+          "Raw data from sessionStorage:",
+          raw.substring(0, 200) + "..."
+        );
         const parsed = JSON.parse(raw);
-        
+
         if (parsed?.summary && parsed?.detailedAnswers && parsed?.meta) {
           console.log("✓ Data found in sessionStorage");
           console.log("Summary:", parsed.summary);
@@ -47,7 +50,7 @@ export default function ResultTOEIC() {
     } catch (e) {
       console.error("Error reading from sessionStorage:", e);
     }
-    
+
     // Không tìm thấy dữ liệu
     console.warn("✗ No result data found");
     setHasData(false);
@@ -84,18 +87,19 @@ export default function ResultTOEIC() {
 
   // Tính toán thống kê bổ sung
   const totalCorrect = summary.listeningCorrect + summary.readingCorrect;
-  const accuracyRate = meta.answeredCount > 0 
-    ? Math.round((totalCorrect / meta.answeredCount) * 100) 
-    : 0;
+  const accuracyRate =
+    meta.answeredCount > 0
+      ? Math.round((totalCorrect / meta.answeredCount) * 100)
+      : 0;
 
   // Phân loại câu trả lời theo Part
   const answersByPart = detailedAnswers.reduce((acc, answer) => {
-    const part = `Part ${answer.part || 'Unknown'}`;
+    const part = `Part ${answer.part || "Unknown"}`;
     if (!acc[part]) {
       acc[part] = {
         total: 0,
         correct: 0,
-        answers: []
+        answers: [],
       };
     }
     acc[part].total += 1;
@@ -483,15 +487,26 @@ export default function ResultTOEIC() {
           <div className="content">
             <div className="no-data-message">
               <h2>⚠️ Không tìm thấy kết quả</h2>
-              <p>Không có dữ liệu kết quả thi. Vui lòng làm bài thi trước khi xem kết quả.</p>
-              <p style={{ marginTop: '10px', fontSize: '0.9em', color: '#888' }}>
+              <p>
+                Không có dữ liệu kết quả thi. Vui lòng làm bài thi trước khi xem
+                kết quả.
+              </p>
+              <p
+                style={{ marginTop: "10px", fontSize: "0.9em", color: "#888" }}
+              >
                 Kiểm tra Console (F12) để xem thông tin debug chi tiết.
               </p>
               <div className="button-group">
-                <button onClick={() => navigate(`/toeic-home/test-online/${examId}`)} className="btn btn-primary">
+                <button
+                  onClick={() => navigate(`/toeic-home/test-online/${examId}`)}
+                  className="btn btn-primary"
+                >
                   📝 Làm Bài Thi
                 </button>
-                <button onClick={() => navigate('/toeic-home')} className="btn btn-secondary">
+                <button
+                  onClick={() => navigate("/toeic-home")}
+                  className="btn btn-secondary"
+                >
                   🏠 Về Trang Chủ
                 </button>
               </div>
@@ -509,7 +524,10 @@ export default function ResultTOEIC() {
         <div className="header">
           <h1>🎓 Kết Quả Thi TOEIC</h1>
           <p>Đề thi: {meta.examId}</p>
-          <div className="score-level-badge" style={{ backgroundColor: scoreLevel.color }}>
+          <div
+            className="score-level-badge"
+            style={{ backgroundColor: scoreLevel.color }}
+          >
             {scoreLevel.text}
           </div>
         </div>
@@ -527,7 +545,8 @@ export default function ResultTOEIC() {
               <h3>Listening</h3>
               <div className="score">{summary.listeningScore}</div>
               <div className="details">
-                / 495 điểm<br/>
+                / 495 điểm
+                <br />
                 Đúng: {summary.listeningCorrect}/100 câu
               </div>
             </div>
@@ -536,7 +555,8 @@ export default function ResultTOEIC() {
               <h3>Reading</h3>
               <div className="score">{summary.readingScore}</div>
               <div className="details">
-                / 495 điểm<br/>
+                / 495 điểm
+                <br />
                 Đúng: {summary.readingCorrect}/100 câu
               </div>
             </div>
@@ -560,7 +580,9 @@ export default function ResultTOEIC() {
 
             <div className="stat-box">
               <div className="label">Câu chưa trả lời</div>
-              <div className="value">{meta.totalQuestions - meta.answeredCount}</div>
+              <div className="value">
+                {meta.totalQuestions - meta.answeredCount}
+              </div>
               <div className="sub-value">câu</div>
             </div>
           </div>
@@ -571,8 +593,8 @@ export default function ResultTOEIC() {
               <div className="section-title">📊 Phân Tích Theo Part</div>
               {Object.entries(answersByPart)
                 .sort(([a], [b]) => {
-                  const numA = parseInt(a.replace('Part ', '')) || 0;
-                  const numB = parseInt(b.replace('Part ', '')) || 0;
+                  const numA = parseInt(a.replace("Part ", "")) || 0;
+                  const numB = parseInt(b.replace("Part ", "")) || 0;
                   return numA - numB;
                 })
                 .map(([part, data]) => (
@@ -581,12 +603,17 @@ export default function ResultTOEIC() {
                     <div className="part-stats">
                       <div className="part-stat">
                         <div className="label">Đúng</div>
-                        <div className="value">{data.correct}/{data.total}</div>
+                        <div className="value">
+                          {data.correct}/{data.total}
+                        </div>
                       </div>
                       <div className="part-stat">
                         <div className="label">Tỷ lệ</div>
                         <div className="value">
-                          {data.total > 0 ? Math.round((data.correct / data.total) * 100) : 0}%
+                          {data.total > 0
+                            ? Math.round((data.correct / data.total) * 100)
+                            : 0}
+                          %
                         </div>
                       </div>
                     </div>
@@ -598,38 +625,43 @@ export default function ResultTOEIC() {
           {/* Answers Section */}
           {detailedAnswers.length > 0 && (
             <div className="answers-section">
-              <div className="section-title">📝 Đáp Án Chi Tiết</div>
+              <div className="section-title">Đáp Án Chi Tiết</div>
               <div className="answers-grid">
-                {detailedAnswers.map((a) => (
-                  <div 
-                    key={a.number} 
-                    className={`answer-item ${a.isCorrect ? "correct" : "incorrect"}`}
-                    title={`Câu ${a.number} - Part ${a.part || ''}\nĐáp án của bạn: ${a.userAnswer || 'Chưa trả lời'}\nĐáp án đúng: ${a.correctAnswer}`}
-                  >
-                    <div className="question-num">Câu {a.number}</div>
-                    <div className="answer">{a.userAnswer || "-"}</div>
-                    {!a.isCorrect && a.correctAnswer && (
-                      <div className="answer-details">
-                        Đúng: {a.correctAnswer}
+                {detailedAnswers
+                  .sort((a, b) => a.number - b.number) // Sắp xếp theo số câu
+                  .map((a) => (
+                    <div
+                      key={a.number}
+                      className={`answer-item ${
+                        a.isCorrect ? "correct" : "incorrect"
+                      }`}
+                      title={`Câu ${a.number} - Part ${a.part}\nBạn chọn: ${
+                        a.userAnswer || "Chưa trả lời"
+                      }\nĐáp án đúng: ${a.correctAnswer}`}
+                    >
+                      <div className="question-num">Câu {a.number}</div>
+                      <div className="answer">{a.userAnswer || "-"}</div>
+                      {!a.isCorrect && a.correctAnswer && (
+                        <div className="answer-details">
+                          Đúng: {a.correctAnswer}
+                        </div>
+                      )}
+                      <div className="icon">
+                        {a.isCorrect ? "Correct" : "Incorrect"}
                       </div>
-                    )}
-                    <div className="icon">{a.isCorrect ? "✓" : "✗"}</div>
-                  </div>
-                ))}
+                    </div>
+                  ))}
               </div>
             </div>
           )}
 
           {/* Action Buttons */}
           <div className="button-group">
-            <button 
-              onClick={() => navigate(-1)} 
-              className="btn btn-secondary"
-            >
+            <button onClick={() => navigate(-1)} className="btn btn-secondary">
               📚 Quay Về
             </button>
-            <button 
-              onClick={() => navigate(`/toeic-home/test-online/${examId}`)} 
+            <button
+              onClick={() => navigate(`/toeic-home/test-online/${examId}`)}
               className="btn btn-primary"
             >
               🔄 Làm Lại Bài Thi
@@ -639,11 +671,11 @@ export default function ResultTOEIC() {
 
         <div className="footer">
           <p>
-            💡 <strong>Tips:</strong> Khi xem chi tiết đáp án, bạn có thể tạo và lưu 
-            highlight từ vựng, keywords và tạo note để học và tra cứu khi có nhu cầu 
-            ôn lại đề thi này trong tương lai.
+            💡 <strong>Tips:</strong> Khi xem chi tiết đáp án, bạn có thể tạo và
+            lưu highlight từ vựng, keywords và tạo note để học và tra cứu khi có
+            nhu cầu ôn lại đề thi này trong tương lai.
           </p>
-          <p style={{ marginTop: '15px', fontSize: '0.9em' }}>
+          <p style={{ marginTop: "15px", fontSize: "0.9em" }}>
             Chúc bạn học tốt và đạt điểm cao! 🎯
           </p>
         </div>
