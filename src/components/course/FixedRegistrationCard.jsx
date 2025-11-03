@@ -2,6 +2,7 @@
 import React from "react";
 
 const FixedRegistrationCard = ({
+  onTryForFree,
   onRegister,
   course,
   isProcessing = false,
@@ -9,6 +10,23 @@ const FixedRegistrationCard = ({
   const discountAmount = course?.price
     ? course.price - (course.discountPrice || 0)
     : 811000;
+
+  // 🆕 Handle button click based on course type
+  const handleRegisterClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    console.log("🟡 FixedRegistrationCard button clicked");
+    console.log("🟡 Course type:", course?.type);
+    console.log("🟡 onRegister function:", typeof onRegister, onRegister);
+
+    if (onRegister) {
+      console.log("🟢 Calling onRegister...");
+      onRegister();
+    } else {
+      console.error("❌ onRegister is not defined!");
+    }
+  };
 
   return (
     <div className="bg-white rounded-lg p-6 shadow-xl border border-gray-200 sticky top-32 z-50 max-w-md mx-auto lg:mx-0">
@@ -53,9 +71,10 @@ const FixedRegistrationCard = ({
         </div>
       )}
 
-      {/* 🆕 Register Button with loading state */}
+      {/* 🆕 Register Button with proper event handling */}
       <button
-        onClick={onRegister}
+        type="button"
+        onClick={handleRegisterClick}
         disabled={isProcessing}
         className={`w-full py-3 rounded-lg font-bold text-base mb-3 transition-colors ${
           isProcessing
@@ -93,7 +112,11 @@ const FixedRegistrationCard = ({
       </button>
 
       {/* Free Trial */}
-      <button className="w-full border border-gray-300 text-gray-700 py-2 rounded-lg text-sm mb-4 hover:bg-gray-50 transition-colors">
+      <button
+        type="button"
+        className="w-full border border-gray-300 text-gray-700 py-2 rounded-lg text-sm mb-4 hover:bg-gray-50 transition-colors"
+        onClick={onTryForFree}
+      >
         Học thử miễn phí
       </button>
 
@@ -154,12 +177,20 @@ const FixedRegistrationCard = ({
         )}
       </div>
 
-      {/* Contact */}
+      {/* Contact - 🆕 Fixed href="#" issue */}
       <div className="text-center text-xs border-t pt-2">
         <p className="mb-1">Chưa chắc chắn khóa học này dành cho bạn?</p>
-        <a href="#" className="text-blue-600 hover:underline block">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            console.log("Contact for consultation clicked");
+            // TODO: Add contact logic here
+          }}
+          className="text-blue-600 hover:underline"
+        >
           Liên hệ để nhận tư vấn miễn phí!
-        </a>
+        </button>
       </div>
     </div>
   );

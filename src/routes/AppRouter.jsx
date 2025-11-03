@@ -26,7 +26,7 @@ import ProtectedRouter from "./ProtectedRouter";
 import InstructorProtectedRouter from "./InstructorProtectedRouter";
 import StudentProtectedRouter from "./StudentProtectedRouter";
 import FreeEntryTestResult from "@/pages/test/FreeEntryTestResult";
-
+import VideoCoursePage from "@/pages/course/VideoCoursePage";
 function AppRouter() {
   return (
     <Routes>
@@ -132,6 +132,14 @@ function AppRouter() {
         element={
           <ToeicLayout showFooter={true}>
             <CourseDetailPage />
+          </ToeicLayout>
+        }
+      />
+      <Route
+        path="/toeic-home/video-course/"
+        element={
+          <ToeicLayout showFooter={true}>
+            <VideoCoursePage />
           </ToeicLayout>
         }
       />
