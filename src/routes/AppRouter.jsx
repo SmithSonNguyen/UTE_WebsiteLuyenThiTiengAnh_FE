@@ -27,6 +27,7 @@ import InstructorProtectedRouter from "./InstructorProtectedRouter";
 import StudentProtectedRouter from "./StudentProtectedRouter";
 import FreeEntryTestResult from "@/pages/test/FreeEntryTestResult";
 import VideoCoursePage from "@/pages/course/VideoCoursePage";
+import PracticeTabs from "@/components/practice/PracticeTabs";
 function AppRouter() {
   return (
     <Routes>
@@ -102,7 +103,7 @@ function AppRouter() {
         path="/toeic-home/test-online/:examId"
         element={
           <ToeicLayout>
-            <DisplayFullTest />
+            <PracticeTabs />
           </ToeicLayout>
         }
       />
