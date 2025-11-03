@@ -55,10 +55,10 @@ const PaymentSuccess = () => {
 
         <div className="space-y-3">
           <button
-            onClick={() => navigate("/my-courses")}
+            onClick={() => navigate("/my-schedule")}
             className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors"
           >
-            Xem khóa học của tôi
+            Xem lịch học của tôi
           </button>
           <button
             onClick={() => navigate("/")}
