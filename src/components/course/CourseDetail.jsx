@@ -10,7 +10,9 @@ import { toast } from "react-hot-toast";
 const CourseDetail = ({ course, isLoading = false }) => {
   const navigate = useNavigate();
   const [showRegister, setShowRegister] = useState(false);
-  const accessTokenFromRedux = useSelector((state) => state?.auth?.login?.accessToken);
+  const accessTokenFromRedux = useSelector(
+    (state) => state?.auth?.login?.accessToken
+  );
   const [activeTab, setActiveTab] = useState("muc-tieu");
   const [expandedTopics, setExpandedTopics] = useState({});
 
@@ -37,10 +39,25 @@ const CourseDetail = ({ course, isLoading = false }) => {
    * 🆕 Handle enrollment payment
    * @param {Object} classItem - Class data từ API
    */
+  const handleTryForFree = () => {
+    // Check nếu là khóa TOEIC Beginner Essentials
+    if (course.title === "TOEIC Beginner Essentials") {
+      navigate("/toeic-home/video-course/");
+    } else {
+      // Các khóa khác: chuyển đến trang preview hoặc first lesson
+      if (course?.curriculum?.[0]?.lessons?.[0]) {
+        const firstLesson = course.curriculum[0].lessons[0];
+        navigate(`/courses/${course._id}/lessons/${firstLesson._id}`);
+      } else {
+        toast.info("Khóa học này chưa có bài học dùng thử");
+      }
+    }
+  };
   const handleEnrollClass = async (classItem) => {
     try {
       // 1. Kiểm tra user đã đăng nhập chưa
-      const accessToken = accessTokenFromRedux || localStorage.getItem("accessToken");
+      const accessToken =
+        accessTokenFromRedux || localStorage.getItem("accessToken");
 
       if (!accessToken) {
         toast.error("Vui lòng đăng nhập để đăng ký khóa học");
@@ -72,7 +89,9 @@ const CourseDetail = ({ course, isLoading = false }) => {
       const now = new Date();
       const startDate = new Date(classItem.schedule.startDate);
       if (now > startDate) {
-        toast("Lớp học đã bắt đầu. Tiếp tục chuyển đến thanh toán theo yêu cầu.");
+        toast(
+          "Lớp học đã bắt đầu. Tiếp tục chuyển đến thanh toán theo yêu cầu."
+        );
       }
 
       setProcessingPayment(true);
@@ -701,9 +720,7 @@ const CourseDetail = ({ course, isLoading = false }) => {
                                       onClick={() =>
                                         handleEnrollClass(classItem)
                                       }
-                                      disabled={
-                                        isFull || isProcessing
-                                      }
+                                      disabled={isFull || isProcessing}
                                     >
                                       {isProcessing ? (
                                         <span className="flex items-center">
@@ -1105,17 +1122,34 @@ const CourseDetail = ({ course, isLoading = false }) => {
             {/* pt-4 để align với content */}
             <FixedRegistrationCard
               course={course}
-              onRegister={handleEnrollCourse} // 🆕 Pass handler
-              isProcessing={processingPayment} // 🆕 Pass loading state
+              onRegister={
+                course?.type === "pre-recorded"
+                  ? handleEnrollCourse
+                  : () => setShowRegister(true)
+              }
+              onTryForFree={handleTryForFree}
+              isProcessing={processingPayment}
             />
           </div>
         </div>
       </div>
 
       {/* Mobile Registration - Sticky dưới tabs */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg z-40 p-4">
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg z-[9999] p-4 pointer-events-auto">
         <button
-          onClick={handleEnrollCourse}
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            if (course?.type === "pre-recorded") {
+              // Pre-recorded: Thanh toán trực tiếp
+              handleEnrollCourse();
+            } else {
+              // Live-meet: Mở modal chọn lớp (giống desktop)
+              setShowRegister(true);
+            }
+          }}
           disabled={processingPayment}
           className={`w-full py-3 rounded-lg font-bold text-base transition-colors ${
             processingPayment
@@ -1167,31 +1201,41 @@ const CourseDetail = ({ course, isLoading = false }) => {
                 onClick={() => setShowRegister(false)}
                 className="text-gray-400 hover:text-gray-600 text-xl"
               >
-                ✕
+                X
               </button>
             </div>
-            <form className="space-y-4">
+
+            {/* NGĂN SUBMIT MẶC ĐỊNH */}
+            <form
+              className="space-y-4"
+              onSubmit={(e) => {
+                e.preventDefault(); // NGĂN RELOAD TRANG
+                // TODO: Xử lý gửi form ở đây
+                toast.success("Đã gửi yêu cầu đăng ký!");
+                setShowRegister(false);
+              }}
+            >
               <input
                 type="text"
                 placeholder="Họ và tên"
-                className="w-full p-3 border rounded-lg focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                className="w-full p-3 border rounded-lg"
                 required
               />
               <input
                 type="email"
                 placeholder="Email"
-                className="w-full p-3 border rounded-lg focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                className="w-full p-3 border rounded-lg"
                 required
               />
               <input
                 type="tel"
                 placeholder="Số điện thoại"
-                className="w-full p-3 border rounded-lg focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                className="w-full p-3 border rounded-lg"
                 required
               />
               <button
                 type="submit"
-                className="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition-colors"
+                className="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700"
               >
                 Gửi đăng ký
               </button>

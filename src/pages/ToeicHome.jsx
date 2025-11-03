@@ -270,7 +270,9 @@ const ToeicHome = () => {
                         {classId.courseId?.title || "Khóa học TOEIC"}
                       </p>
                       <p className="text-sm text-blue-100">
-                        {`Giảng viên ${classId.instructor.profile.lastname} ${classId.instructor.profile.firstname}`}
+                        {`Giảng viên ${
+                          classId?.instructor?.profile?.lastname || ""
+                        } ${classId?.instructor?.profile?.firstname || ""}`}
                       </p>
                       <p className="text-sm">
                         {classId.schedule.startTime} -{" "}
