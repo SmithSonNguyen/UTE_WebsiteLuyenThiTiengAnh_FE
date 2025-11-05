@@ -402,7 +402,7 @@ const TestOnline = () => {
             </div>
 
             {/* Ads */}
-            <div className="space-y-4">
+            {/* <div className="space-y-4">
               <div className="bg-white rounded-lg shadow overflow-hidden">
                 <img
                   src="/api/placeholder/300/150"
@@ -426,7 +426,7 @@ const TestOnline = () => {
                   <p className="text-sm text-gray-600">Tính điểm thi TOEIC</p>
                 </div>
               </div>
-            </div>
+            </div> */}
           </aside>
         </div>
       </div>

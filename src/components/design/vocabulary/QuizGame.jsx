@@ -153,7 +153,7 @@ const QuizGame = ({ words, onComplete, onRetry, onNextLesson }) => {
     return (
       <div className="max-w-2xl mx-auto text-center">
         <Card
-          className={`p-8 shadow-elevated ${getScoreColor()} ${getTextColor()} bg-gray-800`}
+          className={`p-8 shadow-elevated ${getScoreColor()} ${getTextColor()} bg-gray-300`}
         >
           <div className="celebrate">
             <Trophy className="w-16 h-16 mx-auto mb-4" />
@@ -175,7 +175,7 @@ const QuizGame = ({ words, onComplete, onRetry, onNextLesson }) => {
               />
             ))}
           </div>
-          
+
           {/* Hiển thị thông báo nếu pass */}
           {isPassed && (
             <div className="mb-6 p-4 bg-white/10 rounded-lg">
@@ -184,7 +184,7 @@ const QuizGame = ({ words, onComplete, onRetry, onNextLesson }) => {
               </p>
             </div>
           )}
-          
+
           <div className="flex gap-4 justify-center">
             <Button
               variant="outline"
