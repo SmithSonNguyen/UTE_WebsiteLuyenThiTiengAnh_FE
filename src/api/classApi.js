@@ -96,3 +96,14 @@ export const updateClassLink = async (classId, meetLink) => {
     throw error;
   }
 };
+
+// Lấy tất cả lịch khai giảng cho các khóa học live-meet (public)
+export const getAllUpcomingLiveClasses = async () => {
+  try {
+    const response = await axiosInstance.get("/classes/schedule/upcoming");
+    return response.result;
+  } catch (error) {
+    console.error("Error fetching upcoming live classes:", error);
+    throw error;
+  }
+};

@@ -29,6 +29,7 @@ import StudentProtectedRouter from "./StudentProtectedRouter";
 import FreeEntryTestResult from "@/pages/test/FreeEntryTestResult";
 import VideoCoursePage from "@/pages/course/VideoCoursePage";
 import PracticeTabs from "@/components/practice/PracticeTabs";
+import AllCourse from "@/pages/course/AllCourse";
 function AppRouter() {
   return (
     <Routes>
@@ -135,7 +136,24 @@ function AppRouter() {
       />
 
       {/* Lịch Khai giảng */}
-      <Route path="/toeic-home/lich-khai-giang" element={<LichKhaiGiang />} />
+      <Route
+        path="/toeic-home/opening-schedule"
+        element={
+          <ToeicLayout showFooter={true}>
+            <LichKhaiGiang />
+          </ToeicLayout>
+        }
+      />
+
+      {/* All Course Page */}
+      <Route
+        path="/toeic-home/all-course"
+        element={
+          <ToeicLayout showFooter={true}>
+            <AllCourse />
+          </ToeicLayout>
+        }
+      />
 
       {/* Course Detail Page */}
       <Route
