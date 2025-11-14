@@ -32,6 +32,18 @@ const VocabTranslator = () => {
     return key;
   };
 
+  // Nhận diện lỗi giới hạn tốc độ (429) từ nhiều dạng lỗi khác nhau của SDK/fetch
+  const isRateLimitError = (err) => {
+    try {
+      if (!err) return false;
+      if (err.status === 429 || err?.response?.status === 429) return true;
+      const text = typeof err === "string" ? err : JSON.stringify(err);
+      return /429|resource exhausted/i.test(text);
+    } catch {
+      return false;
+    }
+  };
+
   // Hàm delay để retry
   const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -56,7 +68,8 @@ const VocabTranslator = () => {
       const apiKey = getNextApiKey();
       const genAI = new GoogleGenerativeAI(apiKey);
 
-      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+      // Dùng model ổn định thay vì experimental để tránh lỗi quota/permission
+      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
       const prompt = `Translate the following English word or phrase to Vietnamese, and return ONLY the translated word or phrase. Do not include any explanations, definitions, or extra text. The phrase to translate is: "${text}"`;
 
       const result = await model.generateContent(prompt);
@@ -68,29 +81,45 @@ const VocabTranslator = () => {
       console.error("Gemini API Error:", err);
 
       // Xử lý lỗi 429 với retry (tự động đổi sang key khác)
-      if (
-        (err.message.includes("429") ||
-          err.message.includes("Resource exhausted")) &&
-        retry < API_KEYS.length
-      ) {
-        setError(
-          `⏳ API key bị giới hạn. Đang thử key khác... (${retry + 1}/${
-            API_KEYS.length
-          })`
-        );
-        await delay(1000); // Chờ 1 giây trước khi thử key khác
-        return translate(retry + 1); // Retry với key tiếp theo
-      } else if (
-        err.message.includes("429") ||
-        err.message.includes("Resource exhausted")
-      ) {
+      if (isRateLimitError(err)) {
+        if (retry < API_KEYS.length - 1) {
+          setError(
+            `⏳ API key bị giới hạn. Đang thử key khác... (${retry + 1}/${
+              API_KEYS.length
+            })`
+          );
+          await delay(1000); // Chờ 1 giây trước khi thử key khác
+          return translate(retry + 1); // Retry với key tiếp theo
+        }
         setError(
           `⏳ Tất cả ${API_KEYS.length} API keys đều bị giới hạn. Vui lòng thử lại sau vài phút.`
         );
-      } else if (err.message.includes("API key")) {
-        setError("🔑 API key không hợp lệ. Vui lòng kiểm tra lại.");
+        return;
+      }
+
+      // Một số lỗi phổ biến khác
+      const errText =
+        err?.message ||
+        err?.error?.message ||
+        err?.response?.statusText ||
+        "Lỗi không xác định";
+
+      if (/api key/i.test(errText)) {
+        setError("🔑 API key không hợp lệ hoặc chưa được cấp quyền.");
+      } else if (/permission|forbidden|403/i.test(errText)) {
+        setError(
+          "⛔ API chưa được bật hoặc key không có quyền với model này. Kiểm tra Google Cloud."
+        );
+      } else if (/not found|404|model/i.test(errText)) {
+        setError(
+          "❌ Model không khả dụng. Vui lòng dùng 'gemini-1.5-flash' hoặc kiểm tra tên model."
+        );
+      } else if (/fetch|network|cors/i.test(errText)) {
+        setError(
+          "🌐 Lỗi mạng/CORS. Hãy thử lại, kiểm tra kết nối hoặc cấu hình CORS."
+        );
       } else {
-        setError("❌ Lỗi: " + err.message);
+        setError("❌ Lỗi: " + errText);
       }
     } finally {
       setLoading(false);
