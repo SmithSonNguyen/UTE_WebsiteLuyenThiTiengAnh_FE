@@ -29,6 +29,7 @@ import StudentProtectedRouter from "./StudentProtectedRouter";
 import FreeEntryTestResult from "@/pages/test/FreeEntryTestResult";
 import VideoCoursePage from "@/pages/course/VideoCoursePage";
 import PracticeTabs from "@/components/practice/PracticeTabs";
+import AllCourse from "@/pages/course/AllCourse";
 function AppRouter() {
   return (
     <Routes>
@@ -140,6 +141,16 @@ function AppRouter() {
         element={
           <ToeicLayout showFooter={true}>
             <LichKhaiGiang />
+          </ToeicLayout>
+        }
+      />
+
+      {/* All Course Page */}
+      <Route
+        path="/toeic-home/all-course"
+        element={
+          <ToeicLayout showFooter={true}>
+            <AllCourse />
           </ToeicLayout>
         }
       />

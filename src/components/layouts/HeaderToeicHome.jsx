@@ -11,6 +11,7 @@ const HeaderToeicHome = () => {
   const navLinks = [
     { href: "/toeic-home", label: "Xây dựng lộ trình" },
     { href: "/toeic-home/opening-schedule", label: "Lịch khai giảng" },
+    { href: "/toeic-home/all-course", label: "Tất cả khóa học" },
     { href: "/toeic-home/vocabulary", label: "Học từ vựng" },
     { href: "/toeic-home/my-vocabulary", label: "Từ vựng của tôi" }, // ⭐ THÊM MỚI
     { href: "/toeic-home/free-entry-test", label: "Kiểm tra đầu vào" },
