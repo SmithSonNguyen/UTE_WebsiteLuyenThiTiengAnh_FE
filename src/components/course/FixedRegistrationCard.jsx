@@ -11,18 +11,23 @@ const FixedRegistrationCard = ({
     ? course.price - (course.discountPrice || 0)
     : 811000;
 
-  // 🆕 Handle button click based on course type
+  // ✅ Fixed: Handle button click - gọi trực tiếp onRegister
   const handleRegisterClick = (e) => {
     e.preventDefault();
     e.stopPropagation();
 
     console.log("🟡 FixedRegistrationCard button clicked");
     console.log("🟡 Course type:", course?.type);
-    console.log("🟡 onRegister function:", typeof onRegister, onRegister);
+    console.log("🟡 onRegister function:", typeof onRegister);
+
+    if (isProcessing) {
+      console.log("⏸️ Already processing, ignoring click");
+      return;
+    }
 
     if (onRegister) {
       console.log("🟢 Calling onRegister...");
-      onRegister();
+      onRegister(); // ✅ Gọi trực tiếp function
     } else {
       console.error("❌ onRegister is not defined!");
     }
@@ -71,7 +76,7 @@ const FixedRegistrationCard = ({
         </div>
       )}
 
-      {/* 🆕 Register Button with proper event handling */}
+      {/* ✅ Register Button - Fixed */}
       <button
         type="button"
         onClick={handleRegisterClick}
@@ -177,7 +182,7 @@ const FixedRegistrationCard = ({
         )}
       </div>
 
-      {/* Contact - 🆕 Fixed href="#" issue */}
+      {/* Contact */}
       <div className="text-center text-xs border-t pt-2">
         <p className="mb-1">Chưa chắc chắn khóa học này dành cho bạn?</p>
         <button

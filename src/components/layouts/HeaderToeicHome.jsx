@@ -11,6 +11,7 @@ const HeaderToeicHome = () => {
   const navLinks = [
     { href: "/toeic-home", label: "Xây dựng lộ trình" },
     { href: "/toeic-home/vocabulary", label: "Học từ vựng" },
+    { href: "/toeic-home/my-vocabulary", label: "Từ vựng của tôi", icon: "📖" }, // ⭐ THÊM MỚI
     { href: "/toeic-home/free-entry-test", label: "Kiểm tra đầu vào" },
     { href: "/toeic-home/test-online", label: "Luyện đề" },
     { href: "/toeic-home/assurance", label: "Cam kết đầu ra" },
@@ -42,12 +43,13 @@ const HeaderToeicHome = () => {
                 <a
                   key={link.href}
                   href={link.href}
-                  className={`rounded-[317px] px-3 py-3 text-base font-semibold ${
+                  className={`rounded-[317px] px-3 py-3 text-base font-semibold flex items-center gap-1.5 ${
                     location.pathname === link.href
                       ? "bg-blue-100 text-blue-500"
                       : "hover:bg-gray-100"
                   }`}
                 >
+                  {link.icon && <span className="text-sm">{link.icon}</span>}
                   {link.label}
                 </a>
               ))}

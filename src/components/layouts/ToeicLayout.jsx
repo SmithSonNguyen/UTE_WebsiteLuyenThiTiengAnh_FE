@@ -1,6 +1,7 @@
 import React from "react";
 import HeaderToeicHome from "./HeaderToeicHome";
 import Footer from "../common/Footer";
+import VocabTranslator from "../common/VocabTranslator";
 
 const ToeicLayout = ({ children, showFooter = false }) => {
   return (
@@ -15,6 +16,8 @@ const ToeicLayout = ({ children, showFooter = false }) => {
 
       {/* Footer (optional) */}
       {showFooter && <Footer />}
+      {/* Floating vocabulary translator UI */}
+      <VocabTranslator />
     </div>
   );
 };

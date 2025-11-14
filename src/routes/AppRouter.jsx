@@ -10,6 +10,7 @@ import DisplayFullTest from "@/components/test/DisplayFullTest";
 import DisplayResultTest from "@/components/test/DisplayResultTest";
 import ToeicLayout from "../components/layouts/ToeicLayout";
 import VocabularyPage from "@/pages/VocabularyPage";
+import MyVocabularyPage from "@/pages/MyVocabularyPage"; // ⭐ IMPORT MỚI
 import FreeEntryTest_FullTest from "../pages/test/FreeEntryTest_FullTest";
 import LichKhaiGiang from "../pages/course/LichKhaiGiang";
 import CourseDetailPage from "@/pages/course/CourseDetailPage";
@@ -96,6 +97,15 @@ function AppRouter() {
         element={
           <ToeicLayout>
             <VocabularyPage />
+          </ToeicLayout>
+        }
+      />
+      {/* ⭐ MY VOCABULARY PAGE - THÊM MỚI */}
+      <Route
+        path="/toeic-home/my-vocabulary"
+        element={
+          <ToeicLayout>
+            <MyVocabularyPage />
           </ToeicLayout>
         }
       />

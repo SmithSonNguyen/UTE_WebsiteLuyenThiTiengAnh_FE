@@ -9,7 +9,7 @@ import { toast } from "react-hot-toast";
 
 const CourseDetail = ({ course, isLoading = false }) => {
   const navigate = useNavigate();
-  const [showRegister, setShowRegister] = useState(false);
+  // const [showRegister, setShowRegister] = useState(false);
   const accessTokenFromRedux = useSelector(
     (state) => state?.auth?.login?.accessToken
   );
@@ -156,16 +156,19 @@ const CourseDetail = ({ course, isLoading = false }) => {
   /**
    * 🆕 Handle pre-recorded course enrollment
    */
-  const handleEnrollCourse = async () => {
+  const handleEnrollCourse = async (course) => {
     try {
-      const accessToken = localStorage.getItem("accessToken");
+      // 1. Kiểm tra user đã đăng nhập chưa
+      const accessToken =
+        accessTokenFromRedux || localStorage.getItem("accessToken");
 
       if (!accessToken) {
-        toast.error("Vui lòng đăng nhập để mua khóa học");
+        toast.error("Vui lòng đăng nhập để đăng ký khóa học");
+        // Redirect to login page
         navigate("/login", {
           state: {
             from: `/courses/${course._id}`,
-            message: "Vui lòng đăng nhập để mua khóa học",
+            message: "Vui lòng đăng nhập để đăng ký khóa học",
           },
         });
         return;
@@ -1116,17 +1119,45 @@ const CourseDetail = ({ course, isLoading = false }) => {
         </div>
 
         {/* Cột phải: Sidebar cố định - Chỉ hiện lg+ */}
+        {/* Cột phải: Sidebar cố định - Chỉ hiện lg+ */}
         <div className="hidden lg:block col-span-1">
           <div className="h-screen sticky top-0">
             {" "}
             {/* pt-4 để align với content */}
             <FixedRegistrationCard
               course={course}
-              onRegister={
-                course?.type === "pre-recorded"
-                  ? handleEnrollCourse
-                  : () => setShowRegister(true)
-              }
+              onRegister={async () => {
+                console.log("🎯 FixedRegistrationCard onRegister triggered");
+                console.log("🎯 Course type:", course?.type);
+                console.log(
+                  "🎯 handleEnrollCourse exists?",
+                  typeof handleEnrollCourse
+                );
+
+                if (course?.type === "pre-recorded") {
+                  console.log("🎯 About to call handleEnrollCourse");
+                  try {
+                    await handleEnrollCourse(course);
+                    console.log("🎯 handleEnrollCourse called successfully");
+                  } catch (err) {
+                    console.error("🎯 Error calling handleEnrollCourse:", err);
+                  }
+                } else {
+                  // For live-meet, scroll to schedule
+                  setActiveTab("chuong-trinh");
+                  setTimeout(() => {
+                    const table = document.querySelector(
+                      "[data-schedule-table]"
+                    );
+                    if (table) {
+                      table.scrollIntoView({
+                        behavior: "smooth",
+                        block: "center",
+                      });
+                    }
+                  }, 100);
+                }
+              }}
               onTryForFree={handleTryForFree}
               isProcessing={processingPayment}
             />
@@ -1134,20 +1165,37 @@ const CourseDetail = ({ course, isLoading = false }) => {
         </div>
       </div>
 
-      {/* Mobile Registration - Sticky dưới tabs */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg z-[9999] p-4 pointer-events-auto">
+      {/* Mobile Registration - Fixed */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg z-[9999] p-4">
         <button
           type="button"
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
 
+            console.log("📱 Mobile button clicked");
+            console.log("📱 Course type:", course?.type);
+            console.log("📱 Processing:", processingPayment);
+
+            if (processingPayment) {
+              console.log("⏸️ Already processing, ignoring click");
+              return;
+            }
+
             if (course?.type === "pre-recorded") {
-              // Pre-recorded: Thanh toán trực tiếp
+              console.log(
+                "🎥 Pre-recorded course - calling handleEnrollCourse"
+              );
               handleEnrollCourse();
             } else {
-              // Live-meet: Mở modal chọn lớp (giống desktop)
-              setShowRegister(true);
+              console.log("📅 Live-meet course - scrolling to schedule");
+              setActiveTab("chuong-trinh");
+              setTimeout(() => {
+                const table = document.querySelector("[data-schedule-table]");
+                if (table) {
+                  table.scrollIntoView({ behavior: "smooth", block: "center" });
+                }
+              }, 100);
             }
           }}
           disabled={processingPayment}
@@ -1190,59 +1238,6 @@ const CourseDetail = ({ course, isLoading = false }) => {
           )}
         </button>
       </div>
-
-      {/* Registration Modal - Giữ nguyên */}
-      {showRegister && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-bold">Đăng ký khóa học</h3>
-              <button
-                onClick={() => setShowRegister(false)}
-                className="text-gray-400 hover:text-gray-600 text-xl"
-              >
-                X
-              </button>
-            </div>
-
-            {/* NGĂN SUBMIT MẶC ĐỊNH */}
-            <form
-              className="space-y-4"
-              onSubmit={(e) => {
-                e.preventDefault(); // NGĂN RELOAD TRANG
-                // TODO: Xử lý gửi form ở đây
-                toast.success("Đã gửi yêu cầu đăng ký!");
-                setShowRegister(false);
-              }}
-            >
-              <input
-                type="text"
-                placeholder="Họ và tên"
-                className="w-full p-3 border rounded-lg"
-                required
-              />
-              <input
-                type="email"
-                placeholder="Email"
-                className="w-full p-3 border rounded-lg"
-                required
-              />
-              <input
-                type="tel"
-                placeholder="Số điện thoại"
-                className="w-full p-3 border rounded-lg"
-                required
-              />
-              <button
-                type="submit"
-                className="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700"
-              >
-                Gửi đăng ký
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
