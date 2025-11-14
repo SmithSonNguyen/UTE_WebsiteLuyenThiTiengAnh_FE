@@ -135,7 +135,14 @@ function AppRouter() {
       />
 
       {/* Lịch Khai giảng */}
-      <Route path="/toeic-home/lich-khai-giang" element={<LichKhaiGiang />} />
+      <Route
+        path="/toeic-home/opening-schedule"
+        element={
+          <ToeicLayout showFooter={true}>
+            <LichKhaiGiang />
+          </ToeicLayout>
+        }
+      />
 
       {/* Course Detail Page */}
       <Route

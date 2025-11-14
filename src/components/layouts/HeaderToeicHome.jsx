@@ -10,8 +10,9 @@ const HeaderToeicHome = () => {
 
   const navLinks = [
     { href: "/toeic-home", label: "Xây dựng lộ trình" },
+    { href: "/toeic-home/opening-schedule", label: "Lịch khai giảng" },
     { href: "/toeic-home/vocabulary", label: "Học từ vựng" },
-    { href: "/toeic-home/my-vocabulary", label: "Từ vựng của tôi", icon: "📖" }, // ⭐ THÊM MỚI
+    { href: "/toeic-home/my-vocabulary", label: "Từ vựng của tôi" }, // ⭐ THÊM MỚI
     { href: "/toeic-home/free-entry-test", label: "Kiểm tra đầu vào" },
     { href: "/toeic-home/test-online", label: "Luyện đề" },
     { href: "/toeic-home/assurance", label: "Cam kết đầu ra" },
