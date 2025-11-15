@@ -17,6 +17,7 @@ const AttendanceManagement = () => {
   const [classes, setClasses] = useState([]);
   const [scheduleError, setScheduleError] = useState(""); // Thêm state cho lỗi schedule
   const [classInfo, setClassInfo] = useState(null); // Thêm state cho thông tin lớp
+  const [sessionNumber, setSessionNumber] = useState(null); // Thêm state cho số buổi học
 
   // Fetch classes from API
   useEffect(() => {
@@ -55,6 +56,7 @@ const AttendanceManagement = () => {
       let attendanceData = null;
       try {
         attendanceData = await getAttendanceByDate(selectedClass, selectedDate);
+        setSessionNumber(attendanceData.sessionNumber); // Lưu số buổi học
       } catch (error) {
         // Xử lý error message đúng cách
         let errorMessage = "Có lỗi xảy ra khi kiểm tra lịch học";
@@ -261,6 +263,11 @@ const AttendanceManagement = () => {
               <span className="font-medium">Lớp:</span> {classInfo.classCode} -{" "}
               {classInfo.courseTitle}
             </div>
+            {sessionNumber /* Chỉ hiển thị nếu có dữ liệu */ && (
+              <div className="text-sm text-blue-800">
+                <span className="font-medium">Buổi:</span> {sessionNumber}
+              </div>
+            )}
           </div>
         )}
 
@@ -369,9 +376,6 @@ const AttendanceManagement = () => {
                       STT
                     </th>
                     <th className="text-left py-3 px-4 font-medium text-gray-900">
-                      Mã SV
-                    </th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-900">
                       Họ và tên
                     </th>
                     <th className="text-left py-3 px-4 font-medium text-gray-900">
@@ -396,9 +400,6 @@ const AttendanceManagement = () => {
                     >
                       <td className="py-3 px-4 text-sm text-gray-900">
                         {index + 1}
-                      </td>
-                      <td className="py-3 px-4 text-sm text-gray-900 font-medium">
-                        {student.studentId}
                       </td>
                       <td className="py-3 px-4 text-sm text-gray-900">
                         {student.name}

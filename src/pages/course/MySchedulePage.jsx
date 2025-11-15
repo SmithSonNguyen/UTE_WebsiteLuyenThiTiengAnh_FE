@@ -1,157 +1,21 @@
 // components/MySchedulePage.jsx
-// Import React và các hook cần thiết (giả sử dùng React Router cho nav)
-import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom"; // Nếu dùng React Router
+import React, { useState, useEffect, useRef } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
-import { getMySchedule } from "@/api/enrollmentApi"; // Giả sử có API này
+import { getMySchedule } from "@/api/enrollmentApi"; // API trả array classes với sessions
+import {
+  X,
+  Calendar,
+  Clock,
+  User,
+  CheckCircle,
+  XCircle,
+  MoreVertical,
+  LogIn,
+  RefreshCw,
+} from "lucide-react";
 
-// Virtual daysVN từ schema
-const dayMap = {
-  Monday: "Thứ 2",
-  Tuesday: "Thứ 3",
-  Wednesday: "Thứ 4",
-  Thursday: "Thứ 5",
-  Friday: "Thứ 6",
-  Saturday: "Thứ 7",
-  Sunday: "Chủ nhật",
-};
-
-const getDaysVN = (days) => days.map((day) => dayMap[day]);
-
-/// Function generateSessions FIXED (sử dụng Date object cho filter)
-const generateSessions = (enrollments, period, fakeToday = null) => {
-  // Parse fake date if it's a string
-  let now;
-  if (fakeToday && typeof fakeToday === "string") {
-    const [year, month, day] = fakeToday.split("-").map(Number);
-    now = new Date(year, month - 1, day);
-  } else if (fakeToday instanceof Date) {
-    now = fakeToday;
-  } else {
-    now = new Date();
-  }
-
-  const sessions = [];
-
-  // Helper: Tạo Date object chỉ với ngày (00:00 local, tránh timezone shift)
-  const createDateOnly = (dateInput) => {
-    let dateStr;
-    if (dateInput instanceof Date) {
-      dateStr = dateInput.toISOString().split("T")[0];
-    } else if (typeof dateInput === "string") {
-      dateStr = dateInput.split("T")[0];
-    } else {
-      console.error("Invalid date input:", dateInput);
-      return null;
-    }
-    const [year, month, day] = dateStr.split("-").map(Number);
-    return new Date(year, month - 1, day); // JS month 0-based, time 00:00 local
-  };
-
-  const getPeriodStart = () => {
-    if (period === "week") {
-      const day = now.getDay(); // 0=Sun, 1=Mon, ... (21/10 Tue=2)
-      const weekStart = new Date(now);
-      weekStart.setDate(now.getDate() - (day === 0 ? 6 : day - 1)); // Đầu tuần Mon
-      return weekStart;
-    } else if (period === "month") {
-      return new Date(now.getFullYear(), now.getMonth(), 1); // 1/10
-    }
-    return null;
-  };
-
-  const periodStart = getPeriodStart();
-  const periodEnd =
-    period === "week"
-      ? new Date(periodStart.getTime() + 6 * 24 * 60 * 60 * 1000)
-      : period === "month"
-      ? new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
-      : null;
-
-  // FIX: Normalize periodStart/End về local midnight để so sánh an toàn
-  const normalizeLocalDate = (d) => {
-    const nd = new Date(d);
-    nd.setHours(0, 0, 0, 0);
-    return nd;
-  };
-
-  const periodStartDate = periodStart ? normalizeLocalDate(periodStart) : null;
-  const periodEndDate = periodEnd ? normalizeLocalDate(periodEnd) : null;
-
-  // Day map num: Sun=0, Mon=1, ... Sat=6 (JS getDay)
-  const dayNumMap = {
-    Sunday: 0,
-    Monday: 1,
-    Tuesday: 2,
-    Wednesday: 3,
-    Thursday: 4,
-    Friday: 5,
-    Saturday: 6,
-  };
-
-  enrollments.forEach((enroll) => {
-    const { classId } = enroll;
-    const schedule = classId.schedule;
-    const classStart = createDateOnly(schedule.startDate); // 20/10 00:00
-    const classEnd = createDateOnly(schedule.endDate); // 10/12 00:00
-    if (!classStart || !classEnd) return; // Skip invalid
-
-    // Bắt đầu từ tuần chứa startDate của lớp
-    const firstWeekStart = new Date(classStart);
-    const startDay = firstWeekStart.getDay(); // 0=Sun, 1=Mon, ...
-    // Lùi về thứ 2 đầu tuần chứa startDate
-    firstWeekStart.setDate(
-      firstWeekStart.getDate() - (startDay === 0 ? 6 : startDay - 1)
-    );
-
-    let currentWeekStart = new Date(firstWeekStart);
-
-    while (currentWeekStart <= classEnd) {
-      schedule.days.forEach((dayEn) => {
-        const dayNum = dayNumMap[dayEn]; // Mon=1
-        const targetDate = new Date(currentWeekStart); // Copy từ đầu tuần
-        const diffDays = dayNum - 1; // Mon=0, Tue=1, ... (offset từ Monday)
-        targetDate.setDate(currentWeekStart.getDate() + diffDays); // Target đúng ngày
-
-        // Chỉ thêm session nếu trong khoảng thời gian lớp học
-        if (targetDate >= classStart && targetDate <= classEnd) {
-          // FIX: So sánh chính xác bằng Date object thay vì string
-          const normalizedTargetDate = new Date(targetDate);
-          normalizedTargetDate.setHours(0, 0, 0, 0);
-
-          const normalizedNow = new Date(now);
-          normalizedNow.setHours(0, 0, 0, 0);
-
-          const isToday =
-            normalizedTargetDate.getTime() === normalizedNow.getTime();
-
-          // FIX: Filter bằng Date object (không dùng string)
-          const inPeriod =
-            !periodStartDate ||
-            (targetDate >= periodStartDate &&
-              (!periodEndDate || targetDate <= periodEndDate));
-
-          if (inPeriod) {
-            const session = {
-              ...enroll,
-              sessionDate: targetDate,
-              dayVN: dayMap[dayEn],
-              isToday,
-            };
-            sessions.push(session);
-          }
-        }
-      });
-
-      // Next week
-      currentWeekStart.setDate(currentWeekStart.getDate() + 7);
-    }
-  });
-
-  return sessions.sort((a, b) => a.sessionDate - b.sessionDate);
-};
-
-// Skeleton components
+// Skeleton components (giữ nguyên)
 const TableSkeleton = () => (
   <div className="bg-white rounded-lg shadow-md overflow-hidden">
     <table className="min-w-full divide-y divide-gray-200">
@@ -242,7 +106,91 @@ const UpcomingSkeleton = () => (
   </div>
 );
 
-// Empty State Component
+// Action Menu Dropdown Component
+const ActionMenu = ({ session, onJoinClass, onRegisterMakeup }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const menuRef = useRef(null);
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isOpen]);
+
+  return (
+    <div className="relative" ref={menuRef}>
+      {/* Menu Button */}
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+        title="Tùy chọn"
+      >
+        <MoreVertical className="w-5 h-5 text-gray-600" />
+      </button>
+
+      {/* Dropdown Menu */}
+      {isOpen && (
+        <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl border border-gray-200 py-2 z-[1000] animate-fadeIn">
+          {/* Join Class Option */}
+          <button
+            onClick={() => {
+              onJoinClass();
+              setIsOpen(false);
+            }}
+            className="w-full px-4 py-2.5 text-left hover:bg-blue-50 transition-colors flex items-center gap-3 group"
+          >
+            <LogIn className="w-4 h-4 text-blue-600 group-hover:scale-110 transition-transform" />
+            <div>
+              <div className="text-sm font-medium text-gray-900">
+                Tham Gia Lớp Học
+              </div>
+              <div className="text-xs text-gray-500">
+                Vào phòng học trực tuyến
+              </div>
+            </div>
+          </button>
+
+          {/* Makeup Option (if available) */}
+          {session.showMakeupButton && (
+            <>
+              <div className="border-t border-gray-100 my-1"></div>
+              <button
+                onClick={() => {
+                  onRegisterMakeup();
+                  setIsOpen(false);
+                }}
+                className="w-full px-4 py-2.5 text-left hover:bg-orange-50 transition-colors flex items-center gap-3 group"
+              >
+                <RefreshCw className="w-4 h-4 text-orange-600 group-hover:rotate-180 transition-transform duration-300" />
+                <div>
+                  <div className="text-sm font-medium text-gray-900">
+                    Đăng Ký Học Bù
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    Buổi {session.sessionNumber}
+                  </div>
+                </div>
+              </button>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Empty State Component (bỏ test date input)
 const EmptyState = ({ userName }) => (
   <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
     <div className="max-w-7xl mx-auto mb-8">
@@ -259,20 +207,8 @@ const EmptyState = ({ userName }) => (
         </Link>
       </div>
 
-      {/* Filter - Static */}
+      {/* Filter - Static, disabled */}
       <div className="flex justify-center sm:justify-end gap-4">
-        {/* Test Date Input */}
-        <div className="flex items-center gap-2">
-          <label className="text-sm text-gray-600">Test Date:</label>
-          <input
-            type="date"
-            value=""
-            onChange={() => {}} // Disabled in empty state
-            disabled
-            className="border border-gray-300 rounded-md px-3 py-1 text-sm focus:ring-2 focus:ring-blue-500 opacity-50"
-          />
-        </div>
-
         <select
           value="week"
           onChange={() => {}} // Disabled in empty state
@@ -282,6 +218,14 @@ const EmptyState = ({ userName }) => (
           <option value="week">Tuần này</option>
           <option value="month">Tháng này</option>
           <option value="all">Tất cả</option>
+        </select>
+        <select
+          value=""
+          onChange={() => {}} // Disabled
+          disabled
+          className="border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-blue-500 opacity-50"
+        >
+          <option value="">Tất cả khóa học</option>
         </select>
       </div>
     </div>
@@ -370,12 +314,6 @@ const EmptyState = ({ userName }) => (
             <p className="text-gray-600">
               Khám phá và đăng ký các khóa học TOEIC phù hợp với bạn.
             </p>
-            {/* <Link
-              to="/classes/register"
-              className="block bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg font-medium text-center"
-            >
-              Khám phá khóa học
-            </Link> */}
           </div>
         </div>
 
@@ -385,41 +323,320 @@ const EmptyState = ({ userName }) => (
   </div>
 );
 
-// Component chính (giữ nguyên, chỉ fix nhỏ instructor name nếu cần)
+// Modal component cho chọn buổi bù - Premium Design
+const MakeupModal = ({
+  isOpen,
+  onClose,
+  missedSession,
+  remainingMakeups,
+  onSelectMakeup,
+}) => {
+  const [selectedSlot, setSelectedSlot] = useState(null);
+
+  // Dữ liệu mẫu - các buổi học có thể bù
+  const availableMakeupSlots = [
+    {
+      id: 1,
+      date: "25/11/2025",
+      dayOfWeek: "Thứ Hai",
+      time: "18:00 - 20:00",
+      sessionNumber: 5,
+      className: "TOEIC-550-A1",
+      instructor: "Thầy Nguyễn Văn A",
+      level: "beginner",
+      availableSlots: 3,
+      maxSlots: 5,
+      isPopular: true,
+    },
+    {
+      id: 2,
+      date: "27/11/2025",
+      dayOfWeek: "Thứ Tư",
+      time: "19:00 - 21:00",
+      sessionNumber: 5,
+      className: "TOEIC-550-B2",
+      instructor: "Cô Trần Thị B",
+      level: "intermediate",
+      availableSlots: 2,
+      maxSlots: 5,
+      isPopular: false,
+    },
+    {
+      id: 3,
+      date: "29/11/2025",
+      dayOfWeek: "Thứ Sáu",
+      time: "18:30 - 20:30",
+      sessionNumber: 6,
+      className: "TOEIC-650-C3",
+      instructor: "Thầy Lê Văn C",
+      level: "advanced",
+      availableSlots: 4,
+      maxSlots: 5,
+      isPopular: false,
+    },
+    {
+      id: 4,
+      date: "01/12/2025",
+      dayOfWeek: "Thứ Hai",
+      time: "17:00 - 19:00",
+      sessionNumber: 7,
+      className: "TOEIC-550-A1",
+      instructor: "Thầy Nguyễn Văn A",
+      level: "beginner",
+      availableSlots: 5,
+      maxSlots: 5,
+      isPopular: true,
+    },
+  ];
+
+  const handleConfirm = () => {
+    if (selectedSlot) {
+      onSelectMakeup(selectedSlot);
+      setSelectedSlot(null);
+      onClose();
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden transform transition-all">
+        {/* Header với Gradient và Pattern - Compact Version */}
+        <div className="relative bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 text-white p-5 overflow-hidden">
+          {/* Decorative circles */}
+          <div className="absolute top-0 right-0 w-40 h-40 bg-white opacity-5 rounded-full -mr-20 -mt-20"></div>
+          <div className="absolute bottom-0 left-0 w-32 h-32 bg-white opacity-5 rounded-full -ml-16 -mb-16"></div>
+
+          <div className="relative z-10 flex justify-between items-center">
+            <div className="flex items-center gap-3">
+              <div className="bg-white bg-opacity-20 p-2 rounded-lg backdrop-blur-sm">
+                <RefreshCw className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold">Chọn Buổi Học Bù</h2>
+                {missedSession && (
+                  <p className="text-xs mt-1 opacity-90">
+                    Bù buổi {missedSession.sessionNumber} •{" "}
+                    {missedSession.dateLabel || missedSession.date}
+                  </p>
+                )}
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              className="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2 transition-all duration-200 hover:rotate-90"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="p-6 overflow-y-auto max-h-[calc(90vh-220px)] bg-gray-50">
+          {/* Info Card - Số lần bù còn lại */}
+          <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-l-4 border-amber-400 rounded-r-xl p-5 mb-6 shadow-sm">
+            <div className="flex items-center gap-4">
+              <div className="bg-amber-100 p-3 rounded-full">
+                <CheckCircle className="h-6 w-6 text-amber-600" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-amber-900 mb-1">
+                  Số lần bù học còn lại
+                </p>
+                <p className="text-amber-700">
+                  Bạn còn{" "}
+                  <span className="text-2xl font-bold text-amber-600 mx-1">
+                    {remainingMakeups}
+                  </span>
+                  lần bù học trong khóa này
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Grid Layout cho các buổi học */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {availableMakeupSlots.map((slot) => {
+              const isSelected = selectedSlot?.id === slot.id;
+
+              return (
+                <div
+                  key={slot.id}
+                  onClick={() => setSelectedSlot(slot)}
+                  className={`relative group cursor-pointer rounded-xl transition-all duration-300 transform hover:scale-[1.02] ${
+                    isSelected
+                      ? "bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-500 shadow-lg"
+                      : "bg-white border-2 border-gray-200 hover:border-blue-300 hover:shadow-md"
+                  }`}
+                >
+                  {/* Selected Indicator */}
+                  {isSelected && (
+                    <div className="absolute -top-2 -left-2 z-10">
+                      <div className="bg-blue-600 text-white rounded-full p-1.5 shadow-lg">
+                        <CheckCircle className="w-5 h-5" />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="p-5">
+                    {/* Header với ngày và level */}
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Calendar
+                            className={`w-5 h-5 ${
+                              isSelected ? "text-blue-600" : "text-gray-600"
+                            }`}
+                          />
+                          <span className="font-bold text-lg text-gray-900">
+                            {slot.dayOfWeek}
+                          </span>
+                        </div>
+                        <p className="text-2xl font-bold text-gray-800">
+                          {slot.date}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Session Info */}
+                    <div className="space-y-3 mb-4">
+                      <div className="flex items-center gap-3 bg-gray-50 rounded-lg p-3">
+                        <Clock className="w-5 h-5 text-indigo-600 flex-shrink-0" />
+                        <div>
+                          <p className="text-xs text-gray-500 font-medium">
+                            Thời gian
+                          </p>
+                          <p className="text-sm font-bold text-gray-900">
+                            {slot.time}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3 bg-gray-50 rounded-lg p-3">
+                        <User className="w-5 h-5 text-purple-600 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs text-gray-500 font-medium">
+                            Lớp học
+                          </p>
+                          <p className="text-sm font-bold text-gray-900 truncate">
+                            {slot.className}
+                          </p>
+                          <p className="text-xs text-gray-600 truncate">
+                            {slot.instructor}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Buổi học tag */}
+                    <div className="mt-3 flex justify-center">
+                      <span className="text-xs font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                        Buổi {slot.sessionNumber}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Hover Effect Border */}
+                  <div
+                    className={`absolute inset-0 rounded-xl transition-opacity duration-300 ${
+                      isSelected
+                        ? "opacity-100"
+                        : "opacity-0 group-hover:opacity-100"
+                    } bg-gradient-to-br from-blue-400/10 to-purple-400/10 pointer-events-none`}
+                  ></div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="bg-white border-t border-gray-200 px-8 py-5 flex justify-between items-center">
+          <p className="text-sm text-gray-600">
+            {selectedSlot ? (
+              <span className="flex items-center gap-2">
+                <CheckCircle className="w-4 h-4 text-green-600" />
+                Đã chọn:{" "}
+                <span className="font-semibold text-gray-900">
+                  {selectedSlot.dayOfWeek}, {selectedSlot.date}
+                </span>
+              </span>
+            ) : (
+              "Vui lòng chọn buổi học bù phù hợp"
+            )}
+          </p>
+          <div className="flex gap-3">
+            <button
+              onClick={onClose}
+              className="px-6 py-2.5 border-2 border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-semibold transition-all duration-200"
+            >
+              Hủy
+            </button>
+            <button
+              onClick={handleConfirm}
+              disabled={!selectedSlot}
+              className={`px-8 py-2.5 rounded-lg font-semibold transition-all duration-200 flex items-center gap-2 ${
+                selectedSlot
+                  ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                  : "bg-gray-200 text-gray-400 cursor-not-allowed"
+              }`}
+            >
+              <CheckCircle className="w-5 h-5" />
+              Xác Nhận Đăng Ký
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Component chính
 const MySchedulePage = () => {
   const [filterPeriod, setFilterPeriod] = useState("week"); // 'week', 'month', 'all'
-  const [enrollments, setEnrollments] = useState([]); // Từ API
-  const [fakeDate, setFakeDate] = useState(""); // Fake date for testing
+  const [selectedCourse, setSelectedCourse] = useState(""); // Course ID hoặc ''
+  const [classes, setClasses] = useState([]); // Từ API: array classes
   const [isLoading, setIsLoading] = useState(true); // Loading state
+  const [activeTab, setActiveTab] = useState("schedule"); // 'schedule' hoặc 'makeup'
+  const [isMakeupModalOpen, setIsMakeupModalOpen] = useState(false);
+  const [selectedMakeupSession, setSelectedMakeupSession] = useState(null);
+  const [registeredMakeups, setRegisteredMakeups] = useState([]); // Danh sách buổi bù đã đăng ký
   const navigate = useNavigate();
   const user = useSelector((state) => state.auth.login?.currentUser);
   const userName = `${user.lastname} ${user.firstname}`;
 
-  // Update useEffect để fetch API
+  // Dữ liệu mẫu - số lần bù còn lại (thực tế sẽ lấy từ API)
+  const remainingMakeups = 3;
+
+  // Define now at component level (fix ReferenceError)
+  const now = new Date();
+  now.setHours(0, 0, 0, 0); // Normalize to midnight
+
+  // Fetch data
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const res = await getMySchedule();
-        setEnrollments(res); // Data từ API (array enrollments)
+        const res = await getMySchedule(); // Trả array classes
+        setClasses(res); // Giả sử res.data là array classes
       } catch (err) {
         console.error("Lỗi fetch lịch:", err);
         if (err.response?.status === 401) navigate("/login");
-        // Hoặc set error state: setError('Không tải được lịch học');
       } finally {
         setIsLoading(false);
       }
     };
     fetchData();
-  }, [navigate]); // Removed filterPeriod from deps to avoid unnecessary refetch; regenerate sessions on filter change instead
+  }, [navigate]);
 
-  // Tính tổng progress
-  const totalSessions = enrollments.reduce(
-    (sum, e) => sum + e.progress.totalSessions,
+  // Tính progress tổng (từ tất cả classes)
+  const totalSessions = classes.reduce(
+    (sum, cls) => sum + cls.totalSessions,
     0
   );
-  const attendedSessions = enrollments.reduce(
-    (sum, e) => sum + e.progress.sessionsAttended,
+  const attendedSessions = classes.reduce(
+    (sum, cls) => sum + cls.sessionAttended,
     0
   );
   const overallPercentage =
@@ -427,17 +644,126 @@ const MySchedulePage = () => {
       ? Math.round((attendedSessions / totalSessions) * 100)
       : 0;
 
-  // Generate sessions từ enrollments
-  const sessions = generateSessions(
-    enrollments,
-    filterPeriod,
-    fakeDate || null
-  );
+  // Filter sessions (flatMap từ tất cả classes, filter period & course)
+  const filterSessions = () => {
+    const getPeriodRange = () => {
+      if (filterPeriod === "week") {
+        const weekStart = new Date(now);
+        const day = now.getDay(); // 0=Sun, 1=Mon, ...
+        weekStart.setDate(now.getDate() - (day === 0 ? 6 : day - 1)); // Đầu tuần (Mon)
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate() + 6);
+        return { start: weekStart, end: weekEnd };
+      } else if (filterPeriod === "month") {
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        return { start: monthStart, end: monthEnd };
+      }
+      return null; // 'all' → Không filter
+    };
+
+    const periodRange = getPeriodRange();
+    let filteredSessions = [];
+
+    classes.forEach((cls) => {
+      let classSessions = cls.sessions;
+
+      // Filter theo course
+      if (
+        selectedCourse &&
+        selectedCourse !== "" &&
+        cls.courseId._id !== selectedCourse
+      ) {
+        return; // Skip class không match
+      }
+
+      // Filter theo period (nếu có)
+      if (periodRange) {
+        classSessions = classSessions.filter((session) => {
+          const sessionDate = new Date(
+            session.fullDate.split("/").reverse().join("-")
+          );
+          sessionDate.setHours(0, 0, 0, 0);
+          return (
+            sessionDate >= periodRange.start && sessionDate <= periodRange.end
+          );
+        });
+      }
+
+      // FlatMap với class info
+      filteredSessions = filteredSessions.concat(
+        classSessions.map((session) => ({
+          ...session,
+          classCode: cls.classCode,
+          courseTitle: cls.courseId.title,
+          courseLevel: cls.courseId.level,
+          instructorName:
+            cls.instructor.profile.lastname +
+            " " +
+            cls.instructor.profile.firstname,
+          time: cls.time,
+          meetLink: cls.meetLink,
+        }))
+      );
+    });
+
+    // Sort theo ngày
+    return filteredSessions.sort((a, b) => {
+      const dateA = new Date(a.fullDate.split("/").reverse().join("-"));
+      const dateB = new Date(b.fullDate.split("/").reverse().join("-"));
+      return dateA - dateB;
+    });
+  };
+
+  const sessions = filterSessions();
+
+  // Upcoming classes (3 classes đầu, hoặc filter sessions upcoming)
+  const upcomingClasses = classes.slice(0, 3).map((cls) => {
+    const nextSession =
+      cls.sessions.find((s) => {
+        const sDate = new Date(s.fullDate.split("/").reverse().join("-"));
+        sDate.setHours(0, 0, 0, 0);
+        return sDate >= now;
+      }) || cls.sessions[0]; // Fallback first session
+    return {
+      courseId: cls.courseId._id,
+      courseTitle: cls.courseId.title,
+      courseLevel: cls.courseId.level,
+      nextSession,
+    };
+  });
+
+  // Handler mở modal bù học
+  const handleOpenMakeupModal = (session) => {
+    setSelectedMakeupSession(session);
+    setIsMakeupModalOpen(true);
+  };
+
+  // Handler đăng ký buổi bù
+  const handleSelectMakeup = (makeupSlot) => {
+    const newMakeup = {
+      id: Date.now(),
+      originalSession: selectedMakeupSession,
+      makeupSlot: makeupSlot,
+      registeredAt: new Date().toISOString(),
+      status: "pending", // pending, confirmed, cancelled
+    };
+    setRegisteredMakeups([...registeredMakeups, newMakeup]);
+    alert(
+      `Đã đăng ký bù buổi ${selectedMakeupSession.sessionNumber} vào ${makeupSlot.dayOfWeek}, ${makeupSlot.date}`
+    );
+  };
+
+  // Handler hủy buổi bù
+  const handleCancelMakeup = (makeupId) => {
+    if (window.confirm("Bạn có chắc muốn hủy đăng ký buổi bù này?")) {
+      setRegisteredMakeups(registeredMakeups.filter((m) => m.id !== makeupId));
+    }
+  };
 
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
-        {/* Header - Static, no skeleton needed */}
         <div className="max-w-7xl mx-auto mb-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
             <div>
@@ -458,25 +784,6 @@ const MySchedulePage = () => {
 
           {/* Filter - Static */}
           <div className="flex justify-center sm:justify-end gap-4">
-            {/* Test Date Input */}
-            <div className="flex items-center gap-2">
-              <label className="text-sm text-gray-600">Test Date:</label>
-              <input
-                type="date"
-                value={fakeDate}
-                onChange={(e) => setFakeDate(e.target.value)}
-                className="border border-gray-300 rounded-md px-3 py-1 text-sm focus:ring-2 focus:ring-blue-500"
-              />
-              {fakeDate && (
-                <button
-                  onClick={() => setFakeDate("")}
-                  className="text-red-500 hover:text-red-700 text-sm"
-                >
-                  Clear
-                </button>
-              )}
-            </div>
-
             <select
               value={filterPeriod}
               onChange={(e) => setFilterPeriod(e.target.value)}
@@ -486,37 +793,41 @@ const MySchedulePage = () => {
               <option value="month">Tháng này</option>
               <option value="all">Tất cả</option>
             </select>
+            <select
+              value={selectedCourse}
+              onChange={(e) => setSelectedCourse(e.target.value)}
+              className="border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Tất cả khóa học</option>
+              {classes.map((cls) => (
+                <option key={cls.courseId._id} value={cls.courseId._id}>
+                  {cls.courseId.title}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Thời Khóa Biểu Chính (Left Column) */}
           <div className="lg:col-span-2 space-y-6">
             <h2 className="text-2xl font-semibold text-gray-900 mb-4">
               Thời Khóa Biểu
             </h2>
             <TableSkeleton />
           </div>
-
-          {/* Right Column: Progress & Upcoming */}
           <div className="space-y-6">
-            {/* Progress Overview */}
             <div>
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">
                 Tiến Độ Học Tập
               </h2>
               <ProgressSkeleton />
             </div>
-
-            {/* Upcoming Events */}
             <div>
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">
                 Các khóa học trực tuyến đã đăng ký
               </h2>
               <UpcomingSkeleton />
             </div>
-
-            {/* Quick Actions - Static, no skeleton */}
             <div>
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">
                 Hành Động Nhanh
@@ -545,8 +856,8 @@ const MySchedulePage = () => {
     );
   }
 
-  // Empty state if no enrollments
-  if (enrollments.length === 0) {
+  // Empty state if no classes
+  if (classes.length === 0) {
     return <EmptyState userName={userName} />;
   }
 
@@ -569,27 +880,8 @@ const MySchedulePage = () => {
           </Link>
         </div>
 
-        {/* Filter */}
+        {/* Filter: Thời gian + Khóa học */}
         <div className="flex justify-center sm:justify-end gap-4">
-          {/* Test Date Input */}
-          <div className="flex items-center gap-2">
-            <label className="text-sm text-gray-600">Test Date:</label>
-            <input
-              type="date"
-              value={fakeDate}
-              onChange={(e) => setFakeDate(e.target.value)}
-              className="border border-gray-300 rounded-md px-3 py-1 text-sm focus:ring-2 focus:ring-blue-500"
-            />
-            {fakeDate && (
-              <button
-                onClick={() => setFakeDate("")}
-                className="text-red-500 hover:text-red-700 text-sm"
-              >
-                Clear
-              </button>
-            )}
-          </div>
-
           <select
             value={filterPeriod}
             onChange={(e) => setFilterPeriod(e.target.value)}
@@ -599,6 +891,52 @@ const MySchedulePage = () => {
             <option value="month">Tháng này</option>
             <option value="all">Tất cả</option>
           </select>
+          <select
+            value={selectedCourse}
+            onChange={(e) => setSelectedCourse(e.target.value)}
+            className="border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">Tất cả khóa học</option>
+            {classes.map((cls) => (
+              <option key={cls.courseId._id} value={cls.courseId._id}>
+                {cls.courseId.title} ({cls.classCode})
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="max-w-7xl mx-auto mb-6">
+        <div className="border-b border-gray-200">
+          <nav className="-mb-px flex space-x-8">
+            <button
+              onClick={() => setActiveTab("schedule")}
+              className={`py-4 px-1 border-b-2 font-medium text-md transition ${
+                activeTab === "schedule"
+                  ? "border-blue-500 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+            >
+              Lịch Học
+              <span className="ml-2 bg-gray-200 text-gray-700 py-1 px-2 rounded-full text-xs">
+                {sessions.length}
+              </span>
+            </button>
+            <button
+              onClick={() => setActiveTab("makeup")}
+              className={`py-4 px-1 border-b-2 font-medium text-md transition ${
+                activeTab === "makeup"
+                  ? "border-blue-500 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+            >
+              Lịch Bù
+              <span className="ml-2 bg-orange-100 text-orange-700 py-1 px-2 rounded-full text-xs">
+                {registeredMakeups.length}
+              </span>
+            </button>
+          </nav>
         </div>
       </div>
 
@@ -606,125 +944,182 @@ const MySchedulePage = () => {
         {/* Thời Khóa Biểu Chính (Left Column) */}
         <div className="lg:col-span-2 space-y-6">
           <h2 className="text-2xl font-semibold text-gray-900 mb-4">
-            Thời Khóa Biểu
+            {activeTab === "schedule" ? "Thời Khóa Biểu" : "Lịch Bù Đã Đăng Ký"}
           </h2>
-          {/* Simple Weekly Grid - Mẫu cho tuần hiện tại (21/10/2025) */}
-          <div className="bg-white rounded-lg shadow-md overflow-hidden">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Ngày
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Lớp Học
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Thời Gian
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Hành Động
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y ">
-                {sessions.map((session) => {
-                  const { classId } = session;
-                  const sessionType =
-                    classId.schedule.startTime < "12:00"
-                      ? "Sáng"
-                      : classId.schedule.startTime < "18:00"
-                      ? "Chiều"
-                      : "Tối";
-                  const levelColor =
-                    classId.courseId.level === "beginner"
-                      ? "bg-green-100 text-green-800"
-                      : classId.courseId.level === "intermediate"
-                      ? "bg-yellow-100 text-yellow-800"
-                      : "bg-red-100 text-red-800";
-
-                  // FIX nhỏ: Instructor name fallback nếu không có firstname/lastname
-                  const instructorName =
-                    classId.instructor?.name ||
-                    `Giảng viên: ${
-                      classId.instructor?.profile.lastname || ""
-                    } ${classId.instructor?.profile.firstname || ""}`.trim() ||
-                    "Giảng viên chưa xác định";
-
-                  return (
-                    <tr
-                      key={`${session._id}-${
-                        session.sessionDate.toISOString().split("T")[0]
-                      }`} // Key ổn định hơn
-                      className={`hover:bg-gray-50 ${
-                        session.isToday
-                          ? "bg-yellow-50 border-l-4 border-yellow-400"
-                          : ""
-                      }`}
-                    >
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {session.dayVN} (
-                        {session.sessionDate.toLocaleDateString("vi-VN")})
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {/* <div
-                          className={`inline-flex px-2 py-1 rounded-full text-xs font-semibold ${levelColor}`}
-                        >
-                          {sessionType}
-                        </div> */}
-                        <div
-                          className={`inline-flex px-2 py-1 rounded-md text-sm font-medium mt-1 ${levelColor}`}
-                        >
-                          {classId.classCode} -{" "}
-                          {classId.courseId?.title || "Khóa học TOEIC Beginner"}{" "}
-                          {/* Fallback course name */}
-                        </div>
-                        <div className="px-2 py-1 text-sm text-gray-500">
-                          {instructorName}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {classId.schedule.startTime} -{" "}
-                        {classId.schedule.endTime}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <button
-                          onClick={() =>
-                            window.open(classId.schedule.meetLink, "_blank")
-                          }
-                          className="text-blue-600 hover:text-blue-900 mr-4"
-                        >
-                          Tham Gia
-                        </button>
-                        {/* <button
-                          onClick={() => navigate(`/classes/${classId._id}`)} // Hoặc mở modal ghi chú
-                          className="text-green-600 hover:text-green-900 ml-4"
-                        >
-                          Ghi Chú
-                        </button> */}
-                      </td>
+          {activeTab === "schedule" ? (
+            <div className="bg-white rounded-lg shadow-md">
+              <div className="overflow-visible">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Buổi
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Ngày
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Lớp Học
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Thời Gian
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Hành Động
+                      </th>
                     </tr>
-                  );
-                })}
-                {sessions.length === 0 && (
-                  <tr>
-                    <td
-                      colSpan={4}
-                      className="px-6 py-4 text-center text-gray-500"
-                    >
-                      Không có lịch học nào trong{" "}
-                      {filterPeriod === "week"
-                        ? "tuần"
-                        : filterPeriod === "month"
-                        ? "tháng"
-                        : "khoảng thời gian"}{" "}
-                      này.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+                  </thead>
+                  <tbody className="bg-white divide-y relative">
+                    {sessions.map((session) => {
+                      const levelColor =
+                        session.courseLevel === "beginner"
+                          ? "bg-green-100 text-green-800"
+                          : session.courseLevel === "intermediate"
+                          ? "bg-yellow-100 text-yellow-800"
+                          : "bg-red-100 text-red-800";
+
+                      return (
+                        <tr
+                          key={`${session.classCode}-${session.sessionNumber}`} // Key ổn định
+                          className={`relative hover:bg-gray-50 ${
+                            session.isToday
+                              ? "bg-yellow-50 border-l-4 border-yellow-400"
+                              : ""
+                          } ${
+                            session.isAbsent
+                              ? "bg-red-50 border-l-4 border-red-400"
+                              : ""
+                          }`} // Highlight absent
+                        >
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            Buổi {session.sessionNumber}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {session.dateLabel}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div
+                              className={`inline-flex px-2 py-1 rounded-md text-sm font-medium ${levelColor}`}
+                            >
+                              {session.classCode} - {session.courseTitle}
+                            </div>
+                            <div className="text-sm text-gray-500 mt-1">
+                              Giảng viên: {session.instructorName}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {session.time}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <ActionMenu
+                              session={session}
+                              onJoinClass={() =>
+                                window.open(session.meetLink, "_blank")
+                              }
+                              onRegisterMakeup={() =>
+                                handleOpenMakeupModal(session)
+                              }
+                            />
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {sessions.length === 0 && (
+                      <tr>
+                        <td
+                          colSpan={5}
+                          className="px-6 py-12 text-center text-gray-500"
+                        >
+                          Không có lịch học nào trong khoảng thời gian này.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : (
+            /* Tab Lịch Bù */
+            <div className="bg-white rounded-lg shadow-md overflow-hidden">
+              {registeredMakeups.length > 0 ? (
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Buổi Gốc
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Buổi Bù
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Lớp Bù
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Trạng Thái
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Hành Động
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y">
+                    {registeredMakeups.map((makeup) => (
+                      <tr key={makeup.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">
+                            Buổi {makeup.originalSession.sessionNumber}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {makeup.originalSession.dateLabel}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">
+                            {makeup.makeupSlot.dayOfWeek},{" "}
+                            {makeup.makeupSlot.date}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {makeup.makeupSlot.time}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">
+                            {makeup.makeupSlot.className}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {makeup.makeupSlot.instructor}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                            Chờ xác nhận
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <button
+                            onClick={() => handleCancelMakeup(makeup.id)}
+                            className="text-red-600 hover:text-red-900 text-sm font-medium"
+                          >
+                            Hủy
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <div className="px-6 py-12 text-center text-gray-500">
+                  <Calendar className="w-16 h-16 mx-auto text-gray-400 mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    Chưa có buổi bù nào
+                  </h3>
+                  <p className="text-sm text-gray-600">
+                    Các buổi học bù bạn đăng ký sẽ hiển thị tại đây
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Right Column: Progress & Upcoming */}
@@ -745,7 +1140,7 @@ const MySchedulePage = () => {
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2.5">
                 <div
-                  className="bg-blue-600 h-2.5 rounded-full"
+                  className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
                   style={{ width: `${overallPercentage}%` }}
                 ></div>
               </div>
@@ -766,51 +1161,53 @@ const MySchedulePage = () => {
             </div>
           </div>
 
-          {/* Upcoming Events */}
+          {/* Upcoming Events (classes với next session upcoming) */}
           <div>
             <h2 className="text-2xl font-semibold text-gray-900 mb-4">
               Các khóa học trực tuyến đã đăng ký
             </h2>
             <div className="bg-white rounded-lg shadow-md p-6 space-y-3 max-h-64 overflow-y-auto">
-              {enrollments.slice(0, 3).map((enroll) => (
+              {upcomingClasses.map((cls) => (
                 <div
-                  key={enroll._id}
+                  key={cls.classCode}
                   className="flex items-center p-3 bg-gray-50 rounded-lg"
                 >
                   <div
                     className={`w-2 h-2 rounded-full mr-3 ${
-                      enroll.classId.courseId.level === "beginner"
+                      cls.courseLevel === "beginner"
                         ? "bg-green-500"
-                        : "bg-yellow-500"
+                        : cls.courseLevel === "intermediate"
+                        ? "bg-yellow-500"
+                        : "bg-red-500"
                     }`}
                   ></div>
                   <div className="flex-1">
                     <p className="text-sm font-medium text-gray-900">
-                      {enroll.classId.classCode} -{" "}
-                      {enroll.classId.courseId.title ||
-                        "Khóa học TOEIC Beginner"}
+                      {cls.classCode} - {cls.courseTitle}
                     </p>
                     <p className="text-xs text-gray-500">
-                      Level: {enroll.classId.courseId.level}
+                      Level: {cls.courseLevel}
+                      {cls.nextSession &&
+                        ` | Buổi tới: ${cls.nextSession.dateLabel}`}
                     </p>
                   </div>
                   <button
-                    onClick={() => navigate(`/classes/${enroll.classId._id}`)}
+                    onClick={() => navigate(`/classes/${cls.courseId}`)}
                     className="text-xs text-blue-600 hover:text-blue-900"
                   >
                     Xem Chi Tiết
                   </button>
                 </div>
               ))}
-              {enrollments.length === 0 && (
+              {upcomingClasses.length === 0 && (
                 <p className="text-center text-gray-500 text-sm">
-                  Không có sự kiện sắp tới.
+                  Không có khóa học nào.
                 </p>
               )}
             </div>
           </div>
 
-          {/* Quick Actions */}
+          {/* Quick Actions (giữ nguyên) */}
           <div>
             <h2 className="text-2xl font-semibold text-gray-900 mb-4">
               Hành Động Nhanh
@@ -835,8 +1232,24 @@ const MySchedulePage = () => {
           </div>
         </div>
       </div>
+
+      {/* Makeup Modal */}
+      <MakeupModal
+        isOpen={isMakeupModalOpen}
+        onClose={() => setIsMakeupModalOpen(false)}
+        makeupSession={selectedMakeupSession}
+        remainingMakeups={remainingMakeups}
+        onSelectMakeup={handleSelectMakeup}
+      />
     </div>
   );
 };
 
 export default MySchedulePage;
+
+// Add to your global CSS or create a style tag
+// @keyframes fadeIn {
+//   from { opacity: 0; transform: translateY(-10px); }
+//   to { opacity: 1; transform: translateY(0); }
+// }
+// .animate-fadeIn { animation: fadeIn 0.2s ease-out; }
