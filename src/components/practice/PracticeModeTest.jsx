@@ -5,12 +5,12 @@ import { useParams } from "react-router-dom";
 const partsData = [
   {
     part: 1,
-    name: "Part 1 (6 câu hỏi)",
+    name: "Part 1 (6 câu hỏi",
     tags: ["Tranh tả người", "Tranh tả vật", "Tranh tả cả người và vật"],
   },
   {
     part: 2,
-    name: "Part 2 (25 câu hỏi)",
+    name: "Part 2 (25 câu hỏi",
     tags: [
       "WHAT",
       "WHO",
@@ -27,7 +27,7 @@ const partsData = [
   },
   {
     part: 3,
-    name: "Part 3 (39 câu hỏi)",
+    name: "Part 3 (39 câu hỏi",
     tags: [
       "Chủ đề",
       "Người nói",
@@ -39,7 +39,7 @@ const partsData = [
   },
   {
     part: 4,
-    name: "Part 4 (30 câu hỏi)",
+    name: "Part 4 (30 câu hỏi",
     tags: [
       "Chủ đề",
       "Địa điểm",
@@ -51,17 +51,17 @@ const partsData = [
   },
   {
     part: 5,
-    name: "Part 5 (30 câu hỏi)",
+    name: "Part 5 (30 câu hỏi",
     tags: ["Từ loại", "Ngữ pháp", "Từ vựng"],
   },
   {
     part: 6,
-    name: "Part 6 (16 câu hỏi)",
+    name: "Part 6 (16 câu hỏi",
     tags: ["Ngữ pháp", "Từ loại", "Điền câu"],
   },
   {
     part: 7,
-    name: "Part 7 (54 câu hỏi)",
+    name: "Part 7 (54 câu hỏi",
     tags: ["Tìm thông tin", "Suy luận", "Email/Letter", "Advertisement"],
   },
 ];
@@ -111,7 +111,6 @@ const PracticeModeTest = () => {
 
       {/* Gợi ý */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 text-sm text-gray-700 flex items-start gap-2">
-        <span className="text-blue-600 text-lg">Info</span>
         <div>
           <strong>Mẹo:</strong> Chọn từng phần để luyện tập chuyên sâu, không áp
           lực thời gian.
