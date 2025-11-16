@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { getMySchedule } from "@/api/enrollmentApi"; // API trả array classes với sessions
+import { getAvailableMakeupClasses } from "@/api/makeuprequestApi";
 import {
   X,
   Calendar,
@@ -14,6 +15,28 @@ import {
   LogIn,
   RefreshCw,
 } from "lucide-react";
+
+const formatDateWithDay = (isoString) => {
+  const date = new Date(isoString);
+  const days = [
+    "Chủ Nhật",
+    "Thứ Hai",
+    "Thứ Ba",
+    "Thứ Tư",
+    "Thứ Năm",
+    "Thứ Sáu",
+    "Thứ Bảy",
+  ];
+  const dayOfWeek = days[date.getDay()];
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = date.getFullYear();
+  return {
+    dayOfWeek,
+    date: `${day}/${month}/${year}`,
+    fullDate: `${dayOfWeek}, ${day}/${month}/${year}`,
+  };
+};
 
 // Skeleton components (giữ nguyên)
 const TableSkeleton = () => (
@@ -324,70 +347,45 @@ const EmptyState = ({ userName }) => (
 );
 
 // Modal component cho chọn buổi bù - Premium Design
-const MakeupModal = ({
-  isOpen,
-  onClose,
-  missedSession,
-  remainingMakeups,
-  onSelectMakeup,
-}) => {
+const MakeupModal = ({ isOpen, onClose, missedSession, onSelectMakeup }) => {
   const [selectedSlot, setSelectedSlot] = useState(null);
+  const [availableSlots, setAvailableSlots] = useState({
+    slots: [],
+    remainingChanges: 0,
+  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  // Dữ liệu mẫu - các buổi học có thể bù
-  const availableMakeupSlots = [
-    {
-      id: 1,
-      date: "25/11/2025",
-      dayOfWeek: "Thứ Hai",
-      time: "18:00 - 20:00",
-      sessionNumber: 5,
-      className: "TOEIC-550-A1",
-      instructor: "Thầy Nguyễn Văn A",
-      level: "beginner",
-      availableSlots: 3,
-      maxSlots: 5,
-      isPopular: true,
-    },
-    {
-      id: 2,
-      date: "27/11/2025",
-      dayOfWeek: "Thứ Tư",
-      time: "19:00 - 21:00",
-      sessionNumber: 5,
-      className: "TOEIC-550-B2",
-      instructor: "Cô Trần Thị B",
-      level: "intermediate",
-      availableSlots: 2,
-      maxSlots: 5,
-      isPopular: false,
-    },
-    {
-      id: 3,
-      date: "29/11/2025",
-      dayOfWeek: "Thứ Sáu",
-      time: "18:30 - 20:30",
-      sessionNumber: 6,
-      className: "TOEIC-650-C3",
-      instructor: "Thầy Lê Văn C",
-      level: "advanced",
-      availableSlots: 4,
-      maxSlots: 5,
-      isPopular: false,
-    },
-    {
-      id: 4,
-      date: "01/12/2025",
-      dayOfWeek: "Thứ Hai",
-      time: "17:00 - 19:00",
-      sessionNumber: 7,
-      className: "TOEIC-550-A1",
-      instructor: "Thầy Nguyễn Văn A",
-      level: "beginner",
-      availableSlots: 5,
-      maxSlots: 5,
-      isPopular: true,
-    },
-  ];
+  useEffect(() => {
+    const fetchAvailableMakeupClasses = async () => {
+      // ✅ Chỉ fetch khi modal OPEN và có missedSession
+      if (!isOpen || !missedSession) return;
+
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const response = await getAvailableMakeupClasses(
+          missedSession.classId,
+          missedSession.sessionNumber
+        );
+
+        setAvailableSlots(response);
+      } catch (error) {
+        console.error("❌ Error fetching available makeup classes:", error);
+        setError(error.message || "Không thể tải danh sách lớp bù");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchAvailableMakeupClasses();
+
+    // ✅ Reset selected slot khi modal mở lại
+    return () => {
+      setSelectedSlot(null);
+    };
+  }, [isOpen, missedSession]); // ✅ Trigger khi isOpen hoặc missedSession thay đổi
 
   const handleConfirm = () => {
     if (selectedSlot) {
@@ -402,9 +400,8 @@ const MakeupModal = ({
   return (
     <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn">
       <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden transform transition-all">
-        {/* Header với Gradient và Pattern - Compact Version */}
+        {/* Header giữ nguyên */}
         <div className="relative bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 text-white p-5 overflow-hidden">
-          {/* Decorative circles */}
           <div className="absolute top-0 right-0 w-40 h-40 bg-white opacity-5 rounded-full -mr-20 -mt-20"></div>
           <div className="absolute bottom-0 left-0 w-32 h-32 bg-white opacity-5 rounded-full -ml-16 -mb-16"></div>
 
@@ -432,123 +429,163 @@ const MakeupModal = ({
           </div>
         </div>
 
-        {/* Content */}
+        {/* Content với Loading & Error states */}
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-220px)] bg-gray-50">
           {/* Info Card - Số lần bù còn lại */}
-          <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-l-4 border-amber-400 rounded-r-xl p-5 mb-6 shadow-sm">
-            <div className="flex items-center gap-4">
-              <div className="bg-amber-100 p-3 rounded-full">
-                <CheckCircle className="h-6 w-6 text-amber-600" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-amber-900 mb-1">
-                  Số lần bù học còn lại
-                </p>
-                <p className="text-amber-700">
-                  Bạn còn{" "}
-                  <span className="text-2xl font-bold text-amber-600 mx-1">
-                    {remainingMakeups}
-                  </span>
-                  lần bù học trong khóa này
-                </p>
+          {!isLoading && !error && (
+            <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-l-4 border-amber-400 rounded-r-xl p-5 mb-6 shadow-sm">
+              <div className="flex items-center gap-4">
+                <div className="bg-amber-100 p-3 rounded-full">
+                  <CheckCircle className="h-6 w-6 text-amber-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-amber-900 mb-1">
+                    Số lần bù học còn lại
+                  </p>
+                  <p className="text-amber-700">
+                    Bạn còn{" "}
+                    <span className="text-2xl font-bold text-amber-600 mx-1">
+                      {availableSlots.remainingChanges || 0}
+                    </span>
+                    lần bù học trong khóa này
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
+          )}
+
+          {/* Loading State */}
+          {isLoading && (
+            <div className="flex flex-col items-center justify-center py-12">
+              <RefreshCw className="w-12 h-12 text-blue-600 animate-spin mb-4" />
+              <p className="text-gray-600">Đang tải danh sách lớp bù...</p>
+            </div>
+          )}
+
+          {/* Error State */}
+          {error && (
+            <div className="bg-red-50 border-l-4 border-red-400 p-5 rounded-r-xl mb-6">
+              <div className="flex items-center gap-3">
+                <XCircle className="w-6 h-6 text-red-600" />
+                <div>
+                  <p className="text-sm font-semibold text-red-900 mb-1">
+                    Lỗi tải dữ liệu
+                  </p>
+                  <p className="text-red-700 text-sm">{error}</p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Grid Layout cho các buổi học */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {availableMakeupSlots.map((slot) => {
-              const isSelected = selectedSlot?.id === slot.id;
-
-              return (
-                <div
-                  key={slot.id}
-                  onClick={() => setSelectedSlot(slot)}
-                  className={`relative group cursor-pointer rounded-xl transition-all duration-300 transform hover:scale-[1.02] ${
-                    isSelected
-                      ? "bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-500 shadow-lg"
-                      : "bg-white border-2 border-gray-200 hover:border-blue-300 hover:shadow-md"
-                  }`}
-                >
-                  {/* Selected Indicator */}
-                  {isSelected && (
-                    <div className="absolute -top-2 -left-2 z-10">
-                      <div className="bg-blue-600 text-white rounded-full p-1.5 shadow-lg">
-                        <CheckCircle className="w-5 h-5" />
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="p-5">
-                    {/* Header với ngày và level */}
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Calendar
-                            className={`w-5 h-5 ${
-                              isSelected ? "text-blue-600" : "text-gray-600"
-                            }`}
-                          />
-                          <span className="font-bold text-lg text-gray-900">
-                            {slot.dayOfWeek}
-                          </span>
-                        </div>
-                        <p className="text-2xl font-bold text-gray-800">
-                          {slot.date}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Session Info */}
-                    <div className="space-y-3 mb-4">
-                      <div className="flex items-center gap-3 bg-gray-50 rounded-lg p-3">
-                        <Clock className="w-5 h-5 text-indigo-600 flex-shrink-0" />
-                        <div>
-                          <p className="text-xs text-gray-500 font-medium">
-                            Thời gian
-                          </p>
-                          <p className="text-sm font-bold text-gray-900">
-                            {slot.time}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-3 bg-gray-50 rounded-lg p-3">
-                        <User className="w-5 h-5 text-purple-600 flex-shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs text-gray-500 font-medium">
-                            Lớp học
-                          </p>
-                          <p className="text-sm font-bold text-gray-900 truncate">
-                            {slot.className}
-                          </p>
-                          <p className="text-xs text-gray-600 truncate">
-                            {slot.instructor}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Buổi học tag */}
-                    <div className="mt-3 flex justify-center">
-                      <span className="text-xs font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-                        Buổi {slot.sessionNumber}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Hover Effect Border */}
+          {!isLoading && !error && availableSlots.slots?.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {availableSlots.slots.map((slot) => {
+                const isSelected = selectedSlot?.classId === slot.classId;
+                const formattedDate = formatDateWithDay(slot.date);
+                return (
                   <div
-                    className={`absolute inset-0 rounded-xl transition-opacity duration-300 ${
+                    key={slot.id}
+                    onClick={() => setSelectedSlot(slot)}
+                    className={`relative group cursor-pointer rounded-xl transition-all duration-300 transform hover:scale-[1.02] ${
                       isSelected
-                        ? "opacity-100"
-                        : "opacity-0 group-hover:opacity-100"
-                    } bg-gradient-to-br from-blue-400/10 to-purple-400/10 pointer-events-none`}
-                  ></div>
-                </div>
-              );
-            })}
-          </div>
+                        ? "bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-500 shadow-lg"
+                        : "bg-white border-2 border-gray-200 hover:border-blue-300 hover:shadow-md"
+                    }`}
+                  >
+                    {/* Selected Indicator */}
+                    {isSelected && (
+                      <div className="absolute -top-2 -left-2 z-10">
+                        <div className="bg-blue-600 text-white rounded-full p-1.5 shadow-lg">
+                          <CheckCircle className="w-5 h-5" />
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="p-5">
+                      {/* Header với ngày */}
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Calendar
+                              className={`w-5 h-5 ${
+                                isSelected ? "text-blue-600" : "text-gray-600"
+                              }`}
+                            />
+                            <span className="font-bold text-lg text-gray-900">
+                              {formattedDate.dayOfWeek}
+                            </span>
+                          </div>
+                          <p className="text-2xl font-bold text-gray-800">
+                            {formattedDate.date}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Session Info */}
+                      <div className="space-y-3 mb-4">
+                        <div className="flex items-center gap-3 bg-gray-50 rounded-lg p-3">
+                          <Clock className="w-5 h-5 text-indigo-600 flex-shrink-0" />
+                          <div>
+                            <p className="text-xs text-gray-500 font-medium">
+                              Thời gian
+                            </p>
+                            <p className="text-sm font-bold text-gray-900">
+                              {slot.time}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-3 bg-gray-50 rounded-lg p-3">
+                          <User className="w-5 h-5 text-purple-600 flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs text-gray-500 font-medium">
+                              Lớp học
+                            </p>
+                            <p className="text-sm font-bold text-gray-900 truncate">
+                              {slot.classCode}
+                            </p>
+                            <p className="text-xs text-gray-600 truncate">
+                              {slot.instructorName}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Buổi học tag */}
+                      <div className="mt-3 flex justify-center">
+                        <span className="text-xs font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                          Buổi {slot.sessionNumber}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Hover Effect Border */}
+                    <div
+                      className={`absolute inset-0 rounded-xl transition-opacity duration-300 ${
+                        isSelected
+                          ? "opacity-100"
+                          : "opacity-0 group-hover:opacity-100"
+                      } bg-gradient-to-br from-blue-400/10 to-purple-400/10 pointer-events-none`}
+                    ></div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Empty State */}
+          {!isLoading && !error && availableSlots.slots?.length === 0 && (
+            <div className="text-center py-12">
+              <Calendar className="w-16 h-16 mx-auto text-gray-400 mb-4" />
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                Không có lớp bù khả dụng
+              </h3>
+              <p className="text-sm text-gray-600">
+                Hiện tại chưa có lớp bù nào phù hợp với buổi học này
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Footer */}
@@ -559,7 +596,7 @@ const MakeupModal = ({
                 <CheckCircle className="w-4 h-4 text-green-600" />
                 Đã chọn:{" "}
                 <span className="font-semibold text-gray-900">
-                  {selectedSlot.dayOfWeek}, {selectedSlot.date}
+                  {formatDateWithDay(selectedSlot.date).fullDate}
                 </span>
               </span>
             ) : (
@@ -575,9 +612,9 @@ const MakeupModal = ({
             </button>
             <button
               onClick={handleConfirm}
-              disabled={!selectedSlot}
+              disabled={!selectedSlot || isLoading}
               className={`px-8 py-2.5 rounded-lg font-semibold transition-all duration-200 flex items-center gap-2 ${
-                selectedSlot
+                selectedSlot && !isLoading
                   ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
                   : "bg-gray-200 text-gray-400 cursor-not-allowed"
               }`}
@@ -600,14 +637,13 @@ const MySchedulePage = () => {
   const [isLoading, setIsLoading] = useState(true); // Loading state
   const [activeTab, setActiveTab] = useState("schedule"); // 'schedule' hoặc 'makeup'
   const [isMakeupModalOpen, setIsMakeupModalOpen] = useState(false);
-  const [selectedMakeupSession, setSelectedMakeupSession] = useState(null);
+  const [selectedMissedSession, setSelectedMissedSession] = useState(null);
   const [registeredMakeups, setRegisteredMakeups] = useState([]); // Danh sách buổi bù đã đăng ký
   const navigate = useNavigate();
   const user = useSelector((state) => state.auth.login?.currentUser);
   const userName = `${user.lastname} ${user.firstname}`;
 
   // Dữ liệu mẫu - số lần bù còn lại (thực tế sẽ lấy từ API)
-  const remainingMakeups = 3;
 
   // Define now at component level (fix ReferenceError)
   const now = new Date();
@@ -694,6 +730,7 @@ const MySchedulePage = () => {
       filteredSessions = filteredSessions.concat(
         classSessions.map((session) => ({
           ...session,
+          classId: cls.classId,
           classCode: cls.classCode,
           courseTitle: cls.courseId.title,
           courseLevel: cls.courseId.level,
@@ -735,7 +772,8 @@ const MySchedulePage = () => {
 
   // Handler mở modal bù học
   const handleOpenMakeupModal = (session) => {
-    setSelectedMakeupSession(session);
+    console.log("🔵 Opening modal with session:", session);
+    setSelectedMissedSession(session);
     setIsMakeupModalOpen(true);
   };
 
@@ -743,14 +781,14 @@ const MySchedulePage = () => {
   const handleSelectMakeup = (makeupSlot) => {
     const newMakeup = {
       id: Date.now(),
-      originalSession: selectedMakeupSession,
+      originalSession: selectedMissedSession,
       makeupSlot: makeupSlot,
       registeredAt: new Date().toISOString(),
       status: "pending", // pending, confirmed, cancelled
     };
     setRegisteredMakeups([...registeredMakeups, newMakeup]);
     alert(
-      `Đã đăng ký bù buổi ${selectedMakeupSession.sessionNumber} vào ${makeupSlot.dayOfWeek}, ${makeupSlot.date}`
+      `Đã đăng ký bù buổi ${selectedMissedSession.sessionNumber} vào ${makeupSlot.dayOfWeek}, ${makeupSlot.date}`
     );
   };
 
@@ -1237,8 +1275,7 @@ const MySchedulePage = () => {
       <MakeupModal
         isOpen={isMakeupModalOpen}
         onClose={() => setIsMakeupModalOpen(false)}
-        makeupSession={selectedMakeupSession}
-        remainingMakeups={remainingMakeups}
+        missedSession={selectedMissedSession}
         onSelectMakeup={handleSelectMakeup}
       />
     </div>
