@@ -163,28 +163,38 @@ const DisplayOptionTest = ({
     setIsSubmitting(true);
 
     try {
+      // 1. Chuẩn bị map: number → userAnswer
       const numberToUserAnswer = new Map();
       questions.forEach((q) => {
-        if (answers[q._id]) numberToUserAnswer.set(q.number, answers[q._id]);
+        if (answers[q._id]) {
+          numberToUserAnswer.set(q.number, answers[q._id]);
+        }
       });
 
+      // 2. Gọi API lấy đáp án đúng
       const res = await axiosInstance.get(`/tests/${examId}/result`);
       const responseData = res?.data || res;
 
-      let sections = [];
-      if (Array.isArray(responseData)) sections = responseData;
-      else if (Array.isArray(responseData.result))
-        sections = responseData.result;
-      else if (Array.isArray(responseData.data)) sections = responseData.data;
-      else if (Array.isArray(responseData.sections))
-        sections = responseData.sections;
+      // 3. LẤY ĐÚNG ĐƯỜNG DẪN: result.correctAnswers
+      const correctAnswerSections = responseData?.result?.correctAnswers || [];
 
-      let listeningCorrect = 0,
-        readingCorrect = 0;
+      if (
+        !Array.isArray(correctAnswerSections) ||
+        correctAnswerSections.length === 0
+      ) {
+        throw new Error("Không tìm thấy đáp án đúng từ server.");
+      }
+
+      let listeningCorrect = 0;
+      let readingCorrect = 0;
       const detailedAnswers = [];
 
-      sections.forEach((section) => {
-        const isListening = (section.part || section.type) <= 4;
+      // 4. Duyệt từng part trong correctAnswers
+      correctAnswerSections.forEach((section) => {
+        const part = section.part;
+        const type = section.type; // "listening" hoặc "reading"
+        const isListening = type === "listening";
+
         (section.questions || []).forEach((q) => {
           const userAnswer = numberToUserAnswer.get(q.number);
           const correctAnswer = q.answer;
@@ -194,11 +204,12 @@ const DisplayOptionTest = ({
           if (isListening && isCorrect) listeningCorrect++;
           else if (!isListening && isCorrect) readingCorrect++;
 
+          // Tìm câu hỏi trong danh sách đã load để lấy part (nếu cần xác minh)
           const foundQ = questions.find((x) => x.number === q.number);
 
           detailedAnswers.push({
             number: q.number,
-            part: foundQ?.part || section.part || "Unknown",
+            part: foundQ?.part ?? part,
             type: isListening ? "listening" : "reading",
             userAnswer: userAnswer || null,
             correctAnswer,
@@ -207,10 +218,12 @@ const DisplayOptionTest = ({
         });
       });
 
+      // 5. Tính điểm
       const listeningScore = score.calculateListeningScore(listeningCorrect);
       const readingScore = score.calculateReadingScore(readingCorrect);
       const totalScore = listeningScore + readingScore;
 
+      // 6. Lưu kết quả
       const resultState = {
         summary: {
           listeningCorrect,
@@ -225,7 +238,7 @@ const DisplayOptionTest = ({
           answeredCount: Object.keys(answers).length,
           totalQuestions: questions.length,
         },
-        practiceParts: selectedParts.length < 7 ? selectedParts : null, // thêm dòng này
+        practiceParts: selectedParts.length < 7 ? selectedParts : null,
       };
 
       sessionStorage.setItem(
