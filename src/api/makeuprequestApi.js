@@ -14,3 +14,38 @@ export const getAvailableMakeupClasses = async (classId, sessionNumber) => {
     throw error;
   }
 };
+
+export const registerMakeupClass = async (makeupRequestData) => {
+  try {
+    const response = await axiosInstance.post(
+      `/makeup-requests/`,
+      makeupRequestData
+    );
+    return response;
+  } catch (error) {
+    console.error("Error registering makeup class:", error);
+    throw error;
+  }
+};
+
+export const getMakeupRequestsByStudent = async () => {
+  try {
+    const response = await axiosInstance.get(`/makeup-requests/`);
+    return response;
+  } catch (error) {
+    console.error("Error fetching makeup requests:", error);
+    throw error;
+  }
+};
+
+export const cancelMakeupRequest = async (makeupRequestId) => {
+  try {
+    const response = await axiosInstance.delete(
+      `/makeup-requests/${makeupRequestId}`
+    );
+    return response;
+  } catch (error) {
+    console.error("Error canceling makeup request:", error);
+    throw error;
+  }
+};

@@ -1,217 +1,25 @@
 // components/MySchedulePage.jsx
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
-import { getMySchedule } from "@/api/enrollmentApi"; // API trả array classes với sessions
-import { getAvailableMakeupClasses } from "@/api/makeuprequestApi";
 import {
-  X,
-  Calendar,
-  Clock,
-  User,
-  CheckCircle,
-  XCircle,
-  MoreVertical,
-  LogIn,
-  RefreshCw,
-} from "lucide-react";
-
-const formatDateWithDay = (isoString) => {
-  const date = new Date(isoString);
-  const days = [
-    "Chủ Nhật",
-    "Thứ Hai",
-    "Thứ Ba",
-    "Thứ Tư",
-    "Thứ Năm",
-    "Thứ Sáu",
-    "Thứ Bảy",
-  ];
-  const dayOfWeek = days[date.getDay()];
-  const day = String(date.getDate()).padStart(2, "0");
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const year = date.getFullYear();
-  return {
-    dayOfWeek,
-    date: `${day}/${month}/${year}`,
-    fullDate: `${dayOfWeek}, ${day}/${month}/${year}`,
-  };
-};
-
-// Skeleton components (giữ nguyên)
-const TableSkeleton = () => (
-  <div className="bg-white rounded-lg shadow-md overflow-hidden">
-    <table className="min-w-full divide-y divide-gray-200">
-      <thead className="bg-gray-50">
-        <tr>
-          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Ngày
-          </th>
-          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Lớp Học
-          </th>
-          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Thời Gian
-          </th>
-          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Hành Động
-          </th>
-        </tr>
-      </thead>
-      <tbody className="bg-white divide-y">
-        {[...Array(5)].map((_, i) => (
-          <tr key={i}>
-            <td className="px-6 py-4 whitespace-nowrap">
-              <div className="animate-pulse">
-                <div className="h-4 bg-gray-200 rounded w-24 mb-1"></div>
-                <div className="h-3 bg-gray-200 rounded w-20"></div>
-              </div>
-            </td>
-            <td className="px-6 py-4 whitespace-nowrap">
-              <div className="animate-pulse space-y-2">
-                <div className="h-3 bg-gray-200 rounded w-32"></div>
-                <div className="h-3 bg-gray-200 rounded w-48"></div>
-                <div className="h-3 bg-gray-200 rounded w-40"></div>
-              </div>
-            </td>
-            <td className="px-6 py-4 whitespace-nowrap">
-              <div className="animate-pulse">
-                <div className="h-4 bg-gray-200 rounded w-28"></div>
-              </div>
-            </td>
-            <td className="px-6 py-4 whitespace-nowrap">
-              <div className="animate-pulse">
-                <div className="h-4 bg-gray-200 rounded w-16"></div>
-              </div>
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  </div>
-);
-
-const ProgressSkeleton = () => (
-  <div className="bg-white rounded-lg shadow-md p-6 space-y-4">
-    <div className="flex justify-between items-center">
-      <div className="h-4 bg-gray-200 rounded w-20 animate-pulse"></div>
-      <div className="h-6 bg-gray-200 rounded w-8 animate-pulse"></div>
-    </div>
-    <div className="w-full bg-gray-200 rounded-full h-2.5 animate-pulse"></div>
-    <div className="grid grid-cols-2 gap-4 mt-4">
-      <div className="text-center">
-        <div className="h-8 bg-gray-200 rounded w-12 mx-auto animate-pulse"></div>
-        <div className="h-3 bg-gray-200 rounded w-20 mx-auto mt-1 animate-pulse"></div>
-      </div>
-      <div className="text-center">
-        <div className="h-8 bg-gray-200 rounded w-12 mx-auto animate-pulse"></div>
-        <div className="h-3 bg-gray-200 rounded w-20 mx-auto mt-1 animate-pulse"></div>
-      </div>
-    </div>
-  </div>
-);
-
-const UpcomingSkeleton = () => (
-  <div className="bg-white rounded-lg shadow-md p-6 space-y-3 max-h-64 overflow-y-auto">
-    {[...Array(3)].map((_, i) => (
-      <div
-        key={i}
-        className="flex items-center p-3 bg-gray-50 rounded-lg animate-pulse"
-      >
-        <div className="w-2 h-2 rounded-full mr-3 bg-gray-200"></div>
-        <div className="flex-1 space-y-1">
-          <div className="h-3 bg-gray-200 rounded w-48"></div>
-          <div className="h-3 bg-gray-200 rounded w-24"></div>
-        </div>
-        <div className="h-4 bg-gray-200 rounded w-20"></div>
-      </div>
-    ))}
-  </div>
-);
-
-// Action Menu Dropdown Component
-const ActionMenu = ({ session, onJoinClass, onRegisterMakeup }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const menuRef = useRef(null);
-
-  // Close menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
-        setIsOpen(false);
-      }
-    };
-
-    if (isOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [isOpen]);
-
-  return (
-    <div className="relative" ref={menuRef}>
-      {/* Menu Button */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-        title="Tùy chọn"
-      >
-        <MoreVertical className="w-5 h-5 text-gray-600" />
-      </button>
-
-      {/* Dropdown Menu */}
-      {isOpen && (
-        <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl border border-gray-200 py-2 z-[1000] animate-fadeIn">
-          {/* Join Class Option */}
-          <button
-            onClick={() => {
-              onJoinClass();
-              setIsOpen(false);
-            }}
-            className="w-full px-4 py-2.5 text-left hover:bg-blue-50 transition-colors flex items-center gap-3 group"
-          >
-            <LogIn className="w-4 h-4 text-blue-600 group-hover:scale-110 transition-transform" />
-            <div>
-              <div className="text-sm font-medium text-gray-900">
-                Tham Gia Lớp Học
-              </div>
-              <div className="text-xs text-gray-500">
-                Vào phòng học trực tuyến
-              </div>
-            </div>
-          </button>
-
-          {/* Makeup Option (if available) */}
-          {session.showMakeupButton && (
-            <>
-              <div className="border-t border-gray-100 my-1"></div>
-              <button
-                onClick={() => {
-                  onRegisterMakeup();
-                  setIsOpen(false);
-                }}
-                className="w-full px-4 py-2.5 text-left hover:bg-orange-50 transition-colors flex items-center gap-3 group"
-              >
-                <RefreshCw className="w-4 h-4 text-orange-600 group-hover:rotate-180 transition-transform duration-300" />
-                <div>
-                  <div className="text-sm font-medium text-gray-900">
-                    Đăng Ký Học Bù
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    Buổi {session.sessionNumber}
-                  </div>
-                </div>
-              </button>
-            </>
-          )}
-        </div>
-      )}
-    </div>
-  );
-};
+  TableSkeleton,
+  ProgressSkeleton,
+  UpcomingSkeleton,
+} from "@/components/course/MyScheduleSkeleton";
+import MakeupRequestItem from "@/components/course/MakeupRequestItem";
+import MakeupModal from "@/components/course/MakeupModal";
+import ActionMenu from "@/components/course/ActionMenu";
+import { getMySchedule } from "@/api/enrollmentApi"; // API trả array classes với sessions
+import {
+  registerMakeupClass,
+  getMakeupRequestsByStudent,
+  cancelMakeupRequest,
+} from "@/api/makeuprequestApi";
+import ConfirmModal from "@/components/common/ConfirmModal";
+import { Calendar, Clock, MapPin, User, ArrowRight, X } from "lucide-react";
+import formatDateToDDMMYY from "@/utils/formatDateToDDMMYY";
+import { toast } from "react-toastify";
 
 // Empty State Component (bỏ test date input)
 const EmptyState = ({ userName }) => (
@@ -346,289 +154,6 @@ const EmptyState = ({ userName }) => (
   </div>
 );
 
-// Modal component cho chọn buổi bù - Premium Design
-const MakeupModal = ({ isOpen, onClose, missedSession, onSelectMakeup }) => {
-  const [selectedSlot, setSelectedSlot] = useState(null);
-  const [availableSlots, setAvailableSlots] = useState({
-    slots: [],
-    remainingChanges: 0,
-  });
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    const fetchAvailableMakeupClasses = async () => {
-      // ✅ Chỉ fetch khi modal OPEN và có missedSession
-      if (!isOpen || !missedSession) return;
-
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        const response = await getAvailableMakeupClasses(
-          missedSession.classId,
-          missedSession.sessionNumber
-        );
-
-        setAvailableSlots(response);
-      } catch (error) {
-        console.error("❌ Error fetching available makeup classes:", error);
-        setError(error.message || "Không thể tải danh sách lớp bù");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchAvailableMakeupClasses();
-
-    // ✅ Reset selected slot khi modal mở lại
-    return () => {
-      setSelectedSlot(null);
-    };
-  }, [isOpen, missedSession]); // ✅ Trigger khi isOpen hoặc missedSession thay đổi
-
-  const handleConfirm = () => {
-    if (selectedSlot) {
-      onSelectMakeup(selectedSlot);
-      setSelectedSlot(null);
-      onClose();
-    }
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden transform transition-all">
-        {/* Header giữ nguyên */}
-        <div className="relative bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 text-white p-5 overflow-hidden">
-          <div className="absolute top-0 right-0 w-40 h-40 bg-white opacity-5 rounded-full -mr-20 -mt-20"></div>
-          <div className="absolute bottom-0 left-0 w-32 h-32 bg-white opacity-5 rounded-full -ml-16 -mb-16"></div>
-
-          <div className="relative z-10 flex justify-between items-center">
-            <div className="flex items-center gap-3">
-              <div className="bg-white bg-opacity-20 p-2 rounded-lg backdrop-blur-sm">
-                <RefreshCw className="w-5 h-5" />
-              </div>
-              <div>
-                <h2 className="text-xl font-bold">Chọn Buổi Học Bù</h2>
-                {missedSession && (
-                  <p className="text-xs mt-1 opacity-90">
-                    Bù buổi {missedSession.sessionNumber} •{" "}
-                    {missedSession.dateLabel || missedSession.date}
-                  </p>
-                )}
-              </div>
-            </div>
-            <button
-              onClick={onClose}
-              className="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2 transition-all duration-200 hover:rotate-90"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-
-        {/* Content với Loading & Error states */}
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-220px)] bg-gray-50">
-          {/* Info Card - Số lần bù còn lại */}
-          {!isLoading && !error && (
-            <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-l-4 border-amber-400 rounded-r-xl p-5 mb-6 shadow-sm">
-              <div className="flex items-center gap-4">
-                <div className="bg-amber-100 p-3 rounded-full">
-                  <CheckCircle className="h-6 w-6 text-amber-600" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-amber-900 mb-1">
-                    Số lần bù học còn lại
-                  </p>
-                  <p className="text-amber-700">
-                    Bạn còn{" "}
-                    <span className="text-2xl font-bold text-amber-600 mx-1">
-                      {availableSlots.remainingChanges || 0}
-                    </span>
-                    lần bù học trong khóa này
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Loading State */}
-          {isLoading && (
-            <div className="flex flex-col items-center justify-center py-12">
-              <RefreshCw className="w-12 h-12 text-blue-600 animate-spin mb-4" />
-              <p className="text-gray-600">Đang tải danh sách lớp bù...</p>
-            </div>
-          )}
-
-          {/* Error State */}
-          {error && (
-            <div className="bg-red-50 border-l-4 border-red-400 p-5 rounded-r-xl mb-6">
-              <div className="flex items-center gap-3">
-                <XCircle className="w-6 h-6 text-red-600" />
-                <div>
-                  <p className="text-sm font-semibold text-red-900 mb-1">
-                    Lỗi tải dữ liệu
-                  </p>
-                  <p className="text-red-700 text-sm">{error}</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Grid Layout cho các buổi học */}
-          {!isLoading && !error && availableSlots.slots?.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {availableSlots.slots.map((slot) => {
-                const isSelected = selectedSlot?.classId === slot.classId;
-                const formattedDate = formatDateWithDay(slot.date);
-                return (
-                  <div
-                    key={slot.id}
-                    onClick={() => setSelectedSlot(slot)}
-                    className={`relative group cursor-pointer rounded-xl transition-all duration-300 transform hover:scale-[1.02] ${
-                      isSelected
-                        ? "bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-500 shadow-lg"
-                        : "bg-white border-2 border-gray-200 hover:border-blue-300 hover:shadow-md"
-                    }`}
-                  >
-                    {/* Selected Indicator */}
-                    {isSelected && (
-                      <div className="absolute -top-2 -left-2 z-10">
-                        <div className="bg-blue-600 text-white rounded-full p-1.5 shadow-lg">
-                          <CheckCircle className="w-5 h-5" />
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="p-5">
-                      {/* Header với ngày */}
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Calendar
-                              className={`w-5 h-5 ${
-                                isSelected ? "text-blue-600" : "text-gray-600"
-                              }`}
-                            />
-                            <span className="font-bold text-lg text-gray-900">
-                              {formattedDate.dayOfWeek}
-                            </span>
-                          </div>
-                          <p className="text-2xl font-bold text-gray-800">
-                            {formattedDate.date}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Session Info */}
-                      <div className="space-y-3 mb-4">
-                        <div className="flex items-center gap-3 bg-gray-50 rounded-lg p-3">
-                          <Clock className="w-5 h-5 text-indigo-600 flex-shrink-0" />
-                          <div>
-                            <p className="text-xs text-gray-500 font-medium">
-                              Thời gian
-                            </p>
-                            <p className="text-sm font-bold text-gray-900">
-                              {slot.time}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-3 bg-gray-50 rounded-lg p-3">
-                          <User className="w-5 h-5 text-purple-600 flex-shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs text-gray-500 font-medium">
-                              Lớp học
-                            </p>
-                            <p className="text-sm font-bold text-gray-900 truncate">
-                              {slot.classCode}
-                            </p>
-                            <p className="text-xs text-gray-600 truncate">
-                              {slot.instructorName}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Buổi học tag */}
-                      <div className="mt-3 flex justify-center">
-                        <span className="text-xs font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-                          Buổi {slot.sessionNumber}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Hover Effect Border */}
-                    <div
-                      className={`absolute inset-0 rounded-xl transition-opacity duration-300 ${
-                        isSelected
-                          ? "opacity-100"
-                          : "opacity-0 group-hover:opacity-100"
-                      } bg-gradient-to-br from-blue-400/10 to-purple-400/10 pointer-events-none`}
-                    ></div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Empty State */}
-          {!isLoading && !error && availableSlots.slots?.length === 0 && (
-            <div className="text-center py-12">
-              <Calendar className="w-16 h-16 mx-auto text-gray-400 mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Không có lớp bù khả dụng
-              </h3>
-              <p className="text-sm text-gray-600">
-                Hiện tại chưa có lớp bù nào phù hợp với buổi học này
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="bg-white border-t border-gray-200 px-8 py-5 flex justify-between items-center">
-          <p className="text-sm text-gray-600">
-            {selectedSlot ? (
-              <span className="flex items-center gap-2">
-                <CheckCircle className="w-4 h-4 text-green-600" />
-                Đã chọn:{" "}
-                <span className="font-semibold text-gray-900">
-                  {formatDateWithDay(selectedSlot.date).fullDate}
-                </span>
-              </span>
-            ) : (
-              "Vui lòng chọn buổi học bù phù hợp"
-            )}
-          </p>
-          <div className="flex gap-3">
-            <button
-              onClick={onClose}
-              className="px-6 py-2.5 border-2 border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-semibold transition-all duration-200"
-            >
-              Hủy
-            </button>
-            <button
-              onClick={handleConfirm}
-              disabled={!selectedSlot || isLoading}
-              className={`px-8 py-2.5 rounded-lg font-semibold transition-all duration-200 flex items-center gap-2 ${
-                selectedSlot && !isLoading
-                  ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-                  : "bg-gray-200 text-gray-400 cursor-not-allowed"
-              }`}
-            >
-              <CheckCircle className="w-5 h-5" />
-              Xác Nhận Đăng Ký
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 // Component chính
 const MySchedulePage = () => {
   const [filterPeriod, setFilterPeriod] = useState("week"); // 'week', 'month', 'all'
@@ -643,8 +168,6 @@ const MySchedulePage = () => {
   const user = useSelector((state) => state.auth.login?.currentUser);
   const userName = `${user.lastname} ${user.firstname}`;
 
-  // Dữ liệu mẫu - số lần bù còn lại (thực tế sẽ lấy từ API)
-
   // Define now at component level (fix ReferenceError)
   const now = new Date();
   now.setHours(0, 0, 0, 0); // Normalize to midnight
@@ -654,8 +177,12 @@ const MySchedulePage = () => {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const res = await getMySchedule(); // Trả array classes
-        setClasses(res); // Giả sử res.data là array classes
+        const [scheduleRes, makeupRes] = await Promise.all([
+          getMySchedule(),
+          getMakeupRequestsByStudent(), // API fetch MakeupRequest của user
+        ]);
+        setClasses(scheduleRes);
+        setRegisteredMakeups(makeupRes);
       } catch (err) {
         console.error("Lỗi fetch lịch:", err);
         if (err.response?.status === 401) navigate("/login");
@@ -728,19 +255,34 @@ const MySchedulePage = () => {
 
       // FlatMap với class info
       filteredSessions = filteredSessions.concat(
-        classSessions.map((session) => ({
-          ...session,
-          classId: cls.classId,
-          classCode: cls.classCode,
-          courseTitle: cls.courseId.title,
-          courseLevel: cls.courseId.level,
-          instructorName:
-            cls.instructor.profile.lastname +
-            " " +
-            cls.instructor.profile.firstname,
-          time: cls.time,
-          meetLink: cls.meetLink,
-        }))
+        classSessions.map((session) => {
+          // Tìm makeup matching cho session này (chỉ 1, giả sử không duplicate)
+          const matchingMakeup = registeredMakeups.find(
+            (makeup) =>
+              makeup.originalSession.classId._id.toString() === cls.classId &&
+              makeup.originalSession.sessionNumber === session.sessionNumber &&
+              ["scheduled", "completed"].includes(makeup.status)
+          );
+
+          const hasMakeup = !!matchingMakeup;
+          const statusMakeup = matchingMakeup ? matchingMakeup.status : null; // "scheduled" hoặc "completed"
+          return {
+            ...session,
+            classId: cls.classId,
+            classCode: cls.classCode,
+            courseTitle: cls.courseId.title,
+            courseLevel: cls.courseId.level,
+            instructorName:
+              cls.instructor.profile.lastname +
+              " " +
+              cls.instructor.profile.firstname,
+            time: cls.time,
+            meetLink: cls.meetLink,
+            showMakeupButton: session.showMakeupButton && !hasMakeup, // ← Kết hợp ở đây
+            hasMakeup,
+            statusMakeup,
+          };
+        })
       );
     });
 
@@ -763,6 +305,7 @@ const MySchedulePage = () => {
         return sDate >= now;
       }) || cls.sessions[0]; // Fallback first session
     return {
+      classId: cls.classId,
       courseId: cls.courseId._id,
       courseTitle: cls.courseId.title,
       courseLevel: cls.courseId.level,
@@ -772,30 +315,54 @@ const MySchedulePage = () => {
 
   // Handler mở modal bù học
   const handleOpenMakeupModal = (session) => {
-    console.log("🔵 Opening modal with session:", session);
     setSelectedMissedSession(session);
     setIsMakeupModalOpen(true);
   };
 
   // Handler đăng ký buổi bù
-  const handleSelectMakeup = (makeupSlot) => {
-    const newMakeup = {
-      id: Date.now(),
-      originalSession: selectedMissedSession,
-      makeupSlot: makeupSlot,
-      registeredAt: new Date().toISOString(),
-      status: "pending", // pending, confirmed, cancelled
-    };
-    setRegisteredMakeups([...registeredMakeups, newMakeup]);
-    alert(
-      `Đã đăng ký bù buổi ${selectedMissedSession.sessionNumber} vào ${makeupSlot.dayOfWeek}, ${makeupSlot.date}`
-    );
+  const handleSelectMakeup = async (makeupData) => {
+    try {
+      const response = await registerMakeupClass(makeupData);
+      const makeupRequest = response.makeupRequest;
+      setRegisteredMakeups((prev) => [makeupRequest, ...prev]);
+
+      // Update local classes để hide nút (tìm session tương ứng)
+      setClasses((prevClasses) =>
+        prevClasses.map((cls) => {
+          const classId = cls.classId;
+          const statusMakeup = makeupRequest.status;
+
+          return {
+            ...cls,
+            sessions: cls.sessions.map((s) =>
+              classId === selectedMissedSession.classId &&
+              s.sessionNumber === selectedMissedSession.sessionNumber
+                ? {
+                    ...s,
+
+                    hasMakeup: true,
+                    statusMakeup,
+                  } // Override
+                : s
+            ),
+          };
+        })
+      );
+    } catch (error) {
+      console.error("❌ Error registering makeup class:", error);
+      toast.error("Đã xảy ra lỗi khi đăng ký buổi bù. Vui lòng thử lại.");
+      return;
+    }
+    toast.success(`Đã đăng ký học bù thành công!`);
   };
 
   // Handler hủy buổi bù
-  const handleCancelMakeup = (makeupId) => {
-    if (window.confirm("Bạn có chắc muốn hủy đăng ký buổi bù này?")) {
-      setRegisteredMakeups(registeredMakeups.filter((m) => m.id !== makeupId));
+  const handleCancelMakeup = async (makeupId) => {
+    try {
+      setRegisteredMakeups(registeredMakeups.filter((m) => m._id !== makeupId));
+    } catch (error) {
+      console.error("❌ Error canceling makeup request:", error);
+      toast.error("Đã xảy ra lỗi khi hủy đăng ký buổi bù. Vui lòng thử lại.");
     }
   };
 
@@ -1033,7 +600,8 @@ const MySchedulePage = () => {
                             Buổi {session.sessionNumber}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {session.dateLabel}
+                            {session.dayVN}
+                            {" - "} {formatDateToDDMMYY(session.date)}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div
@@ -1049,7 +617,7 @@ const MySchedulePage = () => {
                             {session.time}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <ActionMenu
+                            {/* <ActionMenu
                               session={session}
                               onJoinClass={() =>
                                 window.open(session.meetLink, "_blank")
@@ -1057,7 +625,43 @@ const MySchedulePage = () => {
                               onRegisterMakeup={() =>
                                 handleOpenMakeupModal(session)
                               }
-                            />
+                            /> */}
+                            {session.hasMakeup ? (
+                              <span
+                                className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full 
+                              ${
+                                session.statusMakeup === "scheduled"
+                                  ? "bg-yellow-100 text-yellow-800"
+                                  : "bg-green-100 text-green-800"
+                              }`}
+                              >
+                                {session.statusMakeup === "scheduled"
+                                  ? "Đã lên lịch"
+                                  : "Đã bù"}
+                              </span>
+                            ) : session.showMakeupButton ? (
+                              <ActionMenu
+                                session={session}
+                                onJoinClass={() =>
+                                  window.open(session.meetLink, "_blank")
+                                }
+                                onRegisterMakeup={() =>
+                                  handleOpenMakeupModal(session)
+                                }
+                                //isRegistering={isRegistering} // Nếu bạn pass loading từ gợi ý trước
+                              />
+                            ) : (
+                              // Optional: Show nút Join nếu không phải makeup case (luôn có cho future/present)
+                              <button
+                                onClick={() =>
+                                  window.open(session.meetLink, "_blank")
+                                }
+                                className="text-blue-600 hover:text-blue-900 text-sm font-medium"
+                                title="Tham gia lớp"
+                              >
+                                Tham gia
+                              </button>
+                            )}
                           </td>
                         </tr>
                       );
@@ -1077,82 +681,27 @@ const MySchedulePage = () => {
               </div>
             </div>
           ) : (
-            /* Tab Lịch Bù */
-            <div className="bg-white rounded-lg shadow-md overflow-hidden">
+            /* Tab Lịch Bù - Card Layout */
+            <div className="space-y-4">
               {registeredMakeups.length > 0 ? (
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Buổi Gốc
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Buổi Bù
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Lớp Bù
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Trạng Thái
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Hành Động
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y">
-                    {registeredMakeups.map((makeup) => (
-                      <tr key={makeup.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
-                            Buổi {makeup.originalSession.sessionNumber}
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            {makeup.originalSession.dateLabel}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">
-                            {makeup.makeupSlot.dayOfWeek},{" "}
-                            {makeup.makeupSlot.date}
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            {makeup.makeupSlot.time}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
-                            {makeup.makeupSlot.className}
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            {makeup.makeupSlot.instructor}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                            Chờ xác nhận
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <button
-                            onClick={() => handleCancelMakeup(makeup.id)}
-                            className="text-red-600 hover:text-red-900 text-sm font-medium"
-                          >
-                            Hủy
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                registeredMakeups.map((makeup) => (
+                  <MakeupRequestItem
+                    key={makeup._id}
+                    makeup={makeup}
+                    onCancelClick={handleCancelMakeup}
+                  />
+                ))
               ) : (
-                <div className="px-6 py-12 text-center text-gray-500">
-                  <Calendar className="w-16 h-16 mx-auto text-gray-400 mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                <div className="bg-white rounded-xl shadow-md p-12 text-center">
+                  <div className="bg-gradient-to-br from-gray-100 to-gray-200 rounded-full w-24 h-24 flex items-center justify-center mx-auto mb-6">
+                    <Calendar className="w-12 h-12 text-gray-400" />
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">
                     Chưa có buổi bù nào
                   </h3>
-                  <p className="text-sm text-gray-600">
-                    Các buổi học bù bạn đăng ký sẽ hiển thị tại đây
+                  <p className="text-sm text-gray-600 max-w-md mx-auto">
+                    Các buổi học bù bạn đăng ký sẽ hiển thị tại đây. Hãy đăng ký
+                    bù buổi khi bạn vắng mặt nhé!
                   </p>
                 </div>
               )}
@@ -1207,7 +756,7 @@ const MySchedulePage = () => {
             <div className="bg-white rounded-lg shadow-md p-6 space-y-3 max-h-64 overflow-y-auto">
               {upcomingClasses.map((cls) => (
                 <div
-                  key={cls.classCode}
+                  key={cls.classId}
                   className="flex items-center p-3 bg-gray-50 rounded-lg"
                 >
                   <div
@@ -1224,13 +773,13 @@ const MySchedulePage = () => {
                       {cls.classCode} - {cls.courseTitle}
                     </p>
                     <p className="text-xs text-gray-500">
-                      Level: {cls.courseLevel}
+                      Level: {cls.courseLevel} <br />
                       {cls.nextSession &&
-                        ` | Buổi tới: ${cls.nextSession.dateLabel}`}
+                        `Buổi tiếp theo: ${cls.nextSession.dateLabel}`}
                     </p>
                   </div>
                   <button
-                    onClick={() => navigate(`/classes/${cls.courseId}`)}
+                    onClick={() => navigate(`/classes/${cls.classId}`)}
                     className="text-xs text-blue-600 hover:text-blue-900"
                   >
                     Xem Chi Tiết
