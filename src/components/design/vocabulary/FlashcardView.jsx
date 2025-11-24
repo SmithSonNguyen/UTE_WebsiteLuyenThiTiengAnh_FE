@@ -57,7 +57,7 @@ export const FlashcardView = ({ words, lessonTitle, onBack, onComplete }) => {
   const speak = (text) => {
     if ("speechSynthesis" in window) {
       // Loại bỏ phần phát âm (từ dấu / đầu tiên trở đi)
-      const cleanText = text.split('/')[0].trim();
+      const cleanText = text.split("/")[0].trim();
       const utterance = new SpeechSynthesisUtterance(cleanText);
       utterance.lang = "en-US";
       utterance.rate = 0.9; // Tốc độ nói chậm hơn một chút để rõ ràng
