@@ -29,6 +29,7 @@ import StudentProtectedRouter from "./StudentProtectedRouter";
 import FreeEntryTestResult from "@/pages/test/FreeEntryTestResult";
 import VideoCoursePage from "@/pages/course/VideoCoursePage";
 import PracticeTabs from "@/components/practice/PracticeTabs";
+import NewsPortal from "@/pages/NewsPortal";
 import AllCourse from "@/pages/course/AllCourse";
 function AppRouter() {
   return (
@@ -107,6 +108,14 @@ function AppRouter() {
         element={
           <ToeicLayout>
             <MyVocabularyPage />
+          </ToeicLayout>
+        }
+      />
+      <Route
+        path="/toeic-home/news-portal"
+        element={
+          <ToeicLayout>
+            <NewsPortal />
           </ToeicLayout>
         }
       />
