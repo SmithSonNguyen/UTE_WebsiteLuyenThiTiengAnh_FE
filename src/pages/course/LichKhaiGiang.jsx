@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   ChevronLeft,
   ChevronRight,
@@ -8,102 +8,90 @@ import {
   Youtube,
   Home,
 } from "lucide-react";
+import { getAllUpcomingLiveClasses } from "@/api/classApi";
+import { toast } from "react-hot-toast";
+import { format } from "date-fns";
+import bannerImage from "@/assets/banner.png";
 
 const TOEICSchedulePage = () => {
-  const [selectedLocation, setSelectedLocation] = useState("0");
-  const [selectedCourse, setSelectedCourse] = useState("0");
+  const [selectedCourse, setSelectedCourse] = useState("all");
+  const [loading, setLoading] = useState(true);
+  const [scheduleData, setScheduleData] = useState([]);
 
-  // Sample data
-  const locations = {
-    "Hà Nội": [
-      { id: "1", name: "CS1: 188 Nguyễn Lương Bằng, Ô Chợ Dừa, Đống Đa, HN" },
-      { id: "2", name: "CS2: 461 Hoàng Quốc Việt, Cầu Giấy" },
-      { id: "3", name: "CS3: 141 Bạch Mai, Hai Bà Trưng" },
-    ],
-    "TP. Hồ Chí Minh": [
-      { id: "6", name: "CS1: 49A Phan Đăng Lưu, Q. Bình Thạnh" },
-      { id: "7", name: "CS2: 125 Bà Hom, Phường 13, Quận 6" },
-      { id: "8", name: "CS3: 1095-1097 Huỳnh Tấn Phát, Quận 7" },
-      { id: "9", name: "CS4: 427 Cộng Hòa, Q.Tân Bình" },
-      { id: "10", name: "CS5: 215 Khánh Hội, Q4" },
-    ],
+  // Fetch data from API
+  useEffect(() => {
+    const fetchScheduleData = async () => {
+      try {
+        setLoading(true);
+        const data = await getAllUpcomingLiveClasses();
+        setScheduleData(data.classes || []);
+      } catch (error) {
+        console.error("Error fetching schedule:", error);
+        toast.error("Không thể tải lịch khai giảng");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchScheduleData();
+  }, []);
+
+  // Helper function to format days in Vietnamese
+  const formatDaysVN = (days) => {
+    const dayMap = {
+      Monday: "Thứ 2",
+      Tuesday: "Thứ 3",
+      Wednesday: "Thứ 4",
+      Thursday: "Thứ 5",
+      Friday: "Thứ 6",
+      Saturday: "Thứ 7",
+      Sunday: "Chủ nhật",
+    };
+    return days.map((day) => dayMap[day] || day).join(", ");
   };
 
-  const courses = [
-    { id: "238", name: "Level Pre (300-350)" },
-    { id: "239", name: "Level A (450-500)" },
-    { id: "240", name: "Level B (600-650)" },
-    { id: "241", name: "Khóa TOEIC Speaking, Writing" },
-    { id: "243", name: "Luyện đề TOEIC" },
-  ];
+  // Helper function to format date
+  const formatDate = (dateString) => {
+    try {
+      return format(new Date(dateString), "dd/MM/yyyy");
+    } catch {
+      return dateString;
+    }
+  };
 
-  const scheduleData = [
-    {
-      location: "CS1: 49A Phan Đăng Lưu, Q. Bình Thạnh",
-      courses: [
-        {
-          level: "Level Pre (300-350)",
-          classes: [
-            {
-              code: "PRE86012",
-              schedule:
-                "Thứ 3, 19:45 - 21:15\nThứ 5, 19:45 - 21:15\nThứ 7, 19:45 - 21:15",
-              startDate: "16/10/2025",
-            },
-            {
-              code: "PRE91114",
-              schedule:
-                "Thứ 2, 20:00 - 21:30\nThứ 4, 20:00 - 21:30\nThứ 6, 20:00 - 21:30",
-              startDate: "31/10/2025",
-            },
-          ],
-        },
-        {
-          level: "Level A (450-500)",
-          classes: [
-            {
-              code: "APLUS88525",
-              schedule:
-                "Thứ 2, 19:45 - 21:15\nThứ 4, 19:45 - 21:15\nThứ 6, 19:45 - 21:15",
-              startDate: "15/10/2025",
-            },
-            {
-              code: "A91115",
-              schedule:
-                "Thứ 2, 20:00 - 21:30\nThứ 4, 20:00 - 21:30\nThứ 6, 20:00 - 21:30",
-              startDate: "24/10/2025",
-            },
-          ],
-        },
-      ],
-    },
-    {
-      location: "CS4: 427 Cộng Hòa, Q.Tân Bình",
-      courses: [
-        {
-          level: "Level Pre (300-350)",
-          classes: [
-            {
-              code: "PRE90754",
-              schedule:
-                "Thứ 2, 19:45 - 21:15\nThứ 4, 19:45 - 21:15\nThứ 6, 19:45 - 21:15",
-              startDate: "13/10/2025",
-            },
-          ],
-        },
-        {
-          level: "Level B (600-650)",
-          classes: [
-            {
-              code: "BPLUS90751",
-              schedule:
-                "Thứ 2, 17:45 - 19:15\nThứ 4, 17:45 - 19:15\nThứ 6, 17:45 - 19:15",
-              startDate: "20/10/2025",
-            },
-          ],
-        },
-      ],
-    },
+  // Helper function to format level name
+  const formatLevelName = (level) => {
+    const levelMap = {
+      beginner: "Cơ bản (0-450)",
+      intermediate: "Trung cấp (450-650)",
+      advanced: "Nâng cao (650+)",
+    };
+    return levelMap[level] || level;
+  };
+
+  // Group classes by course level
+  const groupedData = scheduleData.reduce((acc, classItem) => {
+    const level = classItem.courseId?.level || "unknown";
+    if (!acc[level]) {
+      acc[level] = [];
+    }
+    acc[level].push(classItem);
+    return acc;
+  }, {});
+
+  // Filter by selected course
+  const filteredData =
+    selectedCourse === "all"
+      ? groupedData
+      : {
+          [selectedCourse]: groupedData[selectedCourse] || [],
+        };
+
+  const courses = [
+    { id: "all", name: "Tất cả khóa học" },
+    { id: "beginner", name: "Cơ bản (0-450)" },
+    { id: "intermediate", name: "Trung cấp (450-650)" },
+    { id: "advanced", name: "Nâng cao (650+)" },
   ];
 
   const features = [
@@ -138,8 +126,6 @@ const TOEICSchedulePage = () => {
     lastName: "",
     phone: "",
     email: "",
-    birthday: "",
-    location: "",
     message: "",
   });
 
@@ -151,103 +137,45 @@ const TOEICSchedulePage = () => {
       lastName: "",
       phone: "",
       email: "",
-      birthday: "",
-      location: "",
       message: "",
     });
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm sticky top-0 z-50">
-        <nav className="container mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-8">
-              <Home className="w-6 h-6 text-blue-600" />
-              <a
-                href="#intro"
-                className="text-gray-700 hover:text-blue-600 transition"
-              >
-                Giới thiệu
-              </a>
-              <a
-                href="#courses"
-                className="text-gray-700 hover:text-blue-600 transition"
-              >
-                Khoá học
-              </a>
-              <a
-                href="#schedule"
-                className="text-gray-700 hover:text-blue-600 transition"
-              >
-                Lịch khai giảng
-              </a>
-              <a
-                href="#register"
-                className="text-gray-700 hover:text-blue-600 transition"
-              >
-                Đăng ký
-              </a>
-            </div>
-            <div className="flex space-x-4">
-              <Facebook className="w-5 h-5 text-blue-600 cursor-pointer hover:scale-110 transition" />
-              <Youtube className="w-5 h-5 text-red-600 cursor-pointer hover:scale-110 transition" />
-            </div>
-          </div>
-        </nav>
-      </header>
-
+    <div className="min-h-screen bg-white">
       {/* Hero Section */}
-      <div className="relative h-96 bg-gradient-to-r from-blue-600 to-blue-800 overflow-hidden">
-        <div className="absolute inset-0 bg-black opacity-30"></div>
-        <div className="relative container mx-auto px-4 h-full flex items-center justify-center">
-          <div className="text-center text-white">
-            <h1 className="text-5xl font-bold mb-4">DDT TOEIC</h1>
-            <p className="text-xl">Đào tạo TOEIC số 1 Việt Nam</p>
-          </div>
+      <section className="relative min-h-80 bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-10 overflow-hidden">
+        {/* Background Image with Overlay */}
+        <div className="absolute inset-0">
+          <img
+            src={bannerImage}
+            alt="TOEIC Banner"
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-900/80 to-indigo-900/80"></div>
         </div>
-      </div>
+
+        {/* Content */}
+      </section>
 
       {/* Introduction */}
       <section id="intro" className="py-16 bg-white">
         <div className="container mx-auto px-4">
           <h2 className="text-4xl font-bold text-center mb-8 text-gray-800">
-            LỊCH KHAI GIẢNG CÁC LỚP TOEIC TẠI TP. HCM
+            LỊCH KHAI GIẢNG CÁC LỚP LUYỆN THI TOEIC TẠI DTT TOEIC
           </h2>
         </div>
       </section>
 
       {/* Main Content */}
-      <section id="schedule" className="py-8 bg-gray-50">
+      <section id="schedule" className="py-8 bg-white max-w-7xl mx-auto">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Schedule Section */}
             <div className="lg:col-span-2">
               {/* Filter */}
               <div className="bg-white p-6 rounded-lg shadow-md mb-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Chọn cơ sở
-                    </label>
-                    <select
-                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      value={selectedLocation}
-                      onChange={(e) => setSelectedLocation(e.target.value)}
-                    >
-                      <option value="0">Chọn cơ sở</option>
-                      {Object.entries(locations).map(([city, locs]) => (
-                        <optgroup key={city} label={city}>
-                          {locs.map((loc) => (
-                            <option key={loc.id} value={loc.id}>
-                              {loc.name}
-                            </option>
-                          ))}
-                        </optgroup>
-                      ))}
-                    </select>
-                  </div>
+                <div className="grid grid-cols-1 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Chọn khóa học
@@ -257,7 +185,6 @@ const TOEICSchedulePage = () => {
                       value={selectedCourse}
                       onChange={(e) => setSelectedCourse(e.target.value)}
                     >
-                      <option value="0">Chọn khóa học</option>
                       {courses.map((course) => (
                         <option key={course.id} value={course.id}>
                           {course.name}
@@ -268,80 +195,122 @@ const TOEICSchedulePage = () => {
                 </div>
               </div>
 
+              {/* Loading State */}
+              {loading && (
+                <div className="text-center py-8">
+                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                  <p className="mt-2 text-gray-600">
+                    Đang tải lịch khai giảng...
+                  </p>
+                </div>
+              )}
+
+              {/* Empty State */}
+              {!loading && scheduleData.length === 0 && (
+                <div className="bg-white rounded-lg shadow-md p-8 text-center">
+                  <p className="text-gray-600">Chưa có lịch khai giảng nào</p>
+                </div>
+              )}
+
               {/* Schedule Tables */}
-              {scheduleData.map((location, idx) => (
-                <div
-                  key={idx}
-                  className="bg-white rounded-lg shadow-md mb-6 overflow-hidden"
-                >
-                  <div className="bg-blue-600 text-white text-center py-4">
-                    <h3 className="text-xl font-bold">{location.location}</h3>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead className="bg-gray-100">
-                        <tr>
-                          <th className="px-4 py-3 text-left font-semibold text-gray-700">
-                            Level
-                          </th>
-                          <th className="px-4 py-3 text-left font-semibold text-gray-700">
-                            Lớp
-                          </th>
-                          <th className="px-4 py-3 text-left font-semibold text-gray-700">
-                            Thời gian học
-                          </th>
-                          <th className="px-4 py-3 text-left font-semibold text-gray-700">
-                            Khai giảng
-                          </th>
-                          <th className="px-4 py-3 text-center font-semibold text-gray-700">
-                            Đăng ký
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {location.courses.map((course, courseIdx) => (
-                          <React.Fragment key={courseIdx}>
-                            {course.classes.map((cls, clsIdx) => (
+              {!loading &&
+                Object.entries(filteredData).map(([level, classes]) => {
+                  if (classes.length === 0) return null;
+
+                  return (
+                    <div
+                      key={level}
+                      className="bg-white rounded-lg shadow-md mb-6 overflow-hidden"
+                    >
+                      <div className="bg-blue-600 text-white text-center py-4">
+                        <h3 className="text-xl font-bold">
+                          {formatLevelName(level)}
+                        </h3>
+                      </div>
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead className="bg-gray-100">
+                            <tr>
+                              <th className="px-4 py-3 text-left font-semibold text-gray-700">
+                                Mã lớp
+                              </th>
+                              <th className="px-4 py-3 text-left font-semibold text-gray-700">
+                                Khóa học
+                              </th>
+                              <th className="px-4 py-3 text-left font-semibold text-gray-700">
+                                Thời gian học
+                              </th>
+                              <th className="px-4 py-3 text-left font-semibold text-gray-700">
+                                Khai giảng
+                              </th>
+                              <th className="px-4 py-3 text-center font-semibold text-gray-700">
+                                Sĩ số
+                              </th>
+                              <th className="px-4 py-3 text-center font-semibold text-gray-700">
+                                Đăng ký
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {classes.map((classItem, idx) => (
                               <tr
-                                key={clsIdx}
+                                key={idx}
                                 className="border-t hover:bg-gray-50 transition"
                               >
-                                {clsIdx === 0 && (
-                                  <td
-                                    rowSpan={course.classes.length}
-                                    className="px-4 py-3 font-semibold text-blue-600 border-r"
-                                  >
-                                    {course.level}
-                                  </td>
-                                )}
-                                <td className="px-4 py-3 font-mono text-sm">
-                                  {cls.code}
+                                <td className="px-4 py-3 font-mono text-sm font-semibold">
+                                  {classItem.classCode}
                                 </td>
-                                <td className="px-4 py-3 text-sm whitespace-pre-line">
-                                  {cls.schedule}
+                                <td className="px-4 py-3 text-sm">
+                                  {classItem.courseId?.title || "N/A"}
+                                </td>
+                                <td className="px-4 py-3 text-sm">
+                                  <div>
+                                    {formatDaysVN(classItem.schedule.days)}
+                                  </div>
+                                  <div className="text-gray-600">
+                                    {classItem.schedule.startTime} -{" "}
+                                    {classItem.schedule.endTime}
+                                  </div>
                                 </td>
                                 <td className="px-4 py-3 text-sm font-semibold">
-                                  {cls.startDate}
+                                  {formatDate(classItem.schedule.startDate)}
+                                </td>
+                                <td className="px-4 py-3 text-center text-sm">
+                                  {classItem.capacity.currentStudents} /{" "}
+                                  {classItem.capacity.maxStudents}
                                 </td>
                                 <td className="px-4 py-3 text-center">
-                                  <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition">
-                                    Đăng ký
+                                  <button
+                                    className={`px-4 py-2 rounded-md text-sm font-medium transition ${
+                                      classItem.capacity.currentStudents >=
+                                      classItem.capacity.maxStudents
+                                        ? "bg-gray-400 cursor-not-allowed"
+                                        : "bg-red-600 hover:bg-red-700 text-white"
+                                    }`}
+                                    disabled={
+                                      classItem.capacity.currentStudents >=
+                                      classItem.capacity.maxStudents
+                                    }
+                                  >
+                                    {classItem.capacity.currentStudents >=
+                                    classItem.capacity.maxStudents
+                                      ? "Đã đầy"
+                                      : "Đăng ký"}
                                   </button>
                                 </td>
                               </tr>
                             ))}
-                          </React.Fragment>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  );
+                })}
             </div>
 
             {/* Registration Form */}
             <div className="lg:col-span-1">
-              <div className="bg-gradient-to-br from-blue-600 to-blue-800 rounded-lg shadow-lg p-6 text-white sticky top-24">
+              <div className="bg-gradient-to-br from-blue-600 to-blue-800 rounded-lg shadow-lg p-6 text-white sticky top-32">
                 <h3 className="text-2xl font-bold mb-2">Đăng ký tư vấn</h3>
                 <p className="text-blue-100 mb-6">Hoàn toàn miễn phí</p>
                 <form onSubmit={handleSubmit} className="space-y-4">
@@ -351,9 +320,9 @@ const TOEICSchedulePage = () => {
                       placeholder="Họ và tên đệm *"
                       required
                       className="px-4 py-2 rounded-md text-gray-800 focus:ring-2 focus:ring-blue-300"
-                      value={formData.firstName}
+                      value={formData.lastName}
                       onChange={(e) =>
-                        setFormData({ ...formData, firstName: e.target.value })
+                        setFormData({ ...formData, lastName: e.target.value })
                       }
                     />
                     <input
@@ -361,9 +330,9 @@ const TOEICSchedulePage = () => {
                       placeholder="Tên *"
                       required
                       className="px-4 py-2 rounded-md text-gray-800 focus:ring-2 focus:ring-blue-300"
-                      value={formData.lastName}
+                      value={formData.firstName}
                       onChange={(e) =>
-                        setFormData({ ...formData, lastName: e.target.value })
+                        setFormData({ ...formData, firstName: e.target.value })
                       }
                     />
                   </div>
@@ -391,32 +360,13 @@ const TOEICSchedulePage = () => {
                   </div>
                   <input
                     type="text"
-                    placeholder="Ngày sinh (dd/mm/yy)"
-                    className="w-full px-4 py-2 rounded-md text-gray-800 focus:ring-2 focus:ring-blue-300"
-                    value={formData.birthday}
+                    placeholder="Nội dung tư vấn *"
+                    className="w-full px-4 py-2 rounded-md text-gray-800 focus:ring-2 focus:ring-blue-300 line-clamp-3"
+                    value={formData.message}
                     onChange={(e) =>
-                      setFormData({ ...formData, birthday: e.target.value })
+                      setFormData({ ...formData, message: e.target.value })
                     }
                   />
-                  <select
-                    required
-                    className="w-full px-4 py-2 rounded-md text-gray-800 focus:ring-2 focus:ring-blue-300"
-                    value={formData.location}
-                    onChange={(e) =>
-                      setFormData({ ...formData, location: e.target.value })
-                    }
-                  >
-                    <option value="">Chọn cơ sở</option>
-                    {Object.entries(locations).map(([city, locs]) => (
-                      <optgroup key={city} label={city}>
-                        {locs.map((loc) => (
-                          <option key={loc.id} value={loc.id}>
-                            {loc.name}
-                          </option>
-                        ))}
-                      </optgroup>
-                    ))}
-                  </select>
                   <button
                     type="submit"
                     className="w-full bg-white text-blue-600 font-bold py-3 rounded-md hover:bg-blue-50 transition transform hover:scale-105"
@@ -455,45 +405,6 @@ const TOEICSchedulePage = () => {
           </div>
         </div>
       </section>
-
-      {/* Footer */}
-      <footer className="bg-gray-900 text-white py-12">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div>
-              <h3 className="text-xl font-bold mb-4">DDT TOEIC</h3>
-              <p className="text-gray-400 mb-2">Đào tạo TOEIC số 1 Việt Nam</p>
-              <div className="flex items-center space-x-2 mb-2">
-                <Phone className="w-4 h-4" />
-                <span>0934 489 666</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Mail className="w-4 h-4" />
-                <span>toeic@ddt.com</span>
-              </div>
-            </div>
-            <div>
-              <h4 className="font-bold mb-4">Cơ sở Hồ Chí Minh</h4>
-              <ul className="text-sm space-y-2 text-gray-400">
-                <li>CS1: 49A Phan Đăng Lưu, Q. Bình Thạnh</li>
-                <li>CS2: 125 Bà Hom, Quận 6</li>
-                <li>CS3: 1095-1097 Huỳnh Tấn Phát, Quận 7</li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-bold mb-4">Cơ sở Hà Nội</h4>
-              <ul className="text-sm space-y-2 text-gray-400">
-                <li>CS1: 188 Nguyễn Lương Bằng, Đống Đa</li>
-                <li>CS2: 461 Hoàng Quốc Việt, Cầu Giấy</li>
-                <li>CS3: 141 Bạch Mai, Hai Bà Trưng</li>
-              </ul>
-            </div>
-          </div>
-          <div className="mt-8 pt-8 border-t border-gray-800 text-center text-gray-400 text-sm">
-            © 2025 Anh Ngữ DDT - All rights reserved
-          </div>
-        </div>
-      </footer>
     </div>
   );
 };
