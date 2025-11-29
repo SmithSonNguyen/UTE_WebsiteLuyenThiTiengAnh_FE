@@ -92,6 +92,15 @@ export default function AvatarMenu() {
                   Lịch học của tôi
                 </button>
                 <button
+                  className="block w-full text-left hover:bg-gray-100 whitespace-nowrap px-4 py-2 rounded-t-md"
+                  onClick={() => {
+                    setOpen(false);
+                    navigate("/my-enrolled-courses"); // Chuyển sang trang khoá học của tôi
+                  }}
+                >
+                  Khoá học của tôi
+                </button>
+                <button
                   className="block w-full text-left hover:bg-gray-100 whitespace-nowrap px-4 py-2 rounded-b-md"
                   onClick={handleLogoutClick}
                 >
