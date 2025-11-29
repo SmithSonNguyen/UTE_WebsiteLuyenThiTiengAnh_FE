@@ -1,11 +1,6 @@
-// pages/ClassDetailPage.jsx
-// Import React và các hook cần thiết
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom"; // React Router cho params và nav
 import { getClassForStudent } from "@/api/classApi"; // API lấy thông tin lớp học
-
-// Dữ liệu mẫu (fake data dựa trên schema Enrollment/Class)
-// Trong thực tế, fetch từ API /classes/:classId với accessToken và requireEnrollment middleware
 
 // Virtual daysVN
 const dayMap = {
@@ -36,7 +31,6 @@ const ClassDetailPage = () => {
     const fetchData = async () => {
       try {
         // Giả sử API trả về { class: mockClassData, enrollment: mockEnrollmentData }
-        // Trong thực tế: const res = await axios.get(`/api/classes/${classId}`, { headers: { Authorization: `Bearer ${token}` } });
         const res = await getClassForStudent(classId);
         setClassData(res);
         //setEnrollmentData(res.enrollment);
@@ -74,7 +68,7 @@ const ClassDetailPage = () => {
     );
   }
 
-  const { schedule, courseId, instructor, capacity, classCode, status } =
+  const { schedule, courseId, instructor, capacity, classCode, enrollment } =
     classData;
 
   const daysVN = getDaysVN(schedule.days);
@@ -177,25 +171,36 @@ const ClassDetailPage = () => {
                   Hoàn thành
                 </span>
                 <span className="text-lg font-bold text-gray-900">
-                  {status.progressPercent}%
+                  {(
+                    (enrollment.progress.sessionsAttended /
+                      enrollment.progress.totalSessions) *
+                    100
+                  ).toFixed(0)}
+                  %
                 </span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2.5">
                 <div
                   className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
-                  style={{ width: `${status.progressPercent}%` }}
+                  style={{
+                    width: `${(
+                      (enrollment.progress.sessionsAttended /
+                        enrollment.progress.totalSessions) *
+                      100
+                    ).toFixed(0)}%`,
+                  }}
                 ></div>
               </div>
               <div className="grid grid-cols-2 gap-4 text-center">
                 <div>
                   <div className="text-2xl font-bold text-gray-900">
-                    {status.sessionsAttended}
+                    {enrollment.progress.sessionsAttended}
                   </div>
                   <div className="text-sm text-gray-500">Buổi Đã Học</div>
                 </div>
                 <div>
                   <div className="text-2xl font-bold text-gray-900">
-                    {status.totalSessions}
+                    {enrollment.progress.totalSessions}
                   </div>
                   <div className="text-sm text-gray-500">Tổng Buổi</div>
                 </div>
