@@ -60,12 +60,12 @@ const HeaderToeicHome = () => {
 
           {/* Right */}
           <div className="flex items-center gap-3 md:gap-4">
-            <button
+            {/* <button
               onClick={() => setOpenModal(true)}
               className="inline-flex 2xl:hidden px-4 py-2.5 text-sm font-semibold tracking-[0.08px] text-white bg-blue-500 hover:bg-blue-600 rounded-[32px] focus:ring-2 focus:ring-blue-300 transition text-base font-semibold"
             >
               Bắt đầu
-            </button>
+            </button> */}
 
             <AvatarMenu />
           </div>

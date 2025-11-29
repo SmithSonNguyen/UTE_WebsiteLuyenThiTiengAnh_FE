@@ -5,13 +5,12 @@ import Button from "../components/common/Button";
 import FaqSectionToeicHome from "../components/layouts/FaqSectionToeicHome";
 import CourseCarousel from "../components/course/CourseCarousel";
 import { getFeaturedCourses } from "@/api/courseApi";
-import { getMySchedule } from "@/api/enrollmentApi";
+import { getTodaySchedule } from "@/api/enrollmentApi";
 import bannerImage from "@/assets/banner.png";
 
 const ToeicHome = () => {
   const [courses, setCourses] = useState([]);
   const [todaySessions, setTodaySessions] = useState([]);
-  const [enrollments, setEnrollments] = useState([]);
   const [isLoadingSchedule, setIsLoadingSchedule] = useState(false);
   const currentUser = useSelector((state) => state.auth.login.currentUser);
   const navigate = useNavigate();
@@ -34,12 +33,11 @@ const ToeicHome = () => {
     const fetchTodaySchedule = async () => {
       setIsLoadingSchedule(true);
       try {
-        const enrollments = await getMySchedule();
-        const todaySessions = generateTodaySessions(enrollments);
-        setTodaySessions(todaySessions);
-        setEnrollments(enrollments);
+        const response = await getTodaySchedule(); // Pass studentId nếu API cần
+        setTodaySessions(response.sessions || []);
       } catch (error) {
         console.error("Error fetching today's schedule:", error);
+        setTodaySessions([]);
       } finally {
         setIsLoadingSchedule(false);
       }
@@ -47,90 +45,20 @@ const ToeicHome = () => {
     fetchTodaySchedule();
   }, [currentUser]);
 
-  const generateTodaySessions = (enrollments) => {
+  // Helper: Compute if can join (for makeup only)
+  const canJoinSession = (session) => {
+    if (session.type !== "makeup") return true; // Regular always enabled
+
     const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const [startTimeStr, endTimeStr] = session.time.split(" - "); // "18:00 - 19:30"
+    const dateStr = session.date.split("T")[0]; // "2025-11-19"
 
-    const sessions = [];
+    // Local datetime for start and end
+    const fullStart = new Date(`${dateStr}T${startTimeStr}:00`);
+    const fullEnd = new Date(`${dateStr}T${endTimeStr}:00`);
+    const thirtyMinBefore = new Date(fullStart.getTime() - 30 * 60 * 1000);
 
-    const dayMap = {
-      Monday: "Thứ 2",
-      Tuesday: "Thứ 3",
-      Wednesday: "Thứ 4",
-      Thursday: "Thứ 5",
-      Friday: "Thứ 6",
-      Saturday: "Thứ 7",
-      Sunday: "Chủ nhật",
-    };
-
-    const dayNumMap = {
-      Sunday: 0,
-      Monday: 1,
-      Tuesday: 2,
-      Wednesday: 3,
-      Thursday: 4,
-      Friday: 5,
-      Saturday: 6,
-    };
-
-    const createDateOnly = (dateInput) => {
-      let dateStr;
-      if (dateInput instanceof Date) {
-        dateStr = dateInput.toISOString().split("T")[0];
-      } else if (typeof dateInput === "string") {
-        dateStr = dateInput.split("T")[0];
-      } else {
-        return null;
-      }
-      const [year, month, day] = dateStr.split("-").map(Number);
-      return new Date(year, month - 1, day);
-    };
-
-    enrollments.forEach((enroll) => {
-      const { classId } = enroll;
-      const schedule = classId.schedule;
-      const classStart = createDateOnly(schedule.startDate);
-      const classEnd = createDateOnly(schedule.endDate);
-      if (!classStart || !classEnd) return;
-
-      const firstWeekStart = new Date(classStart);
-      const startDay = firstWeekStart.getDay();
-      firstWeekStart.setDate(
-        firstWeekStart.getDate() - (startDay === 0 ? 6 : startDay - 1)
-      );
-
-      let currentWeekStart = new Date(firstWeekStart);
-
-      while (currentWeekStart <= classEnd) {
-        schedule.days.forEach((dayEn) => {
-          const dayNum = dayNumMap[dayEn];
-          const targetDate = new Date(currentWeekStart);
-          const diffDays = dayNum - 1;
-          targetDate.setDate(currentWeekStart.getDate() + diffDays);
-
-          if (targetDate >= classStart && targetDate <= classEnd) {
-            const normalizedTargetDate = new Date(
-              targetDate.getFullYear(),
-              targetDate.getMonth(),
-              targetDate.getDate()
-            );
-            if (normalizedTargetDate.getTime() === today.getTime()) {
-              const session = {
-                ...enroll,
-                sessionDate: targetDate,
-                dayVN: dayMap[dayEn],
-                isToday: true,
-              };
-              sessions.push(session);
-            }
-          }
-        });
-
-        currentWeekStart.setDate(currentWeekStart.getDate() + 7);
-      }
-    });
-
-    return sessions.sort((a, b) => a.sessionDate - b.sessionDate);
+    return now >= thirtyMinBefore && now <= fullEnd;
   };
 
   const renderHeroSection = () => {
@@ -160,7 +88,7 @@ const ToeicHome = () => {
               </h2>
 
               <div className="space-y-4 animate-pulse">
-                {[1].map((i) => (
+                {[1, 2].map((i) => (
                   <div
                     key={i}
                     className="bg-white/20 backdrop-blur-sm rounded-lg p-4 flex flex-col gap-2"
@@ -170,42 +98,6 @@ const ToeicHome = () => {
                     <div className="h-4 bg-white/20 rounded w-1/2"></div>
                   </div>
                 ))}
-              </div>
-            </div>
-          </section>
-        );
-      } else if (enrollments.length === 0) {
-        return (
-          <section className="relative bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-10 overflow-hidden">
-            {/* Background Image with Overlay */}
-            <div className="absolute inset-0">
-              <img
-                src={bannerImage}
-                alt="TOEIC Banner"
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-900/80 to-indigo-900/80"></div>
-            </div>
-
-            {/* Content */}
-            <div className="container mx-auto px-6 text-left max-w-7xl relative z-10">
-              <h1 className="text-4xl md:text-4xl font-bold mb-10">
-                Xin chào, {userName}!
-              </h1>
-              <h2 className="text-2xl md:text-2xl font-semibold mb-4">
-                Lịch học hôm nay ({new Date().toLocaleDateString("vi-VN")})
-              </h2>
-              <p className="text-lg md:text-xl mb-8 text-blue-100">
-                Bạn chưa đăng ký khóa học nào. Hãy khám phá các khóa học TOEIC
-                nổi bật ngay bây giờ!
-              </p>
-              <div className="flex justify-center">
-                <Button
-                  size="lg"
-                  className="bg-yellow-400 text-black font-semibold hover:bg-yellow-500 transition-colors"
-                >
-                  Đăng ký học ngay
-                </Button>
               </div>
             </div>
           </section>
@@ -260,32 +152,46 @@ const ToeicHome = () => {
               </h2>
               <div className="space-y-4 mb-8">
                 {todaySessions.map((session) => {
-                  const { classId } = session;
+                  const canJoin = canJoinSession(session);
+                  const buttonClass = canJoin
+                    ? "bg-green-400 text-black hover:bg-green-500"
+                    : "bg-gray-500 text-white cursor-not-allowed";
+
                   return (
                     <div
-                      key={session._id}
-                      className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20 hover:bg-white/20 transition-all"
+                      key={session.classId + session.sessionNumber} // Unique key
+                      className="relative bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20 hover:bg-white/20 transition-all"
                     >
-                      <p className="text-lg font-semibold">
-                        {classId.courseId?.title || "Khóa học TOEIC"}
-                      </p>
-                      <p className="text-sm text-blue-100">
-                        {`Giảng viên ${
-                          classId?.instructor?.profile?.lastname || ""
-                        } ${classId?.instructor?.profile?.firstname || ""}`}
-                      </p>
-                      <p className="text-sm">
-                        {classId.schedule.startTime} -{" "}
-                        {classId.schedule.endTime}
-                      </p>
-                      <button
-                        onClick={() =>
-                          window.open(classId.schedule.meetLink, "_blank")
-                        }
-                        className="mt-2 bg-green-400 text-black px-4 py-2 rounded text-sm font-semibold hover:bg-green-500 transition-colors"
-                      >
-                        Tham gia ngay
-                      </button>
+                      {/* Badge cho buổi bù: Vị trí top-right */}
+                      {session.type === "makeup" && (
+                        <div className="absolute top-2 right-2">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-400 text-black">
+                            Buổi bù
+                          </span>
+                        </div>
+                      )}
+                      <div className="">
+                        {" "}
+                        {/* Padding-top để tránh overlap badge */}
+                        <p className="text-lg font-semibold">
+                          {session.courseTitle}
+                        </p>
+                        <p className="text-sm text-blue-100">
+                          {`Giảng viên ${session.instructor.profile.lastname} ${session.instructor.profile.firstname}`}
+                        </p>
+                        <p className="text-sm">{session.time}</p>
+                        <button
+                          onClick={
+                            canJoin
+                              ? () => window.open(session.meetLink, "_blank")
+                              : undefined
+                          }
+                          disabled={!canJoin}
+                          className={`mt-2 px-4 py-2 rounded text-sm font-semibold transition-colors ${buttonClass}`}
+                        >
+                          Tham gia ngay
+                        </button>
+                      </div>
                     </div>
                   );
                 })}
@@ -359,6 +265,7 @@ const ToeicHome = () => {
         transform hover:scale-105
         rounded-full
       "
+              onClick={() => navigate("/classes/register")} // Thêm navigation
             >
               Đăng ký ngay
             </Button>
@@ -425,7 +332,11 @@ const ToeicHome = () => {
         <p className="mb-8">
           Hàng nghìn học viên đã đạt mục tiêu cùng DTT. Bạn đã sẵn sàng chưa?
         </p>
-        <Button size="lg" className="bg-yellow-400 text-black font-semibold">
+        <Button
+          size="lg"
+          className="bg-yellow-400 text-black font-semibold"
+          onClick={() => navigate("/classes/register")} // Thêm navigation
+        >
           Đăng ký ngay
         </Button>
       </section>
