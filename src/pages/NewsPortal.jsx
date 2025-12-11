@@ -24,12 +24,8 @@ const EXTRACT_API_URL = "http://localhost:4000/extract";
 const API_PROVIDERS = {
   openrouter: {
     name: "OpenRouter",
-    keys: [
-      "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",
-      "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",
-      "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",
-    ],
-    url: "https://openrouter.ai/api/v1/chat/completions",
+    keys: [],
+    url: "",
     model: "google/gemini-2.0-flash-exp:free",
   },
   groq: {
