@@ -24,7 +24,7 @@ const EXTRACT_API_URL = "http://localhost:4000/extract";
 const API_PROVIDERS = {
   openrouter: {
     name: "OpenRouter",
-    keys: [],
+    keys: "",
     url: "",
     model: "google/gemini-2.0-flash-exp:free",
   },
