@@ -74,11 +74,14 @@ const Login = () => {
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 
         toast.success("Đăng nhập thành công!");
       } else {
         // login thất bại, error sẽ hiển thị từ Redux
         console.log(resultAction.payload);
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
 =======
