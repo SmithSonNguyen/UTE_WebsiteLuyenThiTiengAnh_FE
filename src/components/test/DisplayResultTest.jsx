@@ -628,26 +628,32 @@ export default function ResultTOEIC() {
               <div className="section-title">Đáp Án Chi Tiết</div>
               <div className="answers-grid">
                 {detailedAnswers
-                  .sort((a, b) => a.number - b.number) // Sắp xếp theo số câu
+                  .sort((a, b) => a.number - b.number)
                   .map((a) => (
                     <div
                       key={a.number}
                       className={`answer-item ${
                         a.isCorrect ? "correct" : "incorrect"
                       }`}
-                      title={`Câu ${a.number} - Part ${a.part}\nBạn chọn: ${
-                        a.userAnswer || "Chưa trả lời"
-                      }\nĐáp án đúng: ${a.correctAnswer}`}
+                      title={`Câu ${a.number} - Part ${a.part}
+                      Bạn chọn: ${a.userAnswer || "Chưa trả lời"}
+                      Đáp án đúng: ${a.correctAnswer}`}
                     >
                       <div className="question-num">Câu {a.number}</div>
                       <div className="answer">{a.userAnswer || "-"}</div>
+
                       {!a.isCorrect && a.correctAnswer && (
                         <div className="answer-details">
                           Đúng: {a.correctAnswer}
                         </div>
                       )}
-                      <div className="icon">
-                        {a.isCorrect ? "Correct" : "Incorrect"}
+
+                      <div
+                        className={`icon ${
+                          a.isCorrect ? "icon-correct" : "icon-incorrect"
+                        }`}
+                      >
+                        {a.isCorrect ? "✔" : "✖"}
                       </div>
                     </div>
                   ))}

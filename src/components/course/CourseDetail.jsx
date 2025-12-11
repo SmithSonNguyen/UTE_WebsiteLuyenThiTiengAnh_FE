@@ -42,7 +42,7 @@ const CourseDetail = ({ course, isLoading = false }) => {
   const handleTryForFree = () => {
     // Check nếu là khóa TOEIC Beginner Essentials
     if (course.title === "TOEIC Beginner Essentials") {
-      navigate("/toeic-home/video-course/");
+      navigate("/toeic-home/free-video-course/");
     } else {
       // Các khóa khác: chuyển đến trang preview hoặc first lesson
       if (course?.curriculum?.[0]?.lessons?.[0]) {

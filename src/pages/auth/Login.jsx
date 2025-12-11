@@ -33,7 +33,11 @@ const Login = () => {
   useEffect(() => {
     if (accessToken && isTokenValid(accessToken)) {
       const role = getTokenRole(accessToken);
-      if (role === "instructor") {
+
+      // ✅ Thêm kiểm tra admin
+      if (role === "admin") {
+        navigate("/admin/dashboard", { replace: true });
+      } else if (role === "instructor") {
         navigate("/instructor", { replace: true });
       } else {
         navigate("/toeic-home", { replace: true });
@@ -56,14 +60,16 @@ const Login = () => {
     try {
       const resultAction = await dispatch(loginUser(data));
       if (loginUser.fulfilled.match(resultAction)) {
-        // login thành công - kiểm tra role để redirect
         const token = resultAction.payload.access_token;
         const role = getTokenRole(token);
 
-        if (role === "instructor") {
-          navigate("/instructor"); // redirect đến instructor dashboard
+        // ✅ Thêm kiểm tra admin
+        if (role === "admin") {
+          navigate("/admin/dashboard");
+        } else if (role === "instructor") {
+          navigate("/instructor");
         } else {
-          navigate("/toeic-home"); // redirect đến trang chủ cho student
+          navigate("/toeic-home");
         }
 
         toast.success("Đăng nhập thành công!");

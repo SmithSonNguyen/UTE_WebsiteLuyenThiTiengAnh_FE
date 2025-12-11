@@ -1,7 +1,5 @@
 import React, { useState } from "react";
-import { GoogleGenerativeAI } from "@google/generative-ai";
-import { toast } from "react-hot-toast"; // hoặc notification library bạn đang dùng
-import { useSelector } from "react-redux";
+import { toast } from "react-hot-toast";
 import axiosInstance from "@/utils/axiosInstance";
 
 const VocabTranslator = () => {
@@ -10,52 +8,20 @@ const VocabTranslator = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [isOpen, setIsOpen] = useState(false);
-  const [currentKeyIndex, setCurrentKeyIndex] = useState(0);
-  const [saving, setSaving] = useState(false); // ⭐ State mới cho nút lưu
-  const accessTokenFromStore = useSelector(
-    (state) => state?.auth?.login?.accessToken
-  );
+  const [saving, setSaving] = useState(false);
 
-  // Lấy tất cả API keys từ env
-  const API_KEYS = [
-    import.meta.env.VITE_GEMINI_API_KEY_1,
-    import.meta.env.VITE_GEMINI_API_KEY_2,
-    import.meta.env.VITE_GEMINI_API_KEY_3,
-    import.meta.env.VITE_GEMINI_API_KEY_4,
-    import.meta.env.VITE_GEMINI_API_KEY_5,
-  ].filter(Boolean); // Lọc bỏ key undefined/null
-
-  // Hàm lấy API key hiện tại và rotate sang key tiếp theo
-  const getNextApiKey = () => {
-    const key = API_KEYS[currentKeyIndex];
-    setCurrentKeyIndex((prev) => (prev + 1) % API_KEYS.length);
-    return key;
+  // Config chỉ cho Groq
+  const GROQ_CONFIG = {
+    name: "Groq",
+    key: import.meta.env.VITE_GROQ_KEY,
+    url: import.meta.env.VITE_GROQ_URL,
+    model: "llama-3.3-70b-versatile",
   };
 
-  // Nhận diện lỗi giới hạn tốc độ (429) từ nhiều dạng lỗi khác nhau của SDK/fetch
-  const isRateLimitError = (err) => {
-    try {
-      if (!err) return false;
-      if (err.status === 429 || err?.response?.status === 429) return true;
-      const text = typeof err === "string" ? err : JSON.stringify(err);
-      return /429|resource exhausted/i.test(text);
-    } catch {
-      return false;
-    }
-  };
-
-  // Hàm delay để retry
-  const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-  const translate = async (retry = 0) => {
+  // Hàm dịch chỉ dùng Groq
+  const translate = async () => {
     if (!text.trim()) {
       setError("Vui lòng nhập từ cần dịch");
-      return;
-    }
-
-    // Kiểm tra có API key không
-    if (API_KEYS.length === 0) {
-      setError("❌ Không tìm thấy API key. Vui lòng cấu hình trong .env");
       return;
     }
 
@@ -64,76 +30,62 @@ const VocabTranslator = () => {
     setTranslation("");
 
     try {
-      // Lấy API key tiếp theo trong vòng rotation
-      const apiKey = getNextApiKey();
-      const genAI = new GoogleGenerativeAI(apiKey);
+      const response = await fetch(GROQ_CONFIG.url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${GROQ_CONFIG.key}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: GROQ_CONFIG.model,
+          messages: [
+            {
+              role: "system",
+              content:
+                "You are a professional translator. Translate English to Vietnamese accurately and naturally. Return ONLY the Vietnamese translation without any explanations or extra text.",
+            },
+            {
+              role: "user",
+              content: `Translate this English word or phrase to Vietnamese: "${text.trim()}"`,
+            },
+          ],
+          temperature: 0.3,
+          max_tokens: 100,
+        }),
+      });
 
-      // Dùng model ổn định thay vì experimental để tránh lỗi quota/permission
-      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-      const prompt = `Translate the following English word or phrase to Vietnamese, and return ONLY the translated word or phrase. Do not include any explanations, definitions, or extra text. The phrase to translate is: "${text}"`;
-
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      const translated = response.text().trim();
-
-      setTranslation(translated);
-    } catch (err) {
-      console.error("Gemini API Error:", err);
-
-      // Xử lý lỗi 429 với retry (tự động đổi sang key khác)
-      if (isRateLimitError(err)) {
-        if (retry < API_KEYS.length - 1) {
-          setError(
-            `⏳ API key bị giới hạn. Đang thử key khác... (${retry + 1}/${
-              API_KEYS.length
-            })`
-          );
-          await delay(1000); // Chờ 1 giây trước khi thử key khác
-          return translate(retry + 1); // Retry với key tiếp theo
-        }
-        setError(
-          `⏳ Tất cả ${API_KEYS.length} API keys đều bị giới hạn. Vui lòng thử lại sau vài phút.`
-        );
-        return;
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error?.message || `HTTP ${response.status}`);
       }
 
-      // Một số lỗi phổ biến khác
-      const errText =
-        err?.message ||
-        err?.error?.message ||
-        err?.response?.statusText ||
-        "Lỗi không xác định";
-
-      if (/api key/i.test(errText)) {
-        setError("🔑 API key không hợp lệ hoặc chưa được cấp quyền.");
-      } else if (/permission|forbidden|403/i.test(errText)) {
-        setError(
-          "⛔ API chưa được bật hoặc key không có quyền với model này. Kiểm tra Google Cloud."
-        );
-      } else if (/not found|404|model/i.test(errText)) {
-        setError(
-          "❌ Model không khả dụng. Vui lòng dùng 'gemini-1.5-flash' hoặc kiểm tra tên model."
-        );
-      } else if (/fetch|network|cors/i.test(errText)) {
-        setError(
-          "🌐 Lỗi mạng/CORS. Hãy thử lại, kiểm tra kết nối hoặc cấu hình CORS."
-        );
+      const data = await response.json();
+      if (data.choices && data.choices[0]?.message?.content) {
+        const translated = data.choices[0].message.content.trim();
+        const cleanTranslation = translated.replace(/^["']|["']$/g, "");
+        setTranslation(cleanTranslation);
       } else {
-        setError("❌ Lỗi: " + errText);
+        throw new Error("Không nhận được bản dịch từ API");
+      }
+    } catch (err) {
+      console.error("Translation error:", err);
+      const errMsg = err?.message || "Lỗi không xác định";
+      if (/network|fetch|failed to fetch/i.test(errMsg)) {
+        setError("🌐 Lỗi kết nối. Vui lòng kiểm tra internet.");
+      } else if (/unauthorized|401|invalid.*key/i.test(errMsg)) {
+        setError("🔑 API key không hợp lệ.");
+      } else {
+        setError("❌ Lỗi: " + errMsg);
       }
     } finally {
       setLoading(false);
     }
   };
 
-  // ⭐ HÀM MỚI: Lưu từ vựng vào database
+  // Lưu từ vựng (giữ nguyên)
   const saveToMyVocabulary = async () => {
     if (!text.trim() || !translation.trim()) {
       toast.error("Vui lòng dịch từ trước khi lưu");
-      return;
-    }
-    if (!accessTokenFromStore) {
-      toast.error("Vui lòng đăng nhập để lưu từ vựng");
       return;
     }
 
@@ -148,21 +100,14 @@ const VocabTranslator = () => {
       const res = await axiosInstance.post(`/lessons/my-vocabulary`, payload);
       const respData = res?.data ? res.data : res;
 
-      if (respData && (respData.success || respData.isNew !== undefined)) {
-        toast.success(
-          respData.data?.isNew || respData.isNew
-            ? "✅ Đã lưu từ vựng mới!"
-            : "✅ Đã cập nhật từ vựng!"
-        );
-      } else {
-        toast.success("✅ Đã lưu từ vựng!");
-      }
+      toast.success(
+        respData.data?.isNew || respData.isNew
+          ? "✅ Đã lưu từ vựng mới!"
+          : "✅ Đã cập nhật từ vựng!"
+      );
     } catch (err) {
       console.error("Error saving vocabulary:", err);
-      const msg =
-        err?.message ||
-        (err?.data && err.data.message) ||
-        "Không thể lưu từ vựng";
+      const msg = err?.message || "Không thể lưu từ vựng";
       toast.error("❌ Lỗi khi lưu từ vựng: " + msg);
     } finally {
       setSaving(false);
@@ -178,11 +123,11 @@ const VocabTranslator = () => {
 
   return (
     <>
-      {/* Nút floating ở góc dưới bên trái */}
+      {/* Nút floating */}
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 left-6 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700 transition-all hover:scale-110 z-50 group"
+          className="fixed bottom-6 left-6 bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-4 rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-110 z-50 group"
           title="Dịch từ vựng"
         >
           <svg
@@ -199,17 +144,17 @@ const VocabTranslator = () => {
               d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"
             />
           </svg>
-          <span className="absolute left-full ml-3 px-2 py-1 bg-gray-900 text-white text-sm rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-            Dịch từ vựng
+          <span className="absolute left-full ml-3 px-3 py-1.5 bg-gray-900 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap shadow-lg">
+            Dịch từ vựng (AI miễn phí)
           </span>
         </button>
       )}
 
-      {/* Popup window */}
+      {/* Popup */}
       {isOpen && (
-        <div className="fixed bottom-6 left-6 w-96 bg-white rounded-lg shadow-2xl z-50 border border-gray-200 animate-slide-up">
+        <div className="fixed bottom-6 left-6 w-96 bg-white rounded-xl shadow-2xl z-50 border border-gray-200 animate-slide-up overflow-hidden">
           {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-t-lg">
+          <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-r from-blue-600 to-indigo-600">
             <h3 className="text-lg font-semibold text-white flex items-center gap-2">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -229,7 +174,7 @@ const VocabTranslator = () => {
             </h3>
             <button
               onClick={handleClose}
-              className="text-white hover:text-gray-200 transition-colors"
+              className="text-white hover:text-gray-200 transition-colors p-1 hover:bg-white/10 rounded"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -251,23 +196,23 @@ const VocabTranslator = () => {
           {/* Body */}
           <div className="p-4 space-y-3 max-h-96 overflow-y-auto">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
                 Nhập từ tiếng Anh:
               </label>
               <input
                 type="text"
                 value={text}
                 onChange={(e) => setText(e.target.value)}
-                placeholder="Ví dụ: Hello"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                onKeyPress={(e) => e.key === "Enter" && translate()}
+                placeholder="Ví dụ: Hello, beautiful, knowledge..."
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm transition-all"
+                onKeyPress={(e) => e.key === "Enter" && !loading && translate()}
               />
             </div>
 
             <button
               onClick={translate}
-              disabled={loading}
-              className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors text-sm font-medium"
+              disabled={loading || !text.trim()}
+              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-2.5 px-4 rounded-lg hover:from-blue-700 hover:to-indigo-700 disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed transition-all text-sm font-medium shadow-md hover:shadow-lg"
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
@@ -294,37 +239,77 @@ const VocabTranslator = () => {
                   Đang dịch...
                 </span>
               ) : (
-                "Dịch"
+                <span className="flex items-center justify-center gap-2">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M13 10V3L4 14h7v7l9-11h-7z"
+                    />
+                  </svg>
+                  Dịch
+                </span>
               )}
             </button>
 
-            {/* Hiển thị số API keys đang dùng */}
-            {API_KEYS.length > 1 && (
-              <div className="text-xs text-gray-500 text-center">
-                🔑 Bấm dịch để xem bản dịch
-              </div>
-            )}
-
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm">
-                {error}
+              <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2.5 rounded-lg text-sm flex items-start gap-2">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5 flex-shrink-0 mt-0.5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                <span>{error}</span>
               </div>
             )}
 
             {translation && (
-              <div className="space-y-2">
-                <div className="bg-green-50 border border-green-200 p-3 rounded-lg">
-                  <p className="text-xs text-gray-600 mb-1">Bản dịch:</p>
+              <div className="space-y-2.5">
+                <div className="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 p-4 rounded-lg shadow-sm">
+                  <div className="flex items-center gap-2 mb-2">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-4 w-4 text-green-600"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                    <p className="text-xs font-medium text-green-700">
+                      Bản dịch từ Groq:
+                    </p>
+                  </div>
                   <p className="text-base font-semibold text-green-900">
                     {translation}
                   </p>
                 </div>
 
-                {/* ⭐ NÚT MỚI: Lưu vào từ vựng của tôi */}
                 <button
                   onClick={saveToMyVocabulary}
                   disabled={saving}
-                  className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors text-sm font-medium flex items-center justify-center gap-2"
+                  className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-2.5 px-4 rounded-lg hover:from-green-700 hover:to-emerald-700 disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed transition-all text-sm font-medium shadow-md hover:shadow-lg flex items-center justify-center gap-2"
                 >
                   {saving ? (
                     <>
@@ -363,7 +348,7 @@ const VocabTranslator = () => {
                           strokeLinecap="round"
                           strokeLinejoin="round"
                           strokeWidth={2}
-                          d="M5 13l4 4L19 7"
+                          d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"
                         />
                       </svg>
                       Lưu vào từ vựng của tôi
@@ -375,29 +360,26 @@ const VocabTranslator = () => {
           </div>
 
           {/* Footer */}
-          <div className="p-3 border-t border-gray-200 bg-gray-50 rounded-b-lg">
-            <p className="text-xs text-gray-500 text-center">
-              Powered by DTT Toeic
+          <div className="px-4 py-3 bg-gradient-to-r from-gray-50 to-slate-50 border-t border-gray-200">
+            <p className="text-xs text-gray-500 text-center flex items-center justify-center gap-1.5">
+              <span className="font-medium">Powered by</span>
+              <span className="font-semibold text-indigo-600">Groq AI</span>
             </p>
           </div>
         </div>
       )}
 
-      {/* Styles cho animation */}
+      {/* Styles */}
       <style>{`
         @keyframes slide-up {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
         }
-        .animate-slide-up {
-          animation: slide-up 0.3s ease-out;
-        }
+        .animate-slide-up { animation: slide-up 0.3s ease-out; }
+        .overflow-y-auto::-webkit-scrollbar { width: 6px; }
+        .overflow-y-auto::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+        .overflow-y-auto::-webkit-scrollbar-thumb { background: #cbd5e0; border-radius: 10px; }
+        .overflow-y-auto::-webkit-scrollbar-thumb:hover { background: #a0aec0; }
       `}</style>
     </>
   );
