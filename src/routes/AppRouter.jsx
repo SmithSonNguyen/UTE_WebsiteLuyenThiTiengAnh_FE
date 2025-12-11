@@ -47,8 +47,6 @@ function AppRouter() {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<RegisterWithOTP />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
-<<<<<<< Updated upstream
-=======
       {/* Payment result routes */}
       <Route path="/payment/success" element={<PaymentSuccess />} />
       <Route path="/payment/failed" element={<PaymentFailed />} />
@@ -252,16 +250,6 @@ function AppRouter() {
           }
         />
       </Route>
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
       <Route element={<StudentProtectedRouter />}>
         <Route path="/payment/success" element={<PaymentSuccess />} />
