@@ -9,6 +9,7 @@ import {
 } from "@/api/userApi";
 import { useNavigate } from "react-router-dom";
 import { setCurrentUser } from "@/redux/authSlice";
+import { toast } from "react-toastify";
 
 function formatDateISOtoInput(dateStr) {
   if (!dateStr) return "";
@@ -113,6 +114,14 @@ function EditProfile() {
       setError(
         err?.response?.data?.message || "Có lỗi xảy ra, vui lòng thử lại."
       );
+      const backendErrors = err.errors;
+      if (backendErrors) {
+        // Lặp qua tất cả errors và toast từng cái
+        Object.values(backendErrors).forEach((err) => {
+          if (err.msg) toast.error(err.msg);
+        });
+        //setErrorMessage("");
+      }
     } finally {
       setLoading(false);
     }

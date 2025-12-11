@@ -37,152 +37,151 @@ function AppRouter() {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<RegisterWithOTP />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
-      {/* Payment result routes */}
-      <Route path="/payment/success" element={<PaymentSuccess />} />
-      <Route path="/payment/failed" element={<PaymentFailed />} />
-      <Route path="/payment/error" element={<PaymentError />} />
-
-      {/* TOEIC routes with shared layout */}
-      <Route
-        path="/toeic-home"
-        element={
-          <ToeicLayout showFooter={true}>
-            <ToeicHome />
-          </ToeicLayout>
-        }
-      />
-      <Route
-        path="/toeic-home/free-entry-test"
-        // cái này để mà chỉ khi user đăng kí rồi mới được sử dụng, có thể bỏ cmt ở ProtectedRouter ra
-        element={
-          <ToeicLayout>
-            {/* <ProtectedRouter> */}
-            <FreeEntryTest />
-            {/* </ProtectedRouter> */}
-          </ToeicLayout>
-        }
-      />
-      <Route
-        path="/toeic-home/free-entry-test/result"
-        // cái này để mà chỉ khi user đăng kí rồi mới được sử dụng, có thể bỏ cmt ở ProtectedRouter ra
-        element={
-          <ToeicLayout>
-            {/* <ProtectedRouter> */}
-            <FreeEntryTestResult />
-            {/* </ProtectedRouter> */}
-          </ToeicLayout>
-        }
-      />
-      <Route
-        path="/toeic-home/free-entry-test/full-test"
-        element={<FreeEntryTest_FullTest />}
-      />
-      <Route
-        path="/toeic-home/free-entry-test/quick-test-LR"
-        // element={<ToeicLayout><FreeEntryTest_QuickTest_LR /></ToeicLayout>}
-      />
-      <Route
-        path="/toeic-home/free-entry-test/quick-test-4KN"
-        // element={<ToeicLayout><FreeEntryTest_QuickTest_4KN /></ToeicLayout>}
-      />
-      <Route
-        path="/toeic-home/test-online"
-        element={
-          <ToeicLayout>
-            <TestOnline />
-          </ToeicLayout>
-        }
-      />
-      {/* Vocabulary main page */}
-      <Route
-        path="/toeic-home/vocabulary"
-        element={
-          <ToeicLayout>
-            <VocabularyPage />
-          </ToeicLayout>
-        }
-      />
-      {/* ⭐ MY VOCABULARY PAGE - THÊM MỚI */}
-      <Route
-        path="/toeic-home/my-vocabulary"
-        element={
-          <ToeicLayout>
-            <MyVocabularyPage />
-          </ToeicLayout>
-        }
-      />
-      <Route
-        path="/toeic-home/news-portal"
-        element={
-          <ToeicLayout>
-            <NewsPortal />
-          </ToeicLayout>
-        }
-      />
-      <Route
-        path="/toeic-home/test-online/:examId"
-        element={
-          <ToeicLayout>
-            <PracticeTabs />
-          </ToeicLayout>
-        }
-      />
-      <Route
-        path="/toeic-home/test-online/:examId/result"
-        element={
-          <ToeicLayout>
-            <DisplayResultTest />
-          </ToeicLayout>
-        }
-      />
-      <Route
-        path="/toeic-home/assurance"
-        element={
-          <ToeicLayout>
-            <Assurance />
-          </ToeicLayout>
-        }
-      />
-
-      {/* Lịch Khai giảng */}
-      <Route
-        path="/toeic-home/opening-schedule"
-        element={
-          <ToeicLayout showFooter={true}>
-            <LichKhaiGiang />
-          </ToeicLayout>
-        }
-      />
-
-      {/* All Course Page */}
-      <Route
-        path="/toeic-home/all-course"
-        element={
-          <ToeicLayout showFooter={true}>
-            <AllCourse />
-          </ToeicLayout>
-        }
-      />
-
-      {/* Course Detail Page */}
-      <Route
-        path="/toeic-home/course/:id"
-        element={
-          <ToeicLayout showFooter={true}>
-            <CourseDetailPage />
-          </ToeicLayout>
-        }
-      />
-      <Route
-        path="/toeic-home/video-course/"
-        element={
-          <ToeicLayout showFooter={true}>
-            <VideoCoursePage />
-          </ToeicLayout>
-        }
-      />
 
       <Route element={<StudentProtectedRouter />}>
+        <Route path="/payment/success" element={<PaymentSuccess />} />
+        <Route path="/payment/failed" element={<PaymentFailed />} />
+        <Route path="/payment/error" element={<PaymentError />} />
+
+        {/* TOEIC routes with shared layout */}
+        <Route
+          path="/toeic-home"
+          element={
+            <ToeicLayout showFooter={true}>
+              <ToeicHome />
+            </ToeicLayout>
+          }
+        />
+        <Route
+          path="/toeic-home/free-entry-test"
+          // cái này để mà chỉ khi user đăng kí rồi mới được sử dụng, có thể bỏ cmt ở ProtectedRouter ra
+          element={
+            <ToeicLayout>
+              {/* <ProtectedRouter> */}
+              <FreeEntryTest />
+              {/* </ProtectedRouter> */}
+            </ToeicLayout>
+          }
+        />
+        <Route
+          path="/toeic-home/free-entry-test/result"
+          // cái này để mà chỉ khi user đăng kí rồi mới được sử dụng, có thể bỏ cmt ở ProtectedRouter ra
+          element={
+            <ToeicLayout>
+              {/* <ProtectedRouter> */}
+              <FreeEntryTestResult />
+              {/* </ProtectedRouter> */}
+            </ToeicLayout>
+          }
+        />
+        <Route
+          path="/toeic-home/free-entry-test/full-test"
+          element={<FreeEntryTest_FullTest />}
+        />
+        <Route
+          path="/toeic-home/free-entry-test/quick-test-LR"
+          // element={<ToeicLayout><FreeEntryTest_QuickTest_LR /></ToeicLayout>}
+        />
+        <Route
+          path="/toeic-home/free-entry-test/quick-test-4KN"
+          // element={<ToeicLayout><FreeEntryTest_QuickTest_4KN /></ToeicLayout>}
+        />
+        <Route
+          path="/toeic-home/test-online"
+          element={
+            <ToeicLayout>
+              <TestOnline />
+            </ToeicLayout>
+          }
+        />
+        {/* Vocabulary main page */}
+        <Route
+          path="/toeic-home/vocabulary"
+          element={
+            <ToeicLayout>
+              <VocabularyPage />
+            </ToeicLayout>
+          }
+        />
+        {/* ⭐ MY VOCABULARY PAGE - THÊM MỚI */}
+        <Route
+          path="/toeic-home/my-vocabulary"
+          element={
+            <ToeicLayout>
+              <MyVocabularyPage />
+            </ToeicLayout>
+          }
+        />
+        <Route
+          path="/toeic-home/news-portal"
+          element={
+            <ToeicLayout>
+              <NewsPortal />
+            </ToeicLayout>
+          }
+        />
+        <Route
+          path="/toeic-home/test-online/:examId"
+          element={
+            <ToeicLayout>
+              <PracticeTabs />
+            </ToeicLayout>
+          }
+        />
+        <Route
+          path="/toeic-home/test-online/:examId/result"
+          element={
+            <ToeicLayout>
+              <DisplayResultTest />
+            </ToeicLayout>
+          }
+        />
+        <Route
+          path="/toeic-home/assurance"
+          element={
+            <ToeicLayout>
+              <Assurance />
+            </ToeicLayout>
+          }
+        />
+
+        {/* Lịch Khai giảng */}
+        <Route
+          path="/toeic-home/opening-schedule"
+          element={
+            <ToeicLayout showFooter={true}>
+              <LichKhaiGiang />
+            </ToeicLayout>
+          }
+        />
+
+        {/* All Course Page */}
+        <Route
+          path="/toeic-home/all-course"
+          element={
+            <ToeicLayout showFooter={true}>
+              <AllCourse />
+            </ToeicLayout>
+          }
+        />
+
+        {/* Course Detail Page */}
+        <Route
+          path="/toeic-home/course/:id"
+          element={
+            <ToeicLayout showFooter={true}>
+              <CourseDetailPage />
+            </ToeicLayout>
+          }
+        />
+        <Route
+          path="/toeic-home/video-course/"
+          element={
+            <ToeicLayout showFooter={true}>
+              <VideoCoursePage />
+            </ToeicLayout>
+          }
+        />
         <Route
           path="/profile"
           element={

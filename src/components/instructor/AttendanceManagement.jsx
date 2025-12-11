@@ -387,9 +387,9 @@ const AttendanceManagement = () => {
                     <th className="text-center py-3 px-4 font-medium text-gray-900">
                       Trạng thái
                     </th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-900">
+                    {/* <th className="text-left py-3 px-4 font-medium text-gray-900">
                       Ghi chú
-                    </th>
+                    </th> */}
                   </tr>
                 </thead>
                 <tbody>
@@ -438,7 +438,7 @@ const AttendanceManagement = () => {
                           </button>
                         </div>
                       </td>
-                      <td className="py-3 px-4">
+                      {/* <td className="py-3 px-4">
                         <input
                           type="text"
                           value={student.note}
@@ -448,7 +448,7 @@ const AttendanceManagement = () => {
                           placeholder="Ghi chú..."
                           className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                         />
-                      </td>
+                      </td> */}
                     </tr>
                   ))}
                 </tbody>

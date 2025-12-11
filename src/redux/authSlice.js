@@ -12,7 +12,12 @@ export const loginUser = createAsyncThunk(
       // data giả sử trả về { user, accessToken }
       return data; // trả cả user + accessToken
     } catch (error) {
-      return rejectWithValue(error?.message || "Login failed");
+      return rejectWithValue(
+        error.errors?.email?.msg ||
+          error.errors?.password?.msg ||
+          error.message ||
+          "Login failed"
+      );
     }
   }
 );
