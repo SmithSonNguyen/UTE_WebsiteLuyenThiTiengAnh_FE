@@ -34,8 +34,8 @@ const API_PROVIDERS = {
   },
   groq: {
     name: "Groq",
-    keys: ["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"],
-    url: "https://api.groq.com/openai/v1/chat/completions",
+    keys: import.meta.env.VITE_GROQ_KEY,
+    url: import.meta.env.VITE_GROQ_URL,
     model: "llama-3.3-70b-versatile", // Model mạnh và miễn phí của Groq
   },
 };
