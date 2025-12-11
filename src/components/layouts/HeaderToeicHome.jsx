@@ -17,7 +17,7 @@ const HeaderToeicHome = () => {
     { href: "/toeic-home/test-online", label: "Luyện đề" },
     { href: "/toeic-home/vocabulary", label: "Học từ vựng" },
     { href: "/toeic-home/my-vocabulary", label: "Từ vựng của tôi" },
-    { href: "/toeic-home/news-portal", label: "Reading qua báo" },
+    { href: "/toeic-home/news-portal", label: "Luyện đọc qua báo" },
     { href: "/toeic-home/assurance", label: "Cam kết đầu ra" },
   ];
 

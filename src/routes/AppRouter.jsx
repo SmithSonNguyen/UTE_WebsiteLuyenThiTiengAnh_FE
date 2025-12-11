@@ -24,19 +24,241 @@ import PaymentFailed from "@/pages/payment/PaymentFailed";
 import PaymentError from "@/pages/payment/PaymentError";
 import Assurance from "@/pages/Assurance";
 import ProtectedRouter from "./ProtectedRouter";
+import AdminProtectedRouter from "./AdminProtectedRouter";
 import InstructorProtectedRouter from "./InstructorProtectedRouter";
 import StudentProtectedRouter from "./StudentProtectedRouter";
 import FreeEntryTestResult from "@/pages/test/FreeEntryTestResult";
 import VideoCoursePage from "@/pages/course/VideoCoursePage";
+import FreeTrialVideoCourse from "@/pages/course/FreeTrialVideoCourse";
 import PracticeTabs from "@/components/practice/PracticeTabs";
 import NewsPortal from "@/pages/NewsPortal";
 import AllCourse from "@/pages/course/AllCourse";
+import MyEnrolledCourses from "@/pages/course/EnrolledVideoCourse";
+import InstructorManagement from "@/pages/admin/InstructorManagement";
+import DashboardContent from "@/pages/admin/DashboardContent";
+import AdminLayout from "../components/layouts/AdminLayout";
+import ClassManagement from "@/pages/admin/ClassManagement";
+import PreRecordedCourseManagement from "@/pages/admin/PreRecordedCourseManagement";
+import UserManagement from "@/pages/admin/UserManagement";
+
 function AppRouter() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<RegisterWithOTP />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
+<<<<<<< Updated upstream
+=======
+      {/* Payment result routes */}
+      <Route path="/payment/success" element={<PaymentSuccess />} />
+      <Route path="/payment/failed" element={<PaymentFailed />} />
+      <Route path="/payment/error" element={<PaymentError />} />
+
+      {/* TOEIC routes with shared layout */}
+      <Route
+        path="/toeic-home"
+        element={
+          <ToeicLayout showFooter={true}>
+            <ToeicHome />
+          </ToeicLayout>
+        }
+      />
+      <Route
+        path="/toeic-home/free-entry-test"
+        // cái này để mà chỉ khi user đăng kí rồi mới được sử dụng, có thể bỏ cmt ở ProtectedRouter ra
+        element={
+          <ToeicLayout>
+            {/* <ProtectedRouter> */}
+            <FreeEntryTest />
+            {/* </ProtectedRouter> */}
+          </ToeicLayout>
+        }
+      />
+      <Route
+        path="/toeic-home/free-entry-test/result"
+        // cái này để mà chỉ khi user đăng kí rồi mới được sử dụng, có thể bỏ cmt ở ProtectedRouter ra
+        element={
+          <ToeicLayout>
+            {/* <ProtectedRouter> */}
+            <FreeEntryTestResult />
+            {/* </ProtectedRouter> */}
+          </ToeicLayout>
+        }
+      />
+      <Route
+        path="/toeic-home/free-entry-test/full-test"
+        element={<FreeEntryTest_FullTest />}
+      />
+      <Route
+        path="/toeic-home/free-entry-test/quick-test-LR"
+        // element={<ToeicLayout><FreeEntryTest_QuickTest_LR /></ToeicLayout>}
+      />
+      <Route
+        path="/toeic-home/free-entry-test/quick-test-4KN"
+        // element={<ToeicLayout><FreeEntryTest_QuickTest_4KN /></ToeicLayout>}
+      />
+      <Route
+        path="/toeic-home/test-online"
+        element={
+          <ToeicLayout>
+            <TestOnline />
+          </ToeicLayout>
+        }
+      />
+      {/* Vocabulary main page */}
+      <Route
+        path="/toeic-home/vocabulary"
+        element={
+          <ToeicLayout>
+            <VocabularyPage />
+          </ToeicLayout>
+        }
+      />
+      {/* ⭐ MY VOCABULARY PAGE - THÊM MỚI */}
+      <Route
+        path="/toeic-home/my-vocabulary"
+        element={
+          <ToeicLayout>
+            <MyVocabularyPage />
+          </ToeicLayout>
+        }
+      />
+      <Route
+        path="/toeic-home/news-portal"
+        element={
+          <ToeicLayout>
+            <NewsPortal />
+          </ToeicLayout>
+        }
+      />
+      <Route
+        path="/toeic-home/test-online/:examId"
+        element={
+          <ToeicLayout>
+            <PracticeTabs />
+          </ToeicLayout>
+        }
+      />
+      <Route
+        path="/toeic-home/test-online/:examId/result"
+        element={
+          <ToeicLayout>
+            <DisplayResultTest />
+          </ToeicLayout>
+        }
+      />
+      <Route
+        path="/toeic-home/assurance"
+        element={
+          <ToeicLayout>
+            <Assurance />
+          </ToeicLayout>
+        }
+      />
+
+      {/* Lịch Khai giảng */}
+      <Route
+        path="/toeic-home/opening-schedule"
+        element={
+          <ToeicLayout showFooter={true}>
+            <LichKhaiGiang />
+          </ToeicLayout>
+        }
+      />
+
+      {/* All Course Page */}
+      <Route
+        path="/toeic-home/all-course"
+        element={
+          <ToeicLayout showFooter={true}>
+            <AllCourse />
+          </ToeicLayout>
+        }
+      />
+
+      {/* Course Detail Page */}
+      <Route
+        path="/toeic-home/course/:id"
+        element={
+          <ToeicLayout showFooter={true}>
+            <CourseDetailPage />
+          </ToeicLayout>
+        }
+      />
+      <Route
+        path="/learning/:courseId"
+        element={
+          <ToeicLayout showFooter={true}>
+            <VideoCoursePage />
+          </ToeicLayout>
+        }
+      />
+      <Route
+        path="/toeic-home/free-video-course/"
+        element={
+          <ToeicLayout showFooter={true}>
+            <FreeTrialVideoCourse />
+          </ToeicLayout>
+        }
+      />
+      <Route
+        path="/my-enrolled-courses"
+        element={
+          <ToeicLayout showFooter={true}>
+            <MyEnrolledCourses />
+          </ToeicLayout>
+        }
+      />
+      {/* ==================== ADMIN ROUTES ⭐ ==================== */}
+      <Route element={<AdminProtectedRouter />}>
+        <Route
+          path="/admin/dashboard"
+          element={
+            <AdminLayout>
+              <DashboardContent />
+            </AdminLayout>
+          }
+        />
+        <Route
+          path="/admin/teachers-management"
+          element={
+            <AdminLayout>
+              <InstructorManagement />
+            </AdminLayout>
+          }
+        />
+        <Route
+          path="/admin/classes-management"
+          element={
+            <AdminLayout>
+              <ClassManagement />
+            </AdminLayout>
+          }
+        />
+        <Route
+          path="/admin/courses-management"
+          element={
+            <AdminLayout>
+              <PreRecordedCourseManagement />
+            </AdminLayout>
+          }
+        />
+        <Route
+          path="/admin/users-management"
+          element={
+            <AdminLayout>
+              <UserManagement />
+            </AdminLayout>
+          }
+        />
+      </Route>
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
+>>>>>>> Stashed changes
+=======
+>>>>>>> Stashed changes
 
       <Route element={<StudentProtectedRouter />}>
         <Route path="/payment/success" element={<PaymentSuccess />} />

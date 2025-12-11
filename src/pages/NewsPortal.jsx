@@ -15,11 +15,30 @@ import {
   X,
   Languages,
 } from "lucide-react";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { toast } from "react-hot-toast";
 
 const API_BASE_URL = "http://localhost:4000/news";
 const EXTRACT_API_URL = "http://localhost:4000/extract";
+
+// Multi-provider API configuration
+const API_PROVIDERS = {
+  openrouter: {
+    name: "OpenRouter",
+    keys: [
+      "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",
+      "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",
+      "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",
+    ],
+    url: "https://openrouter.ai/api/v1/chat/completions",
+    model: "google/gemini-2.0-flash-exp:free",
+  },
+  groq: {
+    name: "Groq",
+    keys: ["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"],
+    url: "https://api.groq.com/openai/v1/chat/completions",
+    model: "llama-3.3-70b-versatile", // Model mạnh và miễn phí của Groq
+  },
+};
 
 const categories = [
   { id: "general", name: "Tổng hợp", icon: Newspaper, color: "bg-blue-500" },
@@ -58,16 +77,8 @@ export default function NewsPortal() {
   const [translatedContent, setTranslatedContent] = useState("");
   const [isTranslating, setIsTranslating] = useState(false);
   const [translationError, setTranslationError] = useState("");
+  const [currentProvider, setCurrentProvider] = useState("openrouter");
   const [currentKeyIndex, setCurrentKeyIndex] = useState(0);
-
-  // API Keys
-  const API_KEYS = [
-    import.meta.env.VITE_GEMINI_API_KEY_1,
-    import.meta.env.VITE_GEMINI_API_KEY_2,
-    import.meta.env.VITE_GEMINI_API_KEY_3,
-    import.meta.env.VITE_GEMINI_API_KEY_4,
-    import.meta.env.VITE_GEMINI_API_KEY_5,
-  ].filter(Boolean);
 
   useEffect(() => {
     fetchFeaturedNews();
@@ -183,36 +194,51 @@ export default function NewsPortal() {
     return date.toLocaleDateString("vi-VN");
   };
 
-  // Translation functions
-  const getNextApiKey = () => {
-    const key = API_KEYS[currentKeyIndex];
-    setCurrentKeyIndex((prev) => (prev + 1) % API_KEYS.length);
-    return key;
-  };
-
-  const isRateLimitError = (err) => {
-    try {
-      if (!err) return false;
-      if (err.status === 429 || err?.response?.status === 429) return true;
-      const text = typeof err === "string" ? err : JSON.stringify(err);
-      return /429|resource exhausted/i.test(text);
-    } catch {
-      return false;
-    }
-  };
-
+  // Helper: Delay
   const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-  const translateArticle = async (retry = 0) => {
+  // Helper: Dịch một chunk với provider cụ thể
+  const translateChunkWithProvider = async (chunk, providerKey, keyIndex) => {
+    const provider = API_PROVIDERS[providerKey];
+    const apiKey = provider.keys[keyIndex];
+
+    console.log(`🔑 Đang dùng ${provider.name} - Key #${keyIndex + 1}`);
+
+    const response = await fetch(provider.url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+        ...(providerKey === "openrouter" && {
+          "HTTP-Referer": window.location.origin,
+          "X-Title": "DTT Toeic - News Translation",
+        }),
+      },
+      body: JSON.stringify({
+        model: provider.model,
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are a professional news translator. Translate English articles to Vietnamese accurately, maintaining the original tone and structure. Return ONLY the Vietnamese translation without any explanations.",
+          },
+          {
+            role: "user",
+            content: `Translate this English article section to Vietnamese:\n\n${chunk}`,
+          },
+        ],
+        temperature: 0.3,
+        max_tokens: providerKey === "groq" ? 4000 : 2500,
+      }),
+    });
+
+    return response;
+  };
+
+  // Translation function với multi-provider fallback
+  const translateArticle = async () => {
     if (!extractedArticle?.content) {
       setTranslationError("Không có nội dung để dịch");
-      return;
-    }
-
-    if (API_KEYS.length === 0) {
-      setTranslationError(
-        "❌ Không tìm thấy API key. Vui lòng cấu hình trong .env"
-      );
       return;
     }
 
@@ -221,13 +247,9 @@ export default function NewsPortal() {
     setTranslatedContent("");
 
     try {
-      const apiKey = getNextApiKey();
-      const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-
-      // Chia nhỏ nội dung nếu quá dài (max ~30000 chars mỗi chunk)
+      // Chia nhỏ nội dung
       const content = extractedArticle.content;
-      const maxChunkSize = 30000;
+      const maxChunkSize = 6000;
       const chunks = [];
 
       for (let i = 0; i < content.length; i += maxChunkSize) {
@@ -235,57 +257,155 @@ export default function NewsPortal() {
       }
 
       let fullTranslation = "";
+      let currentProviderKey = currentProvider;
+      let currentProviderKeyIndex = currentKeyIndex;
+
+      // Thông báo bắt đầu
+      toast.loading(
+        `Bắt đầu dịch với ${API_PROVIDERS[currentProviderKey].name}...`,
+        {
+          id: "translation-progress",
+        }
+      );
 
       for (let i = 0; i < chunks.length; i++) {
-        const prompt = `Translate the following English article to Vietnamese. Maintain the original structure and formatting. Only return the Vietnamese translation without any explanations or notes:\n\n${chunks[i]}`;
+        let success = false;
+        let attempts = 0;
+        const maxAttempts =
+          API_PROVIDERS.openrouter.keys.length + API_PROVIDERS.groq.keys.length;
 
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
-        const translated = response.text().trim();
+        while (!success && attempts < maxAttempts) {
+          try {
+            const response = await translateChunkWithProvider(
+              chunks[i],
+              currentProviderKey,
+              currentProviderKeyIndex
+            );
 
-        fullTranslation += translated + "\n\n";
+            // Nếu bị rate limit (429)
+            if (response.status === 429) {
+              console.warn(
+                `⚠️ ${API_PROVIDERS[currentProviderKey].name} key #${
+                  currentProviderKeyIndex + 1
+                } bị rate limit`
+              );
 
-        // Cập nhật progress
-        setTranslatedContent(fullTranslation);
+              // Thử key tiếp theo trong cùng provider
+              const provider = API_PROVIDERS[currentProviderKey];
+              if (currentProviderKeyIndex < provider.keys.length - 1) {
+                currentProviderKeyIndex++;
+                toast.loading(`⏳ Đổi sang key khác của ${provider.name}...`, {
+                  id: "translation-progress",
+                });
+              } else {
+                // Hết keys của provider hiện tại, chuyển sang provider khác
+                if (currentProviderKey === "openrouter") {
+                  currentProviderKey = "groq";
+                  currentProviderKeyIndex = 0;
+                  toast.loading(
+                    `🔄 Chuyển sang ${API_PROVIDERS.groq.name}...`,
+                    {
+                      id: "translation-progress",
+                    }
+                  );
+                } else {
+                  // Hết tất cả providers
+                  throw new Error("ALL_PROVIDERS_RATE_LIMITED");
+                }
+              }
 
-        // Delay giữa các chunks để tránh rate limit
+              attempts++;
+              await delay(2000);
+              continue;
+            }
+
+            if (!response.ok) {
+              const errorData = await response.json().catch(() => ({}));
+              throw new Error(
+                errorData.error?.message || `HTTP ${response.status}`
+              );
+            }
+
+            const data = await response.json();
+
+            if (data.choices && data.choices[0]?.message?.content) {
+              const translated = data.choices[0].message.content.trim();
+              fullTranslation += translated + "\n\n";
+
+              // Cập nhật state
+              setTranslatedContent(fullTranslation);
+              setCurrentProvider(currentProviderKey);
+              setCurrentKeyIndex(currentProviderKeyIndex);
+
+              // Progress
+              if (chunks.length > 1) {
+                toast.loading(
+                  `Đang dịch... ${i + 1}/${chunks.length} (${
+                    API_PROVIDERS[currentProviderKey].name
+                  })`,
+                  {
+                    id: "translation-progress",
+                  }
+                );
+              }
+
+              success = true;
+            } else {
+              throw new Error("Không nhận được bản dịch từ API");
+            }
+          } catch (err) {
+            if (err.message === "ALL_PROVIDERS_RATE_LIMITED") {
+              throw err;
+            }
+
+            console.error(`Attempt ${attempts + 1} failed:`, err);
+            attempts++;
+
+            if (attempts >= maxAttempts) {
+              throw err;
+            }
+
+            await delay(1000);
+          }
+        }
+
+        // Delay giữa các chunks
         if (i < chunks.length - 1) {
-          await delay(1000);
+          await delay(currentProviderKey === "groq" ? 1000 : 2000);
         }
       }
 
-      toast.success("✅ Đã dịch bài báo thành công!");
+      toast.success(
+        `✅ Đã dịch thành công với ${API_PROVIDERS[currentProviderKey].name}!`,
+        {
+          id: "translation-progress",
+        }
+      );
     } catch (err) {
       console.error("Translation error:", err);
 
-      if (isRateLimitError(err)) {
-        if (retry < API_KEYS.length - 1) {
-          setTranslationError(
-            `⏳ API key bị giới hạn. Đang thử key khác... (${retry + 1}/${
-              API_KEYS.length
-            })`
-          );
-          await delay(1000);
-          return translateArticle(retry + 1);
-        }
-        setTranslationError(
-          `⏳ Tất cả ${API_KEYS.length} API keys đều bị giới hạn. Vui lòng thử lại sau.`
-        );
-        return;
-      }
+      const errMsg = err?.message || "Lỗi không xác định";
 
-      const errText =
-        err?.message || err?.error?.message || "Lỗi không xác định";
-
-      if (/api key/i.test(errText)) {
+      if (errMsg === "ALL_PROVIDERS_RATE_LIMITED") {
         setTranslationError(
-          "🔑 API key không hợp lệ hoặc chưa được cấp quyền."
+          "⏳ Tất cả API providers đều bị giới hạn. Vui lòng thử lại sau 2-3 phút."
         );
-      } else if (/permission|forbidden|403/i.test(errText)) {
-        setTranslationError("⛔ API chưa được bật. Kiểm tra Google Cloud.");
+        toast.error("⏳ Tất cả API bị giới hạn", {
+          id: "translation-progress",
+        });
+      } else if (/network|fetch|failed to fetch/i.test(errMsg)) {
+        setTranslationError(
+          "🌐 Lỗi kết nối. Vui lòng kiểm tra internet và thử lại."
+        );
+      } else if (/unauthorized|401|invalid.*key/i.test(errMsg)) {
+        setTranslationError(
+          "🔑 API key không hợp lệ. Vui lòng liên hệ quản trị viên."
+        );
       } else {
-        setTranslationError("❌ Lỗi dịch: " + errText);
+        setTranslationError("❌ Lỗi dịch: " + errMsg);
       }
+
+      toast.error("❌ Lỗi khi dịch bài báo", { id: "translation-progress" });
     } finally {
       setIsTranslating(false);
     }
@@ -552,7 +672,7 @@ export default function NewsPortal() {
                           ) : (
                             <>
                               <Languages className="w-4 h-4" />
-                              Dịch bài
+                              Dịch bài (AI miễn phí)
                             </>
                           )}
                         </button>
@@ -650,14 +770,19 @@ export default function NewsPortal() {
                     <article className="article-reader bg-white rounded-lg shadow-sm p-8">
                       <div className="flex items-center gap-2 mb-4 pb-3 border-b">
                         <span className="text-sm font-semibold text-white bg-purple-600 px-3 py-1 rounded-full">
-                          🇻🇳 Bản dịch (Tiếng Việt)
+                          🇻🇳 Bản dịch (Tiếng Việt) - Powered by OpenRouter
                         </span>
                       </div>
 
                       {isTranslating && !translatedContent && (
                         <div className="flex flex-col items-center justify-center py-12">
                           <Loader2 className="w-10 h-10 animate-spin text-purple-600 mb-3" />
-                          <p className="text-gray-600">Đang dịch bài báo...</p>
+                          <p className="text-gray-600">
+                            Đang dịch bài báo bằng AI...
+                          </p>
+                          <p className="text-xs text-gray-500 mt-2">
+                            Sử dụng Gemini 2.0 Flash (Free)
+                          </p>
                         </div>
                       )}
 
@@ -692,8 +817,8 @@ export default function NewsPortal() {
             </div>
 
             <div className="p-4 bg-gray-50 border-t text-center text-sm text-gray-500">
-              Nội dung được trích xuất tự động – Dịch toàn bộ bài, lưu từ vựng
-              ngay tại đây
+              Nội dung được trích xuất tự động – Dịch miễn phí bằng AI
+              (OpenRouter)
             </div>
           </div>
         </>
