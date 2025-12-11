@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   ChevronLeft,
   ChevronRight,
@@ -17,6 +18,7 @@ const TOEICSchedulePage = () => {
   const [selectedCourse, setSelectedCourse] = useState("all");
   const [loading, setLoading] = useState(true);
   const [scheduleData, setScheduleData] = useState([]);
+  const navigate = useNavigate();
 
   // Fetch data from API
   useEffect(() => {
@@ -290,6 +292,11 @@ const TOEICSchedulePage = () => {
                                     disabled={
                                       classItem.capacity.currentStudents >=
                                       classItem.capacity.maxStudents
+                                    }
+                                    onClick={() =>
+                                      navigate(
+                                        `/toeic-home/course/${classItem.courseId._id}`
+                                      )
                                     }
                                   >
                                     {classItem.capacity.currentStudents >=

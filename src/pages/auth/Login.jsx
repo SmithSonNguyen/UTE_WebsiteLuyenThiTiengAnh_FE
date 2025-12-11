@@ -12,6 +12,7 @@ import { loginUser, clearLoginError } from "@/redux/authSlice"; // import thunk
 import { useDispatch, useSelector } from "react-redux";
 import getTokenRole from "@/utils/getTokenRole";
 import isTokenValid from "@/utils/isTokenValid";
+import { toast } from "react-toastify";
 
 const schema = yup.object({
   email: yup.string().email("Invalid email").required("Email is required"),
@@ -64,6 +65,8 @@ const Login = () => {
         } else {
           navigate("/toeic-home"); // redirect đến trang chủ cho student
         }
+
+        toast.success("Đăng nhập thành công!");
       } else {
         // login thất bại, error sẽ hiển thị từ Redux
         console.log(resultAction.payload);
@@ -74,7 +77,7 @@ const Login = () => {
   };
 
   return (
-    <FormWrapper title="Login to Practice English">
+    <FormWrapper title="Đăng Nhập">
       <form onSubmit={handleSubmit(onSubmit)}>
         <Input
           label="Email"
@@ -83,7 +86,7 @@ const Login = () => {
           error={errors.email}
         />
         <Input
-          label="Password"
+          label="Mật Khẩu"
           type="password"
           register={register("password")}
           error={errors.password}
@@ -95,21 +98,21 @@ const Login = () => {
         )}
         <div className="flex justify-center">
           <Button type="submit" loading={isLoading}>
-            Login
+            Đăng Nhập
           </Button>
         </div>
       </form>
 
       <div className="text-center mt-4">
         <Link to="/forgot-password" className="text-blue-600 hover:underline">
-          Forgot Password?
+          Quên Mật Khẩu?
         </Link>
       </div>
       <div className="text-center mt-2">
         <p>
-          Don't have an account?{" "}
+          Bạn chưa có tài khoản?{" "}
           <Link to="/register" className="text-blue-600 hover:underline">
-            Register
+            Đăng Ký
           </Link>
         </p>
       </div>

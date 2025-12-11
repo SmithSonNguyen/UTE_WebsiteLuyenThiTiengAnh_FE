@@ -17,14 +17,14 @@ import getTokenRole from "@/utils/getTokenRole";
 import isTokenValid from "@/utils/isTokenValid";
 
 const emailSchema = yup.object({
-  email: yup.string().email("Invalid email").required("Email is required"),
+  email: yup.string().email("Email không hợp lệ").required("Email là bắt buộc"),
 });
 
 const otpSchema = yup.object({
   otp: yup
     .string()
-    .length(6, "OTP must be 6 digits")
-    .required("OTP is required"),
+    .length(6, "OTP phải có đúng 6 chữ số")
+    .required("OTP là bắt buộc"),
 });
 
 const passwordSchema = yup.object({
@@ -139,7 +139,8 @@ const ForgotPassword = () => {
       setUserEmail(data.email);
 
       if (result.status === 400) {
-        setErrorMessage(result.message || "Failed to send OTP");
+        //setErrorMessage(result.message || "Failed to send OTP");
+        toast.error(result.message || "Failed to send OTP");
         return;
       }
 
@@ -151,11 +152,12 @@ const ForgotPassword = () => {
           `OTP sent! Development mode: Use OTP ${result.result.otp}`
         );
       } else {
-        toast.success("OTP sent to your email successfully!");
+        toast.success("OTP đã được gửi thành công");
       }
     } catch (error) {
       console.error("Send OTP error:", error);
       setErrorMessage(error.response?.data?.message || "Failed to send OTP");
+      toast.error(error.response?.data?.message || "Failed to send OTP");
     } finally {
       setIsLoading(false);
     }
@@ -167,12 +169,14 @@ const ForgotPassword = () => {
 
       const result = await verifyOTPResetPassword(userEmail, data.otp);
       if (result.status === 400) {
-        setErrorMessage(result.message || "Invalid or expired OTP");
+        //setErrorMessage(result.message || "Invalid or expired OTP");
+        toast.error(result.message || "Invalid or expired OTP");
+        resetOTP({ otp: "" });
         return;
       }
 
       setStep(3);
-      toast.success("OTP verified successfully!");
+      toast.success("Xác nhận OTP thành công!");
     } catch (error) {
       console.error("Verify OTP error:", error);
       toast.error(error.response?.data?.message || "Invalid or expired OTP");
@@ -188,14 +192,18 @@ const ForgotPassword = () => {
 
       await resetPassword(userEmail, data.new_password, data.confirm_password);
 
-      toast.success("Password reset successfully!");
+      toast.success("Đặt lại mật khẩu thành công!");
       navigate("/login");
     } catch (error) {
-      console.error("Reset password error:", error);
-      const errMsg =
-        error.response?.data?.message || "Failed to reset password";
-      setErrorMessage(errMsg);
-      toast.error(errMsg);
+      console.error("Lỗi khi đặt lại mật khẩu:", error);
+      const backendErrors = error.errors;
+      if (backendErrors) {
+        // Lặp qua tất cả errors và toast từng cái
+        Object.values(backendErrors).forEach((err) => {
+          if (err.msg) toast.error(err.msg);
+        });
+        //setErrorMessage("");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -275,13 +283,13 @@ const ForgotPassword = () => {
               loading={isEmailSubmitting || isLoading}
               disabled={isEmailSubmitting || isLoading}
             >
-              Send OTP
+              Gửi OTP
             </Button>
           </div>
         </form>
         <div className="text-center mt-4">
           <Link to="/login" className="text-blue-600 hover:underline">
-            Back to Login
+            Quay lại Đăng nhập
           </Link>
         </div>
       </FormWrapper>
@@ -328,7 +336,7 @@ const ForgotPassword = () => {
               loading={isOTPSubmitting || isLoading}
               disabled={isOTPSubmitting || isLoading}
             >
-              Verify OTP
+              Xác nhận OTP
             </Button>
           </div>
         </form>
@@ -342,8 +350,8 @@ const ForgotPassword = () => {
               disabled={countdown > 0 || isLoading}
             >
               {countdown > 0
-                ? `Resend OTP (${formatTime(countdown)})`
-                : "Resend OTP"}
+                ? `Gửi lại OTP (${formatTime(countdown)})`
+                : "Gửi lại OTP"}
             </Button>
           </div>
 
@@ -354,7 +362,7 @@ const ForgotPassword = () => {
               onClick={handleBackToEmail}
               disabled={isLoading}
             >
-              Back to Email
+              Quay lại
             </Button>
           </div>
         </div>
@@ -364,9 +372,9 @@ const ForgotPassword = () => {
 
   // Step 3: New Password
   return (
-    <FormWrapper title="Reset Password">
+    <FormWrapper title="Đặt Lại Mật Khẩu">
       <p className="text-center text-gray-600 mb-6">
-        Enter your new password below.
+        Nhập mật khẩu mới của bạn bên dưới.
       </p>
       <form
         key={`password-form-${step}`}
@@ -374,7 +382,7 @@ const ForgotPassword = () => {
       >
         <Input
           key={`password-input-${step}`}
-          label="New Password"
+          label="Mật khẩu mới"
           type="password"
           register={registerPassword("new_password")}
           //name="new-password"
@@ -383,31 +391,31 @@ const ForgotPassword = () => {
         />
         <Input
           key={`confirm-password-input-${step}`}
-          label="Confirm New Password"
+          label="Xác nhận mật khẩu mới"
           type="password"
           register={registerPassword("confirm_password")}
           //name="new-confirm-password"
           error={passwordErrors.confirm_password}
           autoComplete="new-password"
         />
-        {errorMessage && (
+        {/* {errorMessage && (
           <p className="text-red-500 text-sm my-2 text-center">
             {errorMessage}
           </p>
-        )}
+        )} */}
         <div className="flex justify-center">
           <Button
             type="submit"
             loading={isPasswordSubmitting || isLoading}
             disabled={isPasswordSubmitting || isLoading}
           >
-            Reset Password
+            Đặt lại mật khẩu
           </Button>
         </div>
       </form>
       <div className="text-center mt-4">
         <Link to="/login" className="text-blue-600 hover:underline">
-          Back to Login
+          Quay lại Đăng nhập
         </Link>
       </div>
     </FormWrapper>

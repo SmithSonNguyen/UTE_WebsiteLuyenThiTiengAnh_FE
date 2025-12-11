@@ -13,25 +13,25 @@ import getTokenRole from "@/utils/getTokenRole";
 import isTokenValid from "@/utils/isTokenValid";
 
 const schema = yup.object({
-  lastname: yup.string().required("Last name is required"),
-  firstname: yup.string().required("First name is required"),
-  email: yup.string().email("Invalid email").required("Email is required"),
-  birthday: yup.string().required("Birthday is required"),
+  lastname: yup.string().required("Họ là bắt buộc"),
+  firstname: yup.string().required("Tên là bắt buộc"),
+  email: yup.string().email("Email không hợp lệ").required("Email là bắt buộc"),
+  birthday: yup.string().required("Ngày sinh là bắt buộc"),
   password: yup
     .string()
-    .min(6, "Password must be at least 6 characters")
-    .required("Password is required"),
+    .min(6, "Mật khẩu phải có tối thiểu 6 ký tự")
+    .required("Mật khẩu là bắt buộc"),
   confirm_password: yup
     .string()
-    .oneOf([yup.ref("password")], "Passwords must match")
-    .required("Confirm Password is required"),
+    .oneOf([yup.ref("password")], "Mật khẩu xác nhận không khớp")
+    .required("Xác nhận mật khẩu là bắt buộc"),
 });
 
 const otpSchema = yup.object({
   otp: yup
     .string()
-    .length(6, "OTP must be 6 digits")
-    .required("OTP is required"),
+    .length(6, "OTP phải có đúng 6 chữ số")
+    .required("OTP là bắt buộc"),
 });
 
 const RegisterWithOTP = () => {
@@ -99,11 +99,19 @@ const RegisterWithOTP = () => {
           `OTP sent! Development mode: Use OTP ${result.result.otp}`
         );
       } else {
-        toast.success("OTP sent to your email successfully!");
+        toast.success("OTP đã được gửi đến email của bạn!");
       }
     } catch (error) {
       console.error("Send OTP error:", error);
-      toast.error(error.response?.data?.message || "Failed to send OTP");
+      const backendErrors = error.errors;
+      if (backendErrors) {
+        // Lặp qua tất cả errors và toast từng cái
+        Object.values(backendErrors).forEach((err) => {
+          if (err.msg) toast.error(err.msg);
+        });
+      } else {
+        toast.error(error.response?.data?.message || "Failed to send OTP");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -114,15 +122,22 @@ const RegisterWithOTP = () => {
       setIsLoading(true);
 
       // Verify OTP first
-      await verifyOTPRegister({ ...userData, otp: data.otp });
+      const result = await verifyOTPRegister({ ...userData, otp: data.otp });
 
-      toast.success("Đăng ký thành công!");
+      if (result.status === 201) {
+        toast.success("Đăng ký thành công");
+        navigate("/login");
+        return;
+      }
 
-      // Redirect to home or dashboard
-      navigate("/login");
+      if (result.status === 400) {
+        toast.error(result.message || "OTP không hợp lệ hoặc đã hết hạn");
+        resetOTP({ otp: "" }); // reset input về rỗng
+        return;
+      }
     } catch (error) {
       console.error("Register error:", error);
-      toast.error(error.response?.data?.message || "Registration failed");
+      toast.error(error?.message || "Registration failed");
     } finally {
       setIsLoading(false);
     }
@@ -165,16 +180,16 @@ const RegisterWithOTP = () => {
 
   if (step === 1) {
     return (
-      <FormWrapper title="Register for English Practice">
+      <FormWrapper title="Đăng ký tài khoản">
         <form onSubmit={handleSubmitForm(onSubmitForm)}>
           <div className="grid grid-cols-2 gap-4">
             <Input
-              label="Last Name"
+              label="Họ"
               register={registerForm("lastname")}
               error={formErrors.lastname}
             />
             <Input
-              label="First Name"
+              label="Tên"
               register={registerForm("firstname")}
               error={formErrors.firstname}
             />
@@ -186,19 +201,19 @@ const RegisterWithOTP = () => {
             error={formErrors.email}
           />
           <Input
-            label="Birthday"
+            label="Ngày sinh"
             type="date"
             register={registerForm("birthday")}
             error={formErrors.birthday}
           />
           <Input
-            label="Password"
+            label="Mật khẩu"
             type="password"
             register={registerForm("password")}
             error={formErrors.password}
           />
           <Input
-            label="Confirm Password"
+            label="Xác nhận mật khẩu"
             type="password"
             register={registerForm("confirm_password")}
             error={formErrors.confirm_password}
@@ -209,15 +224,15 @@ const RegisterWithOTP = () => {
               loading={isFormSubmitting || isLoading}
               disabled={isFormSubmitting || isLoading}
             >
-              Send OTP
+              Gửi OTP
             </Button>
           </div>
         </form>
         <div className="text-center mt-4">
           <p>
-            Already have an account?{" "}
+            Bạn đã có tài khoản?{" "}
             <Link to="/login" className="text-blue-600 hover:underline">
-              Login
+              Đăng nhập
             </Link>
           </p>
         </div>
@@ -226,7 +241,7 @@ const RegisterWithOTP = () => {
   }
 
   return (
-    <FormWrapper title="Verify OTP">
+    <FormWrapper title="Xác nhận OTP">
       <div className="text-center mb-6">
         <p className="text-gray-600 mb-2">
           Chúng tôi đã gửi một mã OTP đến email của bạn:
@@ -243,7 +258,7 @@ const RegisterWithOTP = () => {
         <Input
           label="Nhập mã OTP"
           type="text"
-          placeholder="Enter 6-digit OTP"
+          placeholder="Nhập mã OTP 6 chữ số"
           register={registerOTP("otp")}
           error={otpErrors.otp}
           maxLength={6}
@@ -256,7 +271,7 @@ const RegisterWithOTP = () => {
             loading={isOTPSubmitting || isLoading}
             disabled={isOTPSubmitting || isLoading}
           >
-            Verify & Register
+            Xác nhận & Đăng ký
           </Button>
         </div>
       </form>
@@ -270,8 +285,8 @@ const RegisterWithOTP = () => {
             disabled={countdown > 0 || isLoading}
           >
             {countdown > 0
-              ? `Resend OTP (${formatTime(countdown)})`
-              : "Resend OTP"}
+              ? `Gửi lại OTP (${formatTime(countdown)})`
+              : "Gửi lại OTP"}
           </Button>
         </div>
 
@@ -282,7 +297,7 @@ const RegisterWithOTP = () => {
             onClick={handleBackToForm}
             disabled={isLoading}
           >
-            Back to Form
+            Quay lại biểu mẫu đăng ký
           </Button>
         </div>
       </div>
