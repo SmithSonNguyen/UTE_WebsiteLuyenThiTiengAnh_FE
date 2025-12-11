@@ -13,8 +13,8 @@ const VocabTranslator = () => {
   // Config chỉ cho Groq
   const GROQ_CONFIG = {
     name: "Groq",
-    key: "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",
-    url: "https://api.groq.com/openai/v1/chat/completions",
+    key: import.meta.env.VITE_GROQ_KEY,
+    url: import.meta.env.VITE_GROQ_URL,
     model: "llama-3.3-70b-versatile",
   };
 
