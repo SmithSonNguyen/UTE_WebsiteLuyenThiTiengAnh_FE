@@ -10,7 +10,8 @@ const InstructorProfile = () => {
   const [loading, setLoading] = useState(true);
   const [profileData, setProfileData] = useState({
     id: "",
-    name: "",
+    firstname: "",
+    lastname: "",
     email: "",
     phone: "",
     position: "",
@@ -44,7 +45,8 @@ const InstructorProfile = () => {
 
       setProfileData({
         id: data._id || "",
-        name: data.profile.lastname + " " + data.profile.firstname || "",
+        firstname: data.profile.firstname || "",
+        lastname: data.profile.lastname || "",
         email: data.profile.email || "",
         phone: data.profile.phone || "",
         position: data.instructorInfo.position || "",
@@ -80,7 +82,8 @@ const InstructorProfile = () => {
     try {
       setLoading(true);
       const updateData = {
-        name: profileData.name,
+        firstname: profileData.firstname,
+        lastname: profileData.lastname,
         phone: profileData.phone,
         address: profileData.address,
         department: profileData.department,
@@ -90,6 +93,7 @@ const InstructorProfile = () => {
         education: profileData.education,
         bio: profileData.bio,
         avatar: profileData.avatar,
+        linkSocial: profileData.linkSocial,
       };
 
       await updateInstructorProfile(updateData);
@@ -171,7 +175,7 @@ const InstructorProfile = () => {
 
               <div className="mt-4">
                 <h3 className="text-xl font-semibold text-gray-900">
-                  {profileData.name}
+                  {profileData.lastname} {profileData.firstname}
                 </h3>
                 <p className="text-gray-500">{profileData.position}</p>
                 <p className="text-gray-500">{profileData.department}</p>
@@ -237,17 +241,37 @@ const InstructorProfile = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Họ và tên
+                  Họ
                 </label>
                 {isEditing ? (
                   <input
                     type="text"
-                    value={profileData.name}
-                    onChange={(e) => handleInputChange("name", e.target.value)}
+                    value={profileData.lastname}
+                    onChange={(e) =>
+                      handleInputChange("lastname", e.target.value)
+                    }
                     className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 ) : (
-                  <p className="text-gray-900">{profileData.name}</p>
+                  <p className="text-gray-900">{profileData.lastname}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Tên
+                </label>
+                {isEditing ? (
+                  <input
+                    type="text"
+                    value={profileData.firstname}
+                    onChange={(e) =>
+                      handleInputChange("firstname", e.target.value)
+                    }
+                    className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                ) : (
+                  <p className="text-gray-900">{profileData.firstname}</p>
                 )}
               </div>
 

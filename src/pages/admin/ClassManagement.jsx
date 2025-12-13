@@ -13,6 +13,7 @@ import {
   Filter,
   UserCheck,
 } from "lucide-react";
+import { toast } from "react-toastify";
 
 const ClassManagement = () => {
   const accessToken = useSelector((state) => state.auth.login.accessToken);
@@ -197,12 +198,12 @@ const ClassManagement = () => {
         throw new Error(error.message || "Failed to create class");
       }
 
-      alert("Tạo lớp học thành công!");
+      toast.success("Tạo lớp học thành công!");
       setShowCreateModal(false);
       resetCreateForm();
       fetchClasses();
     } catch (err) {
-      alert("Lỗi: " + err.message);
+      toast.error("Lỗi: " + err.message);
     }
   };
 
@@ -230,13 +231,13 @@ const ClassManagement = () => {
         throw new Error(error.message || "Failed to change instructor");
       }
 
-      alert("Thay đổi giảng viên thành công!");
+      toast.success("Thay đổi giảng viên thành công!");
       setShowChangeInstructorModal(false);
       setSelectedClass(null);
       setChangeInstructorForm({ instructorId: "" });
       fetchClasses();
     } catch (err) {
-      alert("Lỗi: " + err.message);
+      toast.error("Lỗi: " + err.message);
     }
   };
 
@@ -261,12 +262,12 @@ const ClassManagement = () => {
         throw new Error(error.message || "Failed to delete class");
       }
 
-      alert("Xóa lớp học thành công!");
+      toast.success("Xóa lớp học thành công!");
       setShowDeleteModal(false);
       setSelectedClass(null);
       fetchClasses();
     } catch (err) {
-      alert("Lỗi: " + err.message);
+      toast.error("Lỗi: " + err.message);
     }
   };
 

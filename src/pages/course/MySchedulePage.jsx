@@ -31,7 +31,7 @@ const EmptyState = ({ userName }) => (
           <p className="text-lg text-gray-600 mt-5">Xin chào, {userName}!</p>
         </div>
         <Link
-          to="/classes/register"
+          to="/toeic-home/all-course"
           className="mt-4 sm:mt-0 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium"
         >
           Đăng Ký Khóa Mới
@@ -101,7 +101,7 @@ const EmptyState = ({ userName }) => (
                       một khóa học ngay hôm nay!
                     </p>
                     <Link
-                      to="/classes/register"
+                      to="/toeic-home/all-course"
                       className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-semibold text-lg"
                     >
                       Đăng ký khóa học ngay
