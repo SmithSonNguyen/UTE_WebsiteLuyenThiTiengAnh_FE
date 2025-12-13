@@ -15,7 +15,9 @@ import {
   DollarSign,
   Clock,
   CheckCircle,
+  RotateCcw,
 } from "lucide-react";
+import { toast } from "react-toastify";
 
 const UserManagement = () => {
   const accessToken = useSelector((state) => state.auth.login.accessToken);
@@ -24,10 +26,12 @@ const UserManagement = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [activeTab, setActiveTab] = useState("active"); // "active" or "deleted"
 
   // Modal states
   const [showEnrollmentsModal, setShowEnrollmentsModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showRestoreModal, setShowRestoreModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [enrollmentsData, setEnrollmentsData] = useState(null);
   const [loadingEnrollments, setLoadingEnrollments] = useState(false);
@@ -77,7 +81,7 @@ const UserManagement = () => {
       const result = await response.json();
       setEnrollmentsData(result.data);
     } catch (err) {
-      alert("Lỗi khi tải enrollments: " + err.message);
+      toast.error("Lỗi khi tải enrollments: " + err.message);
     } finally {
       setLoadingEnrollments(false);
     }
@@ -102,12 +106,42 @@ const UserManagement = () => {
         throw new Error(error.message || "Failed to delete user");
       }
 
-      alert("Xóa người dùng thành công!");
+      toast.success("Xóa người dùng thành công!");
       setShowDeleteModal(false);
       setSelectedUser(null);
       fetchUsers();
     } catch (err) {
-      alert("Lỗi: " + err.message);
+      toast.error("Lỗi: " + err.message);
+    }
+  };
+
+  const handleRestoreUser = async () => {
+    if (!selectedUser) return;
+
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/admin/users/${
+          selectedUser._id
+        }/restore`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to restore user");
+      }
+
+      toast.success("Khôi phục người dùng thành công!");
+      setShowRestoreModal(false);
+      setSelectedUser(null);
+      fetchUsers();
+    } catch (err) {
+      toast.error("Lỗi: " + err.message);
     }
   };
 
@@ -122,13 +156,27 @@ const UserManagement = () => {
     setShowDeleteModal(true);
   };
 
+  const openRestoreModal = (user) => {
+    setSelectedUser(user);
+    setShowRestoreModal(true);
+  };
+
   const filteredUsers = users.filter((user) => {
     const fullName =
       `${user.profile.lastname} ${user.profile.firstname}`.toLowerCase();
     const email = user.profile.email.toLowerCase();
     const search = searchTerm.toLowerCase();
-    return fullName.includes(search) || email.includes(search);
+    const matchesSearch = fullName.includes(search) || email.includes(search);
+
+    // Filter by tab: active users (not deleted) or deleted users
+    const matchesTab =
+      activeTab === "active" ? !user.isDeleted : user.isDeleted;
+
+    return matchesSearch && matchesTab;
   });
+
+  const activeUsersCount = users.filter((user) => !user.isDeleted).length;
+  const deletedUsersCount = users.filter((user) => user.isDeleted).length;
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat("vi-VN", {
@@ -165,10 +213,48 @@ const UserManagement = () => {
         </div>
         <div className="flex items-center gap-4">
           <div className="text-right">
-            <p className="text-2xl font-bold text-blue-600">{users.length}</p>
-            <p className="text-sm text-gray-500">Total Users</p>
+            <p className="text-2xl font-bold text-blue-600">
+              {activeUsersCount}
+            </p>
+            <p className="text-sm text-gray-500">Active Users</p>
+          </div>
+          <div className="text-right">
+            <p className="text-2xl font-bold text-red-600">
+              {deletedUsersCount}
+            </p>
+            <p className="text-sm text-gray-500">Deleted Users</p>
           </div>
         </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="bg-white rounded-lg p-1 border border-gray-200 flex gap-2">
+        <button
+          onClick={() => setActiveTab("active")}
+          className={`flex-1 px-4 py-2 rounded-lg transition-colors font-medium ${
+            activeTab === "active"
+              ? "bg-blue-600 text-white"
+              : "text-gray-600 hover:bg-gray-100"
+          }`}
+        >
+          <div className="flex items-center justify-center gap-2">
+            <Users className="w-5 h-5" />
+            <span>Active Users ({activeUsersCount})</span>
+          </div>
+        </button>
+        <button
+          onClick={() => setActiveTab("deleted")}
+          className={`flex-1 px-4 py-2 rounded-lg transition-colors font-medium ${
+            activeTab === "deleted"
+              ? "bg-red-600 text-white"
+              : "text-gray-600 hover:bg-gray-100"
+          }`}
+        >
+          <div className="flex items-center justify-center gap-2">
+            <Trash2 className="w-5 h-5" />
+            <span>Deleted Users ({deletedUsersCount})</span>
+          </div>
+        </button>
       </div>
 
       {/* Search */}
@@ -253,13 +339,23 @@ const UserManagement = () => {
                 <BookOpen className="w-4 h-4" />
                 View Enrollments
               </button>
-              <button
-                onClick={() => openDeleteModal(user)}
-                className="flex items-center justify-center gap-2 px-3 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors text-sm font-medium"
-              >
-                <Trash2 className="w-4 h-4" />
-                Delete
-              </button>
+              {activeTab === "active" ? (
+                <button
+                  onClick={() => openDeleteModal(user)}
+                  className="flex items-center justify-center gap-2 px-3 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors text-sm font-medium"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Delete
+                </button>
+              ) : (
+                <button
+                  onClick={() => openRestoreModal(user)}
+                  className="flex items-center justify-center gap-2 px-3 py-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors text-sm font-medium"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  Restore
+                </button>
+              )}
             </div>
           </div>
         ))}
@@ -499,6 +595,50 @@ const UserManagement = () => {
                 className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
               >
                 Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Restore Confirmation Modal */}
+      {showRestoreModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-6 max-w-md w-full">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-gray-800">
+                Confirm Restore
+              </h2>
+              <button
+                onClick={() => setShowRestoreModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to restore user{" "}
+              <strong>
+                {selectedUser?.profile.lastname}{" "}
+                {selectedUser?.profile.firstname}
+              </strong>{" "}
+              ({selectedUser?.profile.email})? This user will be able to access
+              the system again.
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowRestoreModal(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleRestoreUser}
+                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+              >
+                Restore
               </button>
             </div>
           </div>

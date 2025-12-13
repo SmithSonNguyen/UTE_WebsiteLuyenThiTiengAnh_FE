@@ -14,6 +14,7 @@ import {
   X,
   Search,
 } from "lucide-react";
+import { toast } from "react-toastify";
 
 const InstructorManagement = () => {
   const accessToken = useSelector((state) => state.auth.login.accessToken);
@@ -114,7 +115,7 @@ const InstructorManagement = () => {
 
       if (!response.ok) throw new Error("Failed to create instructor");
 
-      alert("Tạo instructor thành công!");
+      toast.success("Tạo instructor thành công!");
       setShowCreateModal(false);
       setCreateForm({
         email: "",
@@ -130,7 +131,7 @@ const InstructorManagement = () => {
       });
       fetchInstructors();
     } catch (err) {
-      alert("Lỗi: " + err.message);
+      toast.error("Lỗi: " + err.message);
     }
   };
 
@@ -155,12 +156,12 @@ const InstructorManagement = () => {
         throw new Error(error.message || "Failed to delete instructor");
       }
 
-      alert("Xóa instructor thành công!");
+      toast.success("Xóa instructor thành công!");
       setShowDeleteModal(false);
       setSelectedInstructor(null);
       fetchInstructors();
     } catch (err) {
-      alert("Lỗi: " + err.message);
+      toast.error("Lỗi: " + err.message);
     }
   };
 
@@ -181,12 +182,12 @@ const InstructorManagement = () => {
 
       if (!response.ok) throw new Error("Failed to assign class");
 
-      alert("Gán lớp thành công!");
+      toast.success("Gán lớp thành công!");
       setShowAssignModal(false);
       setAssignForm({ instructorId: "", classId: "" });
       fetchInstructors();
     } catch (err) {
-      alert("Lỗi: " + err.message);
+      toast.error("Lỗi: " + err.message);
     }
   };
 

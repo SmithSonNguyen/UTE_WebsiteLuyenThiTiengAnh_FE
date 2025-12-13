@@ -84,37 +84,6 @@ const Profile = () => {
             </h2>
 
             {/* Complete TOEIC Card */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 w-1/3">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-800">
-                  Complete TOEIC
-                </h3>
-                <span className="bg-orange-400 text-white text-xs font-medium px-3 py-1 rounded-full">
-                  Học thử
-                </span>
-              </div>
-
-              {/* Progress bar */}
-              <div className="mb-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-gray-600">0%</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div
-                    className="bg-orange-400 h-2 rounded-full"
-                    style={{ width: "0%" }}
-                  ></div>
-                </div>
-              </div>
-
-              {/* Course description */}
-              <div className="text-sm text-gray-600">
-                <p>
-                  <span className="font-medium">Tiến tục bài học:</span> Từ vựng
-                  TOEIC - List 20
-                </p>
-              </div>
-            </div>
           </div>
         )}
 

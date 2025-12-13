@@ -110,7 +110,7 @@ const RegisterWithOTP = () => {
           if (err.msg) toast.error(err.msg);
         });
       } else {
-        toast.error(error.response?.data?.message || "Failed to send OTP");
+        toast.error(error.message || "Failed to send OTP");
       }
     } finally {
       setIsLoading(false);
