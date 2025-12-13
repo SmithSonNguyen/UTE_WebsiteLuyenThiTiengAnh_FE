@@ -17,7 +17,7 @@ const RoleBasedRedirect = () => {
   // Redirect dựa trên role
   switch (role) {
     case "admin":
-      return <Navigate to="/admin" replace />;
+      return <Navigate to="/admin/dashboard" replace />;
 
     case "instructor":
       return <Navigate to="/instructor" replace />;
