@@ -40,6 +40,7 @@ import AdminLayout from "../components/layouts/AdminLayout";
 import ClassManagement from "@/pages/admin/ClassManagement";
 import PreRecordedCourseManagement from "@/pages/admin/PreRecordedCourseManagement";
 import UserManagement from "@/pages/admin/UserManagement";
+import VocabularyManagement from "@/pages/admin/VocabularyManagement";
 
 function AppRouter() {
   return (
@@ -87,6 +88,14 @@ function AppRouter() {
           element={
             <AdminLayout>
               <UserManagement />
+            </AdminLayout>
+          }
+        />
+        <Route
+          path="/admin/vocab-management"
+          element={
+            <AdminLayout>
+              <VocabularyManagement />
             </AdminLayout>
           }
         />
