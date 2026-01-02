@@ -15,25 +15,15 @@ import {
   X,
   Languages,
 } from "lucide-react";
-import { toast } from "react-hot-toast";
 
 const API_BASE_URL = "http://localhost:4000/news";
 const EXTRACT_API_URL = "http://localhost:4000/extract";
 
-// Multi-provider API configuration
-const API_PROVIDERS = {
-  openrouter: {
-    name: "OpenRouter",
-    keys: "",
-    url: "",
-    model: "google/gemini-2.0-flash-exp:free",
-  },
-  groq: {
-    name: "Groq",
-    keys: import.meta.env.VITE_GROQ_KEY,
-    url: import.meta.env.VITE_GROQ_URL,
-    model: "llama-3.3-70b-versatile", // Model mạnh và miễn phí của Groq
-  },
+// Groq API configuration
+const GROQ_CONFIG = {
+  apiKey: import.meta.env.VITE_GROQ_KEY,
+  url: import.meta.env.VITE_GROQ_URL,
+  model: "llama-3.3-70b-versatile",
 };
 
 const categories = [
@@ -73,8 +63,6 @@ export default function NewsPortal() {
   const [translatedContent, setTranslatedContent] = useState("");
   const [isTranslating, setIsTranslating] = useState(false);
   const [translationError, setTranslationError] = useState("");
-  const [currentProvider, setCurrentProvider] = useState("openrouter");
-  const [currentKeyIndex, setCurrentKeyIndex] = useState(0);
 
   useEffect(() => {
     fetchFeaturedNews();
@@ -190,48 +178,8 @@ export default function NewsPortal() {
     return date.toLocaleDateString("vi-VN");
   };
 
-  // Helper: Delay
   const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-  // Helper: Dịch một chunk với provider cụ thể
-  const translateChunkWithProvider = async (chunk, providerKey, keyIndex) => {
-    const provider = API_PROVIDERS[providerKey];
-    const apiKey = provider.keys[keyIndex];
-
-    console.log(`🔑 Đang dùng ${provider.name} - Key #${keyIndex + 1}`);
-
-    const response = await fetch(provider.url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-        ...(providerKey === "openrouter" && {
-          "HTTP-Referer": window.location.origin,
-          "X-Title": "DTT Toeic - News Translation",
-        }),
-      },
-      body: JSON.stringify({
-        model: provider.model,
-        messages: [
-          {
-            role: "system",
-            content:
-              "You are a professional news translator. Translate English articles to Vietnamese accurately, maintaining the original tone and structure. Return ONLY the Vietnamese translation without any explanations.",
-          },
-          {
-            role: "user",
-            content: `Translate this English article section to Vietnamese:\n\n${chunk}`,
-          },
-        ],
-        temperature: 0.3,
-        max_tokens: providerKey === "groq" ? 4000 : 2500,
-      }),
-    });
-
-    return response;
-  };
-
-  // Translation function với multi-provider fallback
   const translateArticle = async () => {
     if (!extractedArticle?.content) {
       setTranslationError("Không có nội dung để dịch");
@@ -253,155 +201,82 @@ export default function NewsPortal() {
       }
 
       let fullTranslation = "";
-      let currentProviderKey = currentProvider;
-      let currentProviderKeyIndex = currentKeyIndex;
-
-      // Thông báo bắt đầu
-      toast.loading(
-        `Bắt đầu dịch với ${API_PROVIDERS[currentProviderKey].name}...`,
-        {
-          id: "translation-progress",
-        }
-      );
 
       for (let i = 0; i < chunks.length; i++) {
-        let success = false;
-        let attempts = 0;
-        const maxAttempts =
-          API_PROVIDERS.openrouter.keys.length + API_PROVIDERS.groq.keys.length;
+        try {
+          const response = await fetch(GROQ_CONFIG.url, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${GROQ_CONFIG.apiKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model: GROQ_CONFIG.model,
+              messages: [
+                {
+                  role: "system",
+                  content:
+                    "You are a professional news translator. Translate English articles to Vietnamese accurately, maintaining the original tone and structure. Return ONLY the Vietnamese translation without any explanations.",
+                },
+                {
+                  role: "user",
+                  content: `Translate this English article section to Vietnamese:\n\n${chunks[i]}`,
+                },
+              ],
+              temperature: 0.3,
+              max_tokens: 4000,
+            }),
+          });
 
-        while (!success && attempts < maxAttempts) {
-          try {
-            const response = await translateChunkWithProvider(
-              chunks[i],
-              currentProviderKey,
-              currentProviderKeyIndex
+          if (response.status === 429) {
+            throw new Error("RATE_LIMITED");
+          }
+
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(
+              errorData.error?.message || `HTTP ${response.status}`
             );
+          }
 
-            // Nếu bị rate limit (429)
-            if (response.status === 429) {
-              console.warn(
-                `⚠️ ${API_PROVIDERS[currentProviderKey].name} key #${
-                  currentProviderKeyIndex + 1
-                } bị rate limit`
-              );
+          const data = await response.json();
 
-              // Thử key tiếp theo trong cùng provider
-              const provider = API_PROVIDERS[currentProviderKey];
-              if (currentProviderKeyIndex < provider.keys.length - 1) {
-                currentProviderKeyIndex++;
-                toast.loading(`⏳ Đổi sang key khác của ${provider.name}...`, {
-                  id: "translation-progress",
-                });
-              } else {
-                // Hết keys của provider hiện tại, chuyển sang provider khác
-                if (currentProviderKey === "openrouter") {
-                  currentProviderKey = "groq";
-                  currentProviderKeyIndex = 0;
-                  toast.loading(
-                    `🔄 Chuyển sang ${API_PROVIDERS.groq.name}...`,
-                    {
-                      id: "translation-progress",
-                    }
-                  );
-                } else {
-                  // Hết tất cả providers
-                  throw new Error("ALL_PROVIDERS_RATE_LIMITED");
-                }
-              }
+          if (data.choices && data.choices[0]?.message?.content) {
+            const translated = data.choices[0].message.content.trim();
+            fullTranslation += translated + "\n\n";
+            setTranslatedContent(fullTranslation);
+          } else {
+            throw new Error("Không nhận được bản dịch từ API");
+          }
 
-              attempts++;
-              await delay(2000);
-              continue;
-            }
-
-            if (!response.ok) {
-              const errorData = await response.json().catch(() => ({}));
-              throw new Error(
-                errorData.error?.message || `HTTP ${response.status}`
-              );
-            }
-
-            const data = await response.json();
-
-            if (data.choices && data.choices[0]?.message?.content) {
-              const translated = data.choices[0].message.content.trim();
-              fullTranslation += translated + "\n\n";
-
-              // Cập nhật state
-              setTranslatedContent(fullTranslation);
-              setCurrentProvider(currentProviderKey);
-              setCurrentKeyIndex(currentProviderKeyIndex);
-
-              // Progress
-              if (chunks.length > 1) {
-                toast.loading(
-                  `Đang dịch... ${i + 1}/${chunks.length} (${
-                    API_PROVIDERS[currentProviderKey].name
-                  })`,
-                  {
-                    id: "translation-progress",
-                  }
-                );
-              }
-
-              success = true;
-            } else {
-              throw new Error("Không nhận được bản dịch từ API");
-            }
-          } catch (err) {
-            if (err.message === "ALL_PROVIDERS_RATE_LIMITED") {
-              throw err;
-            }
-
-            console.error(`Attempt ${attempts + 1} failed:`, err);
-            attempts++;
-
-            if (attempts >= maxAttempts) {
-              throw err;
-            }
-
+          // Delay giữa các chunks
+          if (i < chunks.length - 1) {
             await delay(1000);
           }
-        }
-
-        // Delay giữa các chunks
-        if (i < chunks.length - 1) {
-          await delay(currentProviderKey === "groq" ? 1000 : 2000);
+        } catch (err) {
+          console.error(`Lỗi dịch chunk ${i + 1}:`, err);
+          throw err;
         }
       }
-
-      toast.success(
-        `✅ Đã dịch thành công với ${API_PROVIDERS[currentProviderKey].name}!`,
-        {
-          id: "translation-progress",
-        }
-      );
     } catch (err) {
       console.error("Translation error:", err);
-
       const errMsg = err?.message || "Lỗi không xác định";
 
-      if (errMsg === "ALL_PROVIDERS_RATE_LIMITED") {
+      if (errMsg === "RATE_LIMITED") {
         setTranslationError(
-          "⏳ Tất cả API providers đều bị giới hạn. Vui lòng thử lại sau 2-3 phút."
+          "⏳ API Groq đang bị giới hạn tốc độ. Vui lòng thử lại sau 1-2 phút."
         );
-        toast.error("⏳ Tất cả API bị giới hạn", {
-          id: "translation-progress",
-        });
       } else if (/network|fetch|failed to fetch/i.test(errMsg)) {
         setTranslationError(
           "🌐 Lỗi kết nối. Vui lòng kiểm tra internet và thử lại."
         );
       } else if (/unauthorized|401|invalid.*key/i.test(errMsg)) {
         setTranslationError(
-          "🔑 API key không hợp lệ. Vui lòng liên hệ quản trị viên."
+          "🔑 API key không hợp lệ. Vui lòng kiểm tra cấu hình GROQ_KEY."
         );
       } else {
         setTranslationError("❌ Lỗi dịch: " + errMsg);
       }
-
-      toast.error("❌ Lỗi khi dịch bài báo", { id: "translation-progress" });
     } finally {
       setIsTranslating(false);
     }
@@ -668,7 +543,7 @@ export default function NewsPortal() {
                           ) : (
                             <>
                               <Languages className="w-4 h-4" />
-                              Dịch bài (AI miễn phí)
+                              Dịch bài (Groq AI)
                             </>
                           )}
                         </button>
@@ -766,7 +641,7 @@ export default function NewsPortal() {
                     <article className="article-reader bg-white rounded-lg shadow-sm p-8">
                       <div className="flex items-center gap-2 mb-4 pb-3 border-b">
                         <span className="text-sm font-semibold text-white bg-purple-600 px-3 py-1 rounded-full">
-                          🇻🇳 Bản dịch (Tiếng Việt) - Powered by OpenRouter
+                          🇻🇳 Bản dịch (Tiếng Việt) - Powered by Groq
                         </span>
                       </div>
 
@@ -777,7 +652,7 @@ export default function NewsPortal() {
                             Đang dịch bài báo bằng AI...
                           </p>
                           <p className="text-xs text-gray-500 mt-2">
-                            Sử dụng Gemini 2.0 Flash (Free)
+                            Sử dụng Llama 3.3 70B (Groq)
                           </p>
                         </div>
                       )}
@@ -813,8 +688,7 @@ export default function NewsPortal() {
             </div>
 
             <div className="p-4 bg-gray-50 border-t text-center text-sm text-gray-500">
-              Nội dung được trích xuất tự động – Dịch miễn phí bằng AI
-              (OpenRouter)
+              Nội dung được trích xuất tự động – Dịch miễn phí bằng Groq AI
             </div>
           </div>
         </>
