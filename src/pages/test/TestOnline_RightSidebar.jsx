@@ -122,9 +122,9 @@ const ToeicOnline_RightSidebar = ({
       <div className="space-y-4">
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <img
-            src="/api/placeholder/300/150"
+            src="https://study4.com/media/home/HomeBanner/files/2021/12/01/download_extension.png"
             alt="IELTS Combo"
-            className="w-full h-32 object-cover"
+            className="w-full h-28 object-cover"
           />
           <div className="p-3">
             <p className="text-sm text-gray-600">
@@ -135,9 +135,9 @@ const ToeicOnline_RightSidebar = ({
 
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <img
-            src="/api/placeholder/300/150"
+            src="	https://study4.com/media/home/HomeBanner/files/2023/03/31/Learning_English_with_1.png"
             alt="TOEIC Calculator"
-            className="w-full h-32 object-cover"
+            className="w-full h-28 object-cover"
           />
           <div className="p-3">
             <p className="text-sm text-gray-600">Tính điểm thi TOEIC</p>
