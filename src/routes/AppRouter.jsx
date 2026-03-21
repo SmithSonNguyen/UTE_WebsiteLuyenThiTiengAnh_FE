@@ -41,6 +41,9 @@ import ClassManagement from "@/pages/admin/ClassManagement";
 import PreRecordedCourseManagement from "@/pages/admin/PreRecordedCourseManagement";
 import UserManagement from "@/pages/admin/UserManagement";
 import VocabularyManagement from "@/pages/admin/VocabularyManagement";
+import TestManagement from "@/pages/admin/TestManagement";
+import WritingTestSelect from "@/pages/WritingTestSelect";
+import DisplayWritingTest from "@/components/test/DisplayWritingTest";
 
 function AppRouter() {
   return (
@@ -99,6 +102,14 @@ function AppRouter() {
             </AdminLayout>
           }
         />
+        <Route
+          path="/admin/tests-management"
+          element={
+            <AdminLayout>
+              <TestManagement />
+            </AdminLayout>
+          }
+        />
       </Route>
 
       <Route element={<StudentProtectedRouter />}>
@@ -114,6 +125,18 @@ function AppRouter() {
               <ToeicHome />
             </ToeicLayout>
           }
+        />
+        <Route
+          path="/toeic-home/writing-test"
+          element={
+            <ToeicLayout>
+              <WritingTestSelect />
+            </ToeicLayout>
+          }
+        />
+        <Route
+          path="/toeic-home/writing-test/:testId"
+          element={<DisplayWritingTest />}
         />
         <Route
           path="/toeic-home/free-entry-test"
@@ -241,6 +264,27 @@ function AppRouter() {
           path="/toeic-home/video-course/"
           element={
             <ToeicLayout showFooter={true}>
+              <VideoCoursePage />
+            </ToeicLayout>
+          }
+        />
+        <Route
+          path="/toeic-home/free-video-course"
+          element={<FreeTrialVideoCourse />}
+        />
+        <Route
+          path="/my-enrolled-courses"
+          element={
+            <ToeicLayout>
+              <MyEnrolledCourses />
+            </ToeicLayout>
+          }
+        />
+
+        <Route
+          path="/learning/:courseId"
+          element={
+            <ToeicLayout>
               <VideoCoursePage />
             </ToeicLayout>
           }
