@@ -208,11 +208,7 @@ function AppRouter() {
         />
         <Route
           path="/toeic-home/test-online/:examId"
-          element={
-            <ToeicLayout>
-              <PracticeTabs />
-            </ToeicLayout>
-          }
+          element={<PracticeTabs />}
         />
         <Route
           path="/toeic-home/test-online/:examId/result"

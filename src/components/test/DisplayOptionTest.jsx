@@ -78,7 +78,7 @@ const DisplayOptionTest = ({
             }));
           })
           .filter(
-            (q) => selectedParts.length === 0 || selectedParts.includes(q.part)
+            (q) => selectedParts.length === 0 || selectedParts.includes(q.part),
           );
 
         if (flattened.length === 0)
@@ -90,7 +90,7 @@ const DisplayOptionTest = ({
         // === REBUILD GROUPS AFTER FILTERING ===
         const grouped = [];
         const includedGroupIds = new Set(
-          flattened.filter((q) => q.part >= 3).map((q) => q.groupId)
+          flattened.filter((q) => q.part >= 3).map((q) => q.groupId),
         );
 
         rawData.forEach((section) => {
@@ -103,7 +103,7 @@ const DisplayOptionTest = ({
               });
             } else if (includedGroupIds.has(section._id || section.id)) {
               const group = flattened.filter(
-                (q) => q.groupId === (section._id || section.id)
+                (q) => q.groupId === (section._id || section.id),
               );
               if (group.length) grouped.push(group);
             }
@@ -126,7 +126,7 @@ const DisplayOptionTest = ({
     if (timeLimitMinutes === 0 || timeLeft <= 0) return;
     const timer = setInterval(
       () => setTimeLeft((prev) => Math.max(0, prev - 1)),
-      1000
+      1000,
     );
     return () => clearInterval(timer);
   }, [timeLeft, timeLimitMinutes]);
@@ -147,7 +147,6 @@ const DisplayOptionTest = ({
   const goToQuestion = (idx) => {
     if (idx >= 0 && idx < questions.length) {
       setCurrentIndex(idx);
-      window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
 
@@ -222,8 +221,31 @@ const DisplayOptionTest = ({
       const listeningScore = score.calculateListeningScore(listeningCorrect);
       const readingScore = score.calculateReadingScore(readingCorrect);
       const totalScore = listeningScore + readingScore;
+      const totalCorrect = listeningCorrect + readingCorrect;
 
-      // 6. Lưu kết quả
+      // 6. ✅ Chuẩn bị payload để POST lên backend (SAVE results)
+      const answersPayload = questions.map((q) => ({
+        number: q.number,
+        answer: answers[q._id] || null,
+        part: q.part,
+      }));
+
+      const postPayload = {
+        answers: answersPayload,
+        mark: totalScore,
+        rightAnswerNumber: totalCorrect,
+      };
+
+      // 7. ✅ POST to save answers to database
+      try {
+        await axiosInstance.post(`/tests/${examId}`, postPayload);
+        console.log("Practice answers saved successfully");
+      } catch (saveError) {
+        console.error("Error saving practice answers:", saveError);
+        // Không throw lỗi ở đây để vẫn cho phép xem kết quả
+      }
+
+      // 8. Lưu kết quả vào state để hiển thị
       const resultState = {
         summary: {
           listeningCorrect,
@@ -243,7 +265,7 @@ const DisplayOptionTest = ({
 
       sessionStorage.setItem(
         `toeic_result_${examId}`,
-        JSON.stringify(resultState)
+        JSON.stringify(resultState),
       );
       navigate(`/toeic-home/test-online/${examId}/result`, {
         state: resultState,
@@ -526,7 +548,7 @@ const DisplayOptionTest = ({
           <div className="mt-6 space-y-5">
             {Object.entries(PART_INFO).map(([partNum, info]) => {
               const partQuestions = questions.filter(
-                (q) => q.part === parseInt(partNum)
+                (q) => q.part === parseInt(partNum),
               );
               if (partQuestions.length === 0) return null;
 
