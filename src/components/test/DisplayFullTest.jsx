@@ -15,9 +15,9 @@ const PART_INFO = {
   7: { name: "Reading Comprehension", hasImage: false },
 };
 
-const FreeEntryTest_FullTest = () => {
+const FreeEntryTest_FullTest = ({ examId, testName }) => {
   // Lấy examId từ URL params hoặc props
-  const { examId } = useParams();
+  // const { examId } = useParams();
   const navigate = useNavigate();
   const currentUser = useSelector((state) => state?.auth?.login?.currentUser);
 
@@ -342,6 +342,15 @@ const FreeEntryTest_FullTest = () => {
 
           // Lưu chi tiết để hiển thị
           const foundQ = questions.find((x) => x.number === q.number);
+
+          // ✅ Ưu tiên lấy mediaUrl/imageUrl từ section của API result (đầy đủ hơn),
+          // vì questions state flatten có thể bị mất media khi section.mediaUrl = ""
+          const sectionMediaUrl = section?.mediaUrl || null;
+          const sectionImageUrl =
+            Array.isArray(section?.imageUrl) && section.imageUrl.length > 0
+              ? section.imageUrl
+              : section?.imageUrl || null;
+
           detailedAnswers.push({
             number: q.number,
             part: foundQ?.part || section?.part,
@@ -349,6 +358,14 @@ const FreeEntryTest_FullTest = () => {
             userAnswer: userAnswer || null,
             correctAnswer: correctAnswer || null,
             isCorrect: !!isCorrect,
+            // ✅ Thêm các field từ question data để hiển thị chi tiết
+            questionText: foundQ?.questionText || "",
+            options: foundQ?.options || [],
+            // Ưu tiên lấy từ section API, fallback về foundQ từ state
+            imageUrl:
+              sectionImageUrl || foundQ?.imageUrls || foundQ?.imageUrl || "",
+            mediaUrl: sectionMediaUrl || foundQ?.mediaUrl || "",
+            paragraph: section?.paragraph || foundQ?.paragraph || "",
           });
         });
       });
@@ -369,8 +386,14 @@ const FreeEntryTest_FullTest = () => {
 
       // Chuẩn bị payload để POST lên backend
       const answersPayload = questions.map((q) => ({
-        questionNumber: q.number,
-        userAnswer: answers[q._id] || null,
+        number: q.number,
+        answer: answers[q._id] || null,
+        part: q.part,
+        questionText: q.questionText || "",
+        options: q.options || [],
+        imageUrl: q.imageUrls || q.imageUrl || "",
+        mediaUrl: q.mediaUrl || "",
+        paragraph: q.paragraph || "",
       }));
 
       const postPayload = {
@@ -535,6 +558,7 @@ const FreeEntryTest_FullTest = () => {
     <div className="flex flex-col min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white border-b px-6 py-4 flex justify-between items-center shadow">
+        <h1 className="font-bold text-2xl text-gray-800">{testName}</h1>
         <h1 className="font-bold text-2xl text-gray-800">TOEIC Full Test</h1>
         <button
           onClick={() => {

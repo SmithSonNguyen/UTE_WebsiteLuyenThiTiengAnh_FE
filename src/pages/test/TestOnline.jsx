@@ -232,18 +232,6 @@ const TestOnline = () => {
             </div>
 
             {/* Filter Tabs */}
-            <div className="mb-6">
-              <div className="border-b border-gray-200">
-                <nav className="flex space-x-8">
-                  <button className="py-3 px-1 border-b-2 border-blue-500 text-blue-600 font-medium text-sm">
-                    Tất cả
-                  </button>
-                  <button className="py-3 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">
-                    Đề rút gọn
-                  </button>
-                </nav>
-              </div>
-            </div>
 
             {/* Exam Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">

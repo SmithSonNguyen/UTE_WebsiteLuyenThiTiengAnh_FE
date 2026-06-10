@@ -8,12 +8,13 @@ import axiosInstance from "@/utils/axiosInstance";
 import score from "@/utils/score";
 
 const PracticeTabs = () => {
-  const [mainTab, setMainTab] = useState("info");
   const [subTab, setSubTab] = useState("practice");
   const [testAttempts, setTestAttempts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
+  const [testName, setTestName] = useState("Đề thi TOEIC");
+  const [testLoadingName, setTestLoadingName] = useState(true);
 
   const { examId } = useParams();
   const navigate = useNavigate();
@@ -39,17 +40,29 @@ const PracticeTabs = () => {
     }
   }, [examId, currentUser]);
 
+  // ✅ Fetch test details (name) khi component mount
+  useEffect(() => {
+    const fetchTestDetails = async () => {
+      if (!examId) return;
+      try {
+        setTestLoadingName(true);
+        const response = await axiosInstance.get(`/tests/${examId}`);
+        if (response.result?.title || response.result?.name) {
+          setTestName(response.result.title || response.result.name);
+        }
+      } catch (err) {
+        console.error("Error fetching test details:", err);
+      } finally {
+        setTestLoadingName(false);
+      }
+    };
+    fetchTestDetails();
+  }, [examId]);
+
   // ✅ Fetch attempts khi component mount
   useEffect(() => {
     fetchTestAttempts();
   }, [fetchTestAttempts]);
-
-  // ✅ Refetch attempts khi user quay lại tab "Thông tin" (sau khi làm bài)
-  useEffect(() => {
-    if (mainTab === "info") {
-      fetchTestAttempts();
-    }
-  }, [mainTab, fetchTestAttempts]);
 
   // Format date to Vietnamese format
   const formatDate = (dateString) => {
@@ -91,8 +104,11 @@ const PracticeTabs = () => {
 
       // Build map: number -> userAnswer from attempt
       const numberToUserAnswer = new Map();
+      const numberToAttemptData = new Map();
       attempt.answers.forEach((ans) => {
         numberToUserAnswer.set(ans.number, ans.answer);
+        // ✅ Lưu toàn bộ data của câu để lấy questionText, options, images...
+        numberToAttemptData.set(ans.number, ans);
       });
 
       // Build detailed answers array from correctAnswersSections (include all 200 questions)
@@ -100,6 +116,7 @@ const PracticeTabs = () => {
       correctAnswersSections.forEach((section) => {
         section.questions?.forEach((q) => {
           const userAnswer = numberToUserAnswer.get(q.number);
+          const attemptData = numberToAttemptData.get(q.number) || {};
           // ✅ Compare with trim() and String() conversion
           const isCorrect =
             userAnswer &&
@@ -112,6 +129,12 @@ const PracticeTabs = () => {
             userAnswer: userAnswer || null,
             correctAnswer: q.answer || null,
             isCorrect: isCorrect,
+            // ✅ Thêm các field từ attempt data (đã được lưu vào DB)
+            questionText: attemptData.questionText || "",
+            options: attemptData.options || [],
+            imageUrl: attemptData.imageUrl || "",
+            mediaUrl: attemptData.mediaUrl || "",
+            paragraph: attemptData.paragraph || "",
           });
         });
       });
@@ -187,131 +210,116 @@ const PracticeTabs = () => {
           </div>
 
           <h1 className="text-2xl font-bold mb-4 flex items-center">
-            2024 Practice Set TOEIC Test 1
-            <span className="ml-2 text-green-500">
-              <i className="fas fa-check-circle"></i>
-            </span>
+            {testLoadingName ? (
+              <span className="text-gray-400">Đang tải tên đề thi...</span>
+            ) : (
+              <>
+                {testName}
+                <span className="ml-2 text-green-500">
+                  <i className="fas fa-check-circle"></i>
+                </span>
+              </>
+            )}
           </h1>
 
           {/* MAIN NAV PILLS */}
           <ul className="flex border-b mb-6">
-            <li
-              className={`mr-6 pb-2 cursor-pointer ${
-                mainTab === "info"
-                  ? "border-b-2 border-blue-600 text-blue-600 font-semibold"
-                  : "text-gray-500 hover:text-blue-600"
-              }`}
-              onClick={() => setMainTab("info")}
-            >
+            <li className="mr-6 pb-2 border-b-2 border-blue-600 text-blue-600 font-semibold">
               Thông tin đề thi
-            </li>
-            <li
-              className={`mr-6 pb-2 cursor-pointer ${
-                mainTab === "solutions"
-                  ? "border-b-2 border-blue-600 text-blue-600 font-semibold"
-                  : "text-gray-500 hover:text-blue-600"
-              }`}
-              onClick={() => setMainTab("solutions")}
-            >
-              Đáp án / Transcript
             </li>
           </ul>
 
           {/* TAB CONTENT */}
-          {mainTab === "info" && (
-            <div>
-              <div className="text-sm text-gray-600 space-y-1 mb-4">
-                <div>
-                  <i className="far fa-clock mr-1"></i> Thời gian làm bài:{" "}
-                  <span className="font-medium">120 phút</span> | 7 phần thi |
-                  200 câu hỏi | <span>4108 bình luận</span>
-                </div>
-                <div>
-                  <i className="fad fa-user-edit mr-1"></i> 2,100,201 người đã
-                  luyện tập đề thi này
-                </div>
+          <div>
+            <div className="text-sm text-gray-600 space-y-1 mb-4">
+              <div>
+                <i className="far fa-clock mr-1"></i> Thời gian làm bài:{" "}
+                <span className="font-medium">120 phút</span> | 7 phần thi | 200
+                câu hỏi | <span>4108 bình luận</span>
               </div>
-
-              <p className="text-red-500 italic text-sm mb-6">
-                Chú ý: để được quy đổi sang scaled score (ví dụ trên thang điểm
-                990 TOEIC), vui lòng chọn chế độ làm FULL TEST.
-              </p>
-
-              {/* BẢNG KẾT QUẢ LÀM BÀI */}
-              <div className="border-t py-6">
-                <h2 className="text-lg font-semibold mb-4">
-                  Kết quả làm bài của bạn
-                </h2>
-
-                {loading ? (
-                  <div className="text-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                    <p className="text-gray-600 mt-2">Đang tải kết quả...</p>
-                  </div>
-                ) : error ? (
-                  <div className="bg-red-50 border border-red-200 rounded-md p-4 text-red-700">
-                    {error}
-                  </div>
-                ) : testAttempts.length === 0 ? (
-                  <div className="text-center py-8 text-gray-600">
-                    <p>Bạn chưa làm bài này lần nào. Hãy bắt đầu luyện tập!</p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full border text-sm border-gray-300">
-                      <thead className="bg-gray-100">
-                        <tr>
-                          <th className="px-3 py-2 border text-left">
-                            Ngày làm
-                          </th>
-                          <th className="px-3 py-2 border text-center">
-                            Kết quả
-                          </th>
-                          <th className="px-3 py-2 border text-center">Điểm</th>
-                          <th className="px-3 py-2 border text-center"></th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {testAttempts.map((attempt, idx) => (
-                          <tr key={idx} className="hover:bg-gray-50">
-                            <td className="border px-3 py-2">
-                              <div className="font-medium">
-                                {formatDate(attempt.createdAt)}
-                              </div>
-                              <div className="text-xs text-gray-500 mt-1">
-                                {new Date(attempt.createdAt).toLocaleTimeString(
-                                  "vi-VN",
-                                  {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                  },
-                                )}
-                              </div>
-                            </td>
-                            <td className="border px-3 py-2 text-center font-semibold text-blue-600">
-                              {formatResult(attempt.rightAnswerNumber)}
-                            </td>
-                            <td className="border px-3 py-2 text-center">
-                              {formatScore(attempt.mark)}
-                            </td>
-                            <td className="border px-3 py-2 text-center">
-                              <button
-                                onClick={() => handleViewDetails(attempt)}
-                                disabled={detailsLoading}
-                                className="text-blue-600 hover:underline cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed font-medium"
-                              >
-                                Xem chi tiết
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+              <div>
+                <i className="fad fa-user-edit mr-1"></i> 2,100,201 người đã
+                luyện tập đề thi này
               </div>
             </div>
-          )}
+
+            <p className="text-red-500 italic text-sm mb-6">
+              Chú ý: để được quy đổi sang scaled score (ví dụ trên thang điểm
+              990 TOEIC), vui lòng chọn chế độ làm FULL TEST.
+            </p>
+
+            {/* BẢNG KẾT QUẢ LÀM BÀI */}
+            <div className="border-t py-6">
+              <h2 className="text-lg font-semibold mb-4">
+                Kết quả làm bài của bạn
+              </h2>
+
+              {loading ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                  <p className="text-gray-600 mt-2">Đang tải kết quả...</p>
+                </div>
+              ) : error ? (
+                <div className="bg-red-50 border border-red-200 rounded-md p-4 text-red-700">
+                  {error}
+                </div>
+              ) : testAttempts.length === 0 ? (
+                <div className="text-center py-8 text-gray-600">
+                  <p>Bạn chưa làm bài này lần nào. Hãy bắt đầu luyện tập!</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full border text-sm border-gray-300">
+                    <thead className="bg-gray-100">
+                      <tr>
+                        <th className="px-3 py-2 border text-left">Ngày làm</th>
+                        <th className="px-3 py-2 border text-center">
+                          Kết quả
+                        </th>
+                        <th className="px-3 py-2 border text-center">Điểm</th>
+                        <th className="px-3 py-2 border text-center"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {testAttempts.map((attempt, idx) => (
+                        <tr key={idx} className="hover:bg-gray-50">
+                          <td className="border px-3 py-2">
+                            <div className="font-medium">
+                              {formatDate(attempt.createdAt)}
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1">
+                              {new Date(attempt.createdAt).toLocaleTimeString(
+                                "vi-VN",
+                                {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                },
+                              )}
+                            </div>
+                          </td>
+                          <td className="border px-3 py-2 text-center font-semibold text-blue-600">
+                            {formatResult(attempt.rightAnswerNumber)}
+                          </td>
+                          <td className="border px-3 py-2 text-center">
+                            {formatScore(attempt.mark)}
+                          </td>
+                          <td className="border px-3 py-2 text-center">
+                            <button
+                              onClick={() => handleViewDetails(attempt)}
+                              disabled={detailsLoading}
+                              className="text-blue-600 hover:underline cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                            >
+                              Xem chi tiết
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
 
           {/* SECONDARY TAB */}
           <ul className="flex border-b mb-6">
@@ -337,27 +345,11 @@ const PracticeTabs = () => {
           {/* SUB TAB CONTENT */}
           {subTab === "practice" && (
             <div className="space-y-6">
-              <PracticeModeTest />
+              <PracticeModeTest testName={testName} />
             </div>
           )}
-          {subTab === "fulltest" && <FullTestSection />}
+          {subTab === "fulltest" && <FullTestSection testName={testName} />}
           {subTab === "discussion" && <DiscussionSection />}
-
-          {mainTab === "solutions" && (
-            <div>
-              <h2 className="font-semibold text-lg mb-4">Các phần thi:</h2>
-              <ul className="list-disc ml-6 space-y-1 text-gray-700">
-                {Array.from({ length: 7 }, (_, i) => (
-                  <li key={i}>
-                    Part {i + 1}:{" "}
-                    <a href="#" className="text-blue-600 hover:underline">
-                      Xem đáp án
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
         </div>
       </div>
     </div>

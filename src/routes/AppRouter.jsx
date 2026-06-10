@@ -6,7 +6,6 @@ import EditProfile from "../pages/profile/EditProfile";
 import ToeicHome from "../pages/ToeicHome";
 import FreeEntryTest from "../pages/test/FreeEntryTest";
 import TestOnline from "@/pages/test/TestOnline";
-import DisplayFullTest from "@/components/test/DisplayFullTest";
 import DisplayResultTest from "@/components/test/DisplayResultTest";
 import ToeicLayout from "../components/layouts/ToeicLayout";
 import VocabularyPage from "@/pages/VocabularyPage";
@@ -44,6 +43,9 @@ import VocabularyManagement from "@/pages/admin/VocabularyManagement";
 import TestManagement from "@/pages/admin/TestManagement";
 import WritingTestSelect from "@/pages/WritingTestSelect";
 import DisplayWritingTest from "@/components/test/DisplayWritingTest";
+import DisplayOptionTest from "@/components/test/DisplayOptionTest";
+import PracticeTestPage from "@/components/practice/PracticeTestPage";
+import FullTestPage from "@/components/practice/FullTestPage";
 
 function AppRouter() {
   return (
@@ -138,6 +140,7 @@ function AppRouter() {
           path="/toeic-home/writing-test/:testId"
           element={<DisplayWritingTest />}
         />
+
         <Route
           path="/toeic-home/free-entry-test"
           // cái này để mà chỉ khi user đăng kí rồi mới được sử dụng, có thể bỏ cmt ở ProtectedRouter ra
@@ -180,6 +183,7 @@ function AppRouter() {
             </ToeicLayout>
           }
         />
+
         {/* Vocabulary main page */}
         <Route
           path="/toeic-home/vocabulary"
@@ -209,6 +213,14 @@ function AppRouter() {
         <Route
           path="/toeic-home/test-online/:examId"
           element={<PracticeTabs />}
+        />
+        <Route
+          path="/toeic-home/test-online/:examId/practice"
+          element={<PracticeTestPage />}
+        />
+        <Route
+          path="/toeic-home/test-online/:examId/full-test"
+          element={<FullTestPage />}
         />
         <Route
           path="/toeic-home/test-online/:examId/result"

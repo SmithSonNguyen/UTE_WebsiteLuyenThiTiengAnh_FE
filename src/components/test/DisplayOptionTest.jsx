@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useSelector } from "react-redux";
 import { ChevronLeft, ChevronRight, Flag } from "lucide-react";
 import axiosInstance from "@/utils/axiosInstance";
 import score from "@/utils/score";
@@ -16,14 +15,14 @@ const PART_INFO = {
 };
 
 const DisplayOptionTest = ({
-  examId: propExamId,
+  examId: examId,
+  testName: testName,
   selectedParts = [],
   timeLimitMinutes = 0,
 }) => {
-  const { examId: paramExamId } = useParams();
-  const examId = propExamId || paramExamId;
+  //const { examId: paramExamId } = useParams();
+  //const examId = propExamId || paramExamId;
   const navigate = useNavigate();
-  const currentUser = useSelector((state) => state?.auth?.login?.currentUser);
 
   const [questions, setQuestions] = useState([]);
   const [groups, setGroups] = useState([]);
@@ -165,9 +164,7 @@ const DisplayOptionTest = ({
       // 1. Chuẩn bị map: number → userAnswer
       const numberToUserAnswer = new Map();
       questions.forEach((q) => {
-        if (answers[q._id]) {
-          numberToUserAnswer.set(q.number, answers[q._id]);
-        }
+        numberToUserAnswer.set(q.number, answers[q._id] || null);
       });
 
       // 2. Gọi API lấy đáp án đúng
@@ -206,6 +203,13 @@ const DisplayOptionTest = ({
           // Tìm câu hỏi trong danh sách đã load để lấy part (nếu cần xác minh)
           const foundQ = questions.find((x) => x.number === q.number);
 
+          // ✅ Ưu tiên lấy mediaUrl/imageUrl từ section của API result
+          const sectionMediaUrl = section?.mediaUrl || null;
+          const sectionImageUrl =
+            Array.isArray(section?.imageUrl) && section.imageUrl.length > 0
+              ? section.imageUrl
+              : section?.imageUrl || null;
+
           detailedAnswers.push({
             number: q.number,
             part: foundQ?.part ?? part,
@@ -213,6 +217,13 @@ const DisplayOptionTest = ({
             userAnswer: userAnswer || null,
             correctAnswer,
             isCorrect,
+            questionText: foundQ?.questionText || "",
+            options: foundQ?.options || [],
+            // Ưu tiên lấy từ section API, fallback về foundQ từ state
+            imageUrl:
+              sectionImageUrl || foundQ?.imageUrls || foundQ?.imageUrl || "",
+            mediaUrl: sectionMediaUrl || foundQ?.mediaUrl || "",
+            paragraph: section?.paragraph || foundQ?.paragraph || "",
           });
         });
       });
@@ -228,6 +239,11 @@ const DisplayOptionTest = ({
         number: q.number,
         answer: answers[q._id] || null,
         part: q.part,
+        questionText: q.questionText || "",
+        options: q.options || [],
+        imageUrl: q.imageUrls || q.imageUrl || "",
+        mediaUrl: q.mediaUrl || "",
+        paragraph: q.paragraph || "",
       }));
 
       const postPayload = {
@@ -291,6 +307,7 @@ const DisplayOptionTest = ({
     <div className="flex flex-col min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white border-b px-6 py-4 flex justify-between items-center shadow">
+        <h1 className="font-bold text-2xl text-gray-800">{testName}</h1>
         <h1 className="font-bold text-2xl text-gray-800">
           {timeLimitMinutes > 0
             ? `Luyện Tập - ${timeLimitMinutes} phút`
@@ -310,7 +327,6 @@ const DisplayOptionTest = ({
       <div className="bg-white border-b px-6 py-4">
         <div className="flex flex-wrap gap-3">
           {selectedParts.map((partNum) => {
-            const info = PART_INFO[partNum];
             const partQs = questions.filter((q) => q.part === partNum);
             const answered = partQs.filter((q) => answers[q._id]).length;
             return (

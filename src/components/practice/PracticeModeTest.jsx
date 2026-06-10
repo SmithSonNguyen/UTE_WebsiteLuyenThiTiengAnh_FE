@@ -1,6 +1,6 @@
 import React, { useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import DisplayOptionTest from "@/components/test/DisplayOptionTest";
-import { useParams } from "react-router-dom";
 
 const partsData = [
   {
@@ -71,15 +71,15 @@ const timeOptions = [
   100, 105, 110, 115, 120,
 ];
 
-const PracticeModeTest = () => {
+const PracticeModeTest = ({ testName }) => {
   const [selectedParts, setSelectedParts] = useState([]); // [1, 3, 5]
   const [timeLimit, setTimeLimit] = useState(0);
-  const [isStarted, setIsStarted] = useState(false);
   const { examId } = useParams();
+  const navigate = useNavigate();
 
   const togglePart = (part) => {
     setSelectedParts((prev) =>
-      prev.includes(part) ? prev.filter((p) => p !== part) : [...prev, part]
+      prev.includes(part) ? prev.filter((p) => p !== part) : [...prev, part],
     );
   };
 
@@ -88,19 +88,18 @@ const PracticeModeTest = () => {
       alert("Vui lòng chọn ít nhất 1 phần thi!");
       return;
     }
-    setIsStarted(true);
-  };
 
-  // === ĐÃ BẮT ĐẦU → HIỂN THỊ BÀI THI ===
-  if (isStarted) {
-    return (
-      <DisplayOptionTest
-        examId={examId}
-        selectedParts={selectedParts} // [1, 3, 5] → DisplayOptionTest nhận đúng
-        timeLimitMinutes={timeLimit}
-      />
+    sessionStorage.setItem(
+      "practiceConfig",
+      JSON.stringify({
+        testName,
+        selectedParts,
+        timeLimit,
+      }),
     );
-  }
+
+    navigate(`/toeic-home/test-online/${examId}/practice`);
+  };
 
   // === GIAO DIỆN CHỌN PART ===
   return (
