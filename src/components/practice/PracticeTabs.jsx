@@ -135,6 +135,7 @@ const PracticeTabs = () => {
             imageUrl: attemptData.imageUrl || "",
             mediaUrl: attemptData.mediaUrl || "",
             paragraph: attemptData.paragraph || "",
+            explanation: attemptData.explanation || "",
           });
         });
       });

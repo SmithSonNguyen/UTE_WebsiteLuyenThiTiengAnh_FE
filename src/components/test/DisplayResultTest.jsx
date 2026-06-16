@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useLocation, useParams, useNavigate } from "react-router-dom";
+import { explainToeicQuestion } from "@/utils/geminiExplain";
 
 export default function ResultTOEIC() {
   const location = useLocation();
@@ -11,6 +12,19 @@ export default function ResultTOEIC() {
   const [payload, setPayload] = useState(null);
   const [selectedQuestion, setSelectedQuestion] = useState(null);
 
+  // AI Explanation states
+  const [isExplaining, setIsExplaining] = useState(false);
+  const [explanationText, setExplanationText] = useState("");
+  const [explanationError, setExplanationError] = useState("");
+  const [showExplanation, setShowExplanation] = useState(false);
+  const explanationRef = useRef(null);
+
+  const hasMediaContent =
+    (Array.isArray(selectedQuestion?.imageUrl)
+      ? selectedQuestion?.imageUrl.length > 0
+      : !!selectedQuestion?.imageUrl?.trim()) ||
+    !!selectedQuestion?.mediaUrl?.trim() ||
+    !!selectedQuestion?.paragraph?.trim();
   // Load data khi component mount
   useEffect(() => {
     console.log("=== RESULT PAGE LOADED ===");
@@ -85,6 +99,97 @@ export default function ResultTOEIC() {
       console.log("Meta:", meta);
     }
   }, [hasData, summary, detailedAnswers, meta]);
+
+  // Reset explanation khi đổi câu hỏi
+  useEffect(() => {
+    setExplanationText("");
+    setExplanationError("");
+    setShowExplanation(false);
+    setIsExplaining(false);
+  }, [selectedQuestion]);
+
+  // Hàm gọi AI giải thích
+  const handleExplain = useCallback(async () => {
+    if (!selectedQuestion || isExplaining) return;
+    setIsExplaining(true);
+    setExplanationText("");
+    setExplanationError("");
+    setShowExplanation(true);
+
+    try {
+      await explainToeicQuestion(selectedQuestion, (chunk) => {
+        setExplanationText((prev) => prev + chunk);
+        // Auto-scroll explanation vùng xuống dưới
+        if (explanationRef.current) {
+          explanationRef.current.scrollTop =
+            explanationRef.current.scrollHeight;
+        }
+      });
+    } catch (err) {
+      setExplanationError(
+        err.message || "Có lỗi xảy ra khi gọi AI. Vui lòng thử lại.",
+      );
+    } finally {
+      setIsExplaining(false);
+    }
+  }, [selectedQuestion, isExplaining]);
+
+  // Hàm render markdown đơn giản
+  const renderMarkdown = (text) => {
+    if (!text) return null;
+    return text.split("\n").map((line, i) => {
+      // Bold **text**
+      const boldParsed = line.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+      // Heading ##
+      if (/^#{1,3}\s/.test(line)) {
+        const headingText = line.replace(/^#{1,3}\s/, "");
+        return (
+          <div
+            key={i}
+            className="explain-heading"
+            dangerouslySetInnerHTML={{
+              __html: headingText.replace(
+                /\*\*(.+?)\*\*/g,
+                "<strong>$1</strong>",
+              ),
+            }}
+          />
+        );
+      }
+      // Numbered list 1.
+      if (/^\d+\.\s/.test(line)) {
+        return (
+          <div
+            key={i}
+            className="explain-numbered"
+            dangerouslySetInnerHTML={{ __html: boldParsed }}
+          />
+        );
+      }
+      // Bullet -
+      if (/^[-•]\s/.test(line)) {
+        return (
+          <div
+            key={i}
+            className="explain-bullet"
+            dangerouslySetInnerHTML={{
+              __html: boldParsed.replace(/^[-•]\s/, ""),
+            }}
+          />
+        );
+      }
+      // Empty line
+      if (line.trim() === "") return <div key={i} className="explain-spacer" />;
+      // Normal text
+      return (
+        <div
+          key={i}
+          className="explain-text"
+          dangerouslySetInnerHTML={{ __html: boldParsed }}
+        />
+      );
+    });
+  };
 
   // Tính toán thống kê bổ sung
   const totalCorrect = summary.listeningCorrect + summary.readingCorrect;
@@ -701,6 +806,12 @@ export default function ResultTOEIC() {
         box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
     }
 
+    .modal-btn-explain:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+        transform: none;
+    }
+
     .modal-btn-close {
         background: #e0e0e0;
         color: #333;
@@ -708,6 +819,187 @@ export default function ResultTOEIC() {
 
     .modal-btn-close:hover {
         background: #d0d0d0;
+    }
+
+    /* ===== Static Explanation Panel ===== */
+    .db-explain-panel {
+        margin-top: 20px;
+        background: #f5f3ff;
+        border-left: 4px solid #7c3aed;
+        padding: 18px;
+        border-radius: 0 10px 10px 0;
+        font-size: 0.95em;
+        line-height: 1.6;
+        color: #4c1d95;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+
+    .db-explain-title {
+        font-weight: bold;
+        color: #5b21b6;
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        font-size: 0.85em;
+        letter-spacing: 0.5px;
+    }
+
+    /* ===== AI Explanation Panel ===== */
+    .explain-panel {
+        margin-top: 20px;
+        border-radius: 14px;
+        overflow: hidden;
+        border: 1.5px solid #c4b5fd;
+        animation: fadeIn 0.4s ease;
+    }
+
+    .explain-panel-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 14px 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: bold;
+        font-size: 1em;
+    }
+
+    .explain-panel-header .ai-badge {
+        background: rgba(255,255,255,0.22);
+        padding: 2px 10px;
+        border-radius: 20px;
+        font-size: 0.8em;
+        letter-spacing: 0.5px;
+    }
+
+    .explain-body {
+        background: #faf9ff;
+        padding: 20px 22px;
+        max-height: 400px;
+        overflow-y: auto;
+        font-size: 0.93em;
+        line-height: 1.75;
+        color: #2d2d2d;
+    }
+
+    .explain-heading {
+        font-size: 1em;
+        font-weight: 700;
+        color: #5b21b6;
+        margin: 14px 0 6px;
+        padding-left: 10px;
+        border-left: 3px solid #7c3aed;
+    }
+
+    .explain-numbered {
+        margin: 8px 0 4px 10px;
+        font-weight: 600;
+        color: #3730a3;
+    }
+
+    .explain-bullet {
+        margin: 4px 0 4px 24px;
+        position: relative;
+        color: #374151;
+    }
+
+    .explain-bullet::before {
+        content: "•";
+        position: absolute;
+        left: -14px;
+        color: #7c3aed;
+    }
+
+    .explain-text {
+        margin: 4px 0;
+        color: #374151;
+    }
+
+    .explain-spacer {
+        height: 8px;
+    }
+
+    .explain-loading {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 24px 22px;
+        background: #faf9ff;
+        color: #7c3aed;
+        font-size: 0.95em;
+    }
+
+    .explain-spinner {
+        width: 22px;
+        height: 22px;
+        border: 3px solid #e9d5ff;
+        border-top-color: #7c3aed;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        flex-shrink: 0;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    .explain-cursor {
+        display: inline-block;
+        width: 2px;
+        height: 1em;
+        background: #7c3aed;
+        margin-left: 2px;
+        vertical-align: middle;
+        animation: blink 0.8s step-end infinite;
+    }
+
+    @keyframes blink {
+        50% { opacity: 0; }
+    }
+
+    .explain-error {
+        background: #fef2f2;
+        border-left: 4px solid #ef4444;
+        padding: 14px 18px;
+        color: #b91c1c;
+        font-size: 0.9em;
+        border-radius: 0 8px 8px 0;
+        margin: 14px 22px;
+    }
+
+    .explain-retry-btn {
+        background: none;
+        border: 1.5px solid #ef4444;
+        color: #b91c1c;
+        padding: 5px 14px;
+        border-radius: 20px;
+        cursor: pointer;
+        font-size: 0.85em;
+        margin-top: 8px;
+        display: inline-block;
+        transition: all 0.2s;
+    }
+
+    .explain-retry-btn:hover {
+        background: #fef2f2;
+    }
+
+    .explain-done-tag {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.82em;
+        color: #6b7280;
+        padding: 8px 22px 12px;
+        background: #faf9ff;
+        border-top: 1px solid #ede9fe;
+    }
+
+    .explain-dot-done {
+        width: 8px;
+        height: 8px;
+        background: #22c55e;
+        border-radius: 50%;
+        flex-shrink: 0;
     }
 
     /* Media & Image Styles */
@@ -996,9 +1288,7 @@ export default function ResultTOEIC() {
             </div>
 
             {/* Media Section - Images & Audio */}
-            {(selectedQuestion.imageUrl ||
-              selectedQuestion.mediaUrl ||
-              selectedQuestion.paragraph) && (
+            {hasMediaContent && (
               <div className="modal-media-section">
                 {/* Images */}
                 {selectedQuestion.imageUrl && (
@@ -1118,17 +1408,82 @@ export default function ResultTOEIC() {
               </div>
             </div>
 
+            {/* Static Explanation (from Database/Test) */}
+            {selectedQuestion.explanation && (
+              <div className="db-explain-panel">
+                <div className="db-explain-title">💡 Giải thích từ đề thi:</div>
+                <div className="whitespace-pre-wrap leading-relaxed">
+                  {selectedQuestion.explanation}
+                </div>
+              </div>
+            )}
+
+            {/* AI Explanation Panel */}
+            {showExplanation && (
+              <div className="explain-panel">
+                <div className="explain-panel-header">
+                  <span>✨</span>
+                  <span>Giải thích chi tiết bởi AI</span>
+                  {/* <span className="ai-badge">Gemini</span> */}
+                </div>
+
+                {/* Loading khi chưa có text */}
+                {isExplaining && explanationText === "" && (
+                  <div className="explain-loading">
+                    <div className="explain-spinner" />
+                    <span>
+                      AI đang phân tích câu hỏi Part {selectedQuestion.part}...
+                    </span>
+                  </div>
+                )}
+
+                {/* Nội dung đang stream / đã xong */}
+                {explanationText !== "" && (
+                  <>
+                    <div className="explain-body" ref={explanationRef}>
+                      {renderMarkdown(explanationText)}
+                      {isExplaining && <span className="explain-cursor" />}
+                    </div>
+                    {!isExplaining && !explanationError && (
+                      <div className="explain-done-tag">
+                        <span className="explain-dot-done" />
+                        <span>Giải thích hoàn tất </span>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* Lỗi */}
+                {explanationError && (
+                  <div className="explain-error">
+                    <div>⚠️ {explanationError}</div>
+                    <button
+                      className="explain-retry-btn"
+                      onClick={handleExplain}
+                    >
+                      🔄 Thử lại
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Action Buttons */}
             <div className="modal-footer">
               <button
                 className="modal-btn modal-btn-explain"
-                onClick={() => {
-                  alert(
-                    "Chức năng giải thích sẽ được kết nối với AI trong bước tiếp theo",
-                  );
-                }}
+                onClick={handleExplain}
+                disabled={isExplaining}
               >
-                💡 Giải thích chi tiết
+                {isExplaining ? (
+                  <>
+                    <span style={{ marginRight: 8 }}>⏳</span>Đang phân tích...
+                  </>
+                ) : showExplanation && explanationText ? (
+                  "🔄 Giải thích lại"
+                ) : (
+                  "💡 Giải thích chi tiết"
+                )}
               </button>
               <button
                 className="modal-btn modal-btn-close"

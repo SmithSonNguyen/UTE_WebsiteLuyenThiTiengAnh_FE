@@ -66,15 +66,24 @@ const DisplayOptionTest = ({
         const flattened = rawData
           .flatMap((section) => {
             if (!section.questions?.length) return [];
-            return section.questions.map((q) => ({
-              ...q,
-              _id: `${section._id || section.id}-${q.number}`,
-              part: section.part || 1,
-              mediaUrl: section.mediaUrl || "",
-              imageUrls: section.imageUrls || section.imageUrl || [],
-              paragraph: section.paragraph || "",
-              groupId: section._id || section.id,
-            }));
+            return section.questions.map((q) => {
+              const qExplain = q.explanation?.trim();
+              const secExplain = section.explanation?.trim();
+              const combinedExplanation = qExplain && secExplain
+                ? `${qExplain}\n\n${secExplain}`
+                : (qExplain || secExplain || "");
+
+              return {
+                ...q,
+                _id: `${section._id || section.id}-${q.number}`,
+                part: section.part || 1,
+                mediaUrl: section.mediaUrl || "",
+                imageUrls: section.imageUrls || section.imageUrl || [],
+                paragraph: section.paragraph || "",
+                groupId: section._id || section.id,
+                explanation: combinedExplanation,
+              };
+            });
           })
           .filter(
             (q) => selectedParts.length === 0 || selectedParts.includes(q.part),
@@ -224,6 +233,7 @@ const DisplayOptionTest = ({
               sectionImageUrl || foundQ?.imageUrls || foundQ?.imageUrl || "",
             mediaUrl: sectionMediaUrl || foundQ?.mediaUrl || "",
             paragraph: section?.paragraph || foundQ?.paragraph || "",
+            explanation: foundQ?.explanation || section?.explanation || "",
           });
         });
       });
@@ -244,6 +254,7 @@ const DisplayOptionTest = ({
         imageUrl: q.imageUrls || q.imageUrl || "",
         mediaUrl: q.mediaUrl || "",
         paragraph: q.paragraph || "",
+        explanation: q.explanation || "",
       }));
 
       const postPayload = {
