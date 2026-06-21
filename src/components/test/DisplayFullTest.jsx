@@ -15,9 +15,9 @@ const PART_INFO = {
   7: { name: "Reading Comprehension", hasImage: false },
 };
 
-const FreeEntryTest_FullTest = () => {
+const FreeEntryTest_FullTest = ({ examId, testName }) => {
   // Lấy examId từ URL params hoặc props
-  const { examId } = useParams();
+  // const { examId } = useParams();
   const navigate = useNavigate();
   const currentUser = useSelector((state) => state?.auth?.login?.currentUser);
 
@@ -60,7 +60,7 @@ const FreeEntryTest_FullTest = () => {
         // Kiểm tra response structure
         if (!res) {
           throw new Error(
-            "Không nhận được phản hồi từ server. Vui lòng kiểm tra kết nối mạng."
+            "Không nhận được phản hồi từ server. Vui lòng kiểm tra kết nối mạng.",
           );
         }
 
@@ -92,7 +92,7 @@ const FreeEntryTest_FullTest = () => {
 
         if (!Array.isArray(rawData) || rawData.length === 0) {
           throw new Error(
-            "Không tìm thấy câu hỏi nào cho bài test này. Dữ liệu API có thể chưa được load."
+            "Không tìm thấy câu hỏi nào cho bài test này. Dữ liệu API có thể chưa được load.",
           );
         }
 
@@ -104,27 +104,36 @@ const FreeEntryTest_FullTest = () => {
             return [];
           }
 
-          return section.questions.map((q, idx) => ({
-            ...q,
-            _id: `${section._id || section.id || "section"}-${q.number}`,
-            part: section.part || 1,
-            mediaUrl: section.mediaUrl || "",
-            imageUrls: Array.isArray(section.imageUrl)
-              ? section.imageUrl
-              : section.imageUrls
-              ? section.imageUrls
-              : [],
-            paragraph: section.paragraph || "",
-            groupId: section._id || section.id || `group-${idx}`,
-            groupIndex: idx,
-          }));
+          return section.questions.map((q, idx) => {
+            const qExplain = q.explanation?.trim();
+            const secExplain = section.explanation?.trim();
+            const combinedExplanation = qExplain && secExplain
+              ? `${qExplain}\n\n${secExplain}`
+              : (qExplain || secExplain || "");
+
+            return {
+              ...q,
+              _id: `${section._id || section.id || "section"}-${q.number}`,
+              part: section.part || 1,
+              mediaUrl: section.mediaUrl || "",
+              imageUrls: Array.isArray(section.imageUrl)
+                ? section.imageUrl
+                : section.imageUrls
+                  ? section.imageUrls
+                  : [],
+              paragraph: section.paragraph || "",
+              groupId: section._id || section.id || `group-${idx}`,
+              groupIndex: idx,
+              explanation: combinedExplanation,
+            };
+          });
         });
 
         console.log("Flattened questions:", flattened);
 
         if (flattened.length === 0) {
           throw new Error(
-            "Không thể xử lý dữ liệu câu hỏi. Vui lòng kiểm tra format API."
+            "Không thể xử lý dữ liệu câu hỏi. Vui lòng kiểm tra format API.",
           );
         }
 
@@ -145,14 +154,14 @@ const FreeEntryTest_FullTest = () => {
               const found = flattened.find(
                 (fq) =>
                   fq._id ===
-                  `${section._id || section.id || "section"}-${q.number}`
+                  `${section._id || section.id || "section"}-${q.number}`,
               );
               if (found) grouped.push([found]);
             });
           } else {
             // Part 3-7: nhóm theo section
             const group = flattened.filter(
-              (q) => q.groupId === (section._id || section.id)
+              (q) => q.groupId === (section._id || section.id),
             );
             if (group.length) grouped.push(group);
           }
@@ -243,7 +252,7 @@ const FreeEntryTest_FullTest = () => {
     if (idx >= 0 && idx < questions.length) {
       setCurrentIndex(idx);
       // Scroll to top khi chuyển câu
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      //window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
 
@@ -277,7 +286,7 @@ const FreeEntryTest_FullTest = () => {
 
       console.log(
         "User answers map:",
-        Array.from(numberToUserAnswer.entries())
+        Array.from(numberToUserAnswer.entries()),
       );
 
       // Gọi API kết quả để lấy đáp án đúng theo từng câu
@@ -319,7 +328,7 @@ const FreeEntryTest_FullTest = () => {
         const qs = Array.isArray(section?.questions) ? section.questions : [];
 
         console.log(
-          `Section ${sectionIdx} - Type: ${sectionType}, Questions: ${qs.length}`
+          `Section ${sectionIdx} - Type: ${sectionType}, Questions: ${qs.length}`,
         );
 
         qs.forEach((q) => {
@@ -331,7 +340,7 @@ const FreeEntryTest_FullTest = () => {
             String(userAnswer).trim() === String(correctAnswer).trim();
 
           console.log(
-            `Q${q.number}: User=${userAnswer}, Correct=${correctAnswer}, Match=${isCorrect}`
+            `Q${q.number}: User=${userAnswer}, Correct=${correctAnswer}, Match=${isCorrect}`,
           );
 
           if (sectionType === "listening") {
@@ -342,6 +351,15 @@ const FreeEntryTest_FullTest = () => {
 
           // Lưu chi tiết để hiển thị
           const foundQ = questions.find((x) => x.number === q.number);
+
+          // ✅ Ưu tiên lấy mediaUrl/imageUrl từ section của API result (đầy đủ hơn),
+          // vì questions state flatten có thể bị mất media khi section.mediaUrl = ""
+          const sectionMediaUrl = section?.mediaUrl || null;
+          const sectionImageUrl =
+            Array.isArray(section?.imageUrl) && section.imageUrl.length > 0
+              ? section.imageUrl
+              : section?.imageUrl || null;
+
           detailedAnswers.push({
             number: q.number,
             part: foundQ?.part || section?.part,
@@ -349,6 +367,15 @@ const FreeEntryTest_FullTest = () => {
             userAnswer: userAnswer || null,
             correctAnswer: correctAnswer || null,
             isCorrect: !!isCorrect,
+            // ✅ Thêm các field từ question data để hiển thị chi tiết
+            questionText: foundQ?.questionText || "",
+            options: foundQ?.options || [],
+            // Ưu tiên lấy từ section API, fallback về foundQ từ state
+            imageUrl:
+              sectionImageUrl || foundQ?.imageUrls || foundQ?.imageUrl || "",
+            mediaUrl: sectionMediaUrl || foundQ?.mediaUrl || "",
+            paragraph: section?.paragraph || foundQ?.paragraph || "",
+            explanation: foundQ?.explanation || section?.explanation || "",
           });
         });
       });
@@ -369,8 +396,15 @@ const FreeEntryTest_FullTest = () => {
 
       // Chuẩn bị payload để POST lên backend
       const answersPayload = questions.map((q) => ({
-        questionNumber: q.number,
-        userAnswer: answers[q._id] || null,
+        number: q.number,
+        answer: answers[q._id] || null,
+        part: q.part,
+        questionText: q.questionText || "",
+        options: q.options || [],
+        imageUrl: q.imageUrls || q.imageUrl || "",
+        mediaUrl: q.mediaUrl || "",
+        paragraph: q.paragraph || "",
+        explanation: q.explanation || "",
       }));
 
       const postPayload = {
@@ -386,7 +420,7 @@ const FreeEntryTest_FullTest = () => {
       try {
         const saveRes = await axiosInstance.post(
           `/tests/${examId}`,
-          postPayload
+          postPayload,
         );
         console.log("Save response:", saveRes.data);
       } catch (saveError) {
@@ -438,7 +472,7 @@ const FreeEntryTest_FullTest = () => {
       console.error("Error response:", err?.response);
       alert(
         err?.response?.data?.message ||
-          "Không thể nộp bài vào lúc này. Vui lòng thử lại."
+          "Không thể nộp bài vào lúc này. Vui lòng thử lại.",
       );
     } finally {
       setIsSubmitting(false);
@@ -535,12 +569,13 @@ const FreeEntryTest_FullTest = () => {
     <div className="flex flex-col min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white border-b px-6 py-4 flex justify-between items-center shadow">
+        <h1 className="font-bold text-2xl text-gray-800">{testName}</h1>
         <h1 className="font-bold text-2xl text-gray-800">TOEIC Full Test</h1>
         <button
           onClick={() => {
             if (
               window.confirm(
-                "Bạn có chắc muốn thoát? Dữ liệu sẽ không được lưu."
+                "Bạn có chắc muốn thoát? Dữ liệu sẽ không được lưu.",
               )
             ) {
               window.history.back();
@@ -558,10 +593,10 @@ const FreeEntryTest_FullTest = () => {
           {Object.entries(PART_INFO).map(([partNum, info]) => {
             const isActive = currentQ.part === parseInt(partNum);
             const questionsInPart = questions.filter(
-              (q) => q.part === parseInt(partNum)
+              (q) => q.part === parseInt(partNum),
             );
             const answeredCount = questionsInPart.filter(
-              (q) => answers[q._id]
+              (q) => answers[q._id],
             ).length;
             const totalCount = questionsInPart.length;
 
@@ -572,7 +607,7 @@ const FreeEntryTest_FullTest = () => {
                 key={partNum}
                 onClick={() => {
                   const idx = questions.findIndex(
-                    (q) => q.part === parseInt(partNum)
+                    (q) => q.part === parseInt(partNum),
                   );
                   if (idx !== -1) goToQuestion(idx);
                 }}
@@ -835,7 +870,7 @@ const FreeEntryTest_FullTest = () => {
             <div className="space-y-5">
               {Object.entries(PART_INFO).map(([partNum, info]) => {
                 const partQuestions = questions.filter(
-                  (q) => q.part === parseInt(partNum)
+                  (q) => q.part === parseInt(partNum),
                 );
                 if (partQuestions.length === 0) return null;
 
@@ -850,7 +885,7 @@ const FreeEntryTest_FullTest = () => {
                     <div className="grid grid-cols-5 gap-2">
                       {partQuestions.map((q) => {
                         const globalIndex = questions.findIndex(
-                          (x) => x._id === q._id
+                          (x) => x._id === q._id,
                         );
                         const isAnswered = !!answers[q._id];
                         const isFlagged = !!flags[q._id];

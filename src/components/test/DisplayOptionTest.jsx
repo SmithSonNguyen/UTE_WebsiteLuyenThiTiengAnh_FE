@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useSelector } from "react-redux";
 import { ChevronLeft, ChevronRight, Flag } from "lucide-react";
 import axiosInstance from "@/utils/axiosInstance";
 import score from "@/utils/score";
@@ -16,14 +15,14 @@ const PART_INFO = {
 };
 
 const DisplayOptionTest = ({
-  examId: propExamId,
+  examId: examId,
+  testName: testName,
   selectedParts = [],
   timeLimitMinutes = 0,
 }) => {
-  const { examId: paramExamId } = useParams();
-  const examId = propExamId || paramExamId;
+  //const { examId: paramExamId } = useParams();
+  //const examId = propExamId || paramExamId;
   const navigate = useNavigate();
-  const currentUser = useSelector((state) => state?.auth?.login?.currentUser);
 
   const [questions, setQuestions] = useState([]);
   const [groups, setGroups] = useState([]);
@@ -67,18 +66,27 @@ const DisplayOptionTest = ({
         const flattened = rawData
           .flatMap((section) => {
             if (!section.questions?.length) return [];
-            return section.questions.map((q) => ({
-              ...q,
-              _id: `${section._id || section.id}-${q.number}`,
-              part: section.part || 1,
-              mediaUrl: section.mediaUrl || "",
-              imageUrls: section.imageUrls || section.imageUrl || [],
-              paragraph: section.paragraph || "",
-              groupId: section._id || section.id,
-            }));
+            return section.questions.map((q) => {
+              const qExplain = q.explanation?.trim();
+              const secExplain = section.explanation?.trim();
+              const combinedExplanation = qExplain && secExplain
+                ? `${qExplain}\n\n${secExplain}`
+                : (qExplain || secExplain || "");
+
+              return {
+                ...q,
+                _id: `${section._id || section.id}-${q.number}`,
+                part: section.part || 1,
+                mediaUrl: section.mediaUrl || "",
+                imageUrls: section.imageUrls || section.imageUrl || [],
+                paragraph: section.paragraph || "",
+                groupId: section._id || section.id,
+                explanation: combinedExplanation,
+              };
+            });
           })
           .filter(
-            (q) => selectedParts.length === 0 || selectedParts.includes(q.part)
+            (q) => selectedParts.length === 0 || selectedParts.includes(q.part),
           );
 
         if (flattened.length === 0)
@@ -90,7 +98,7 @@ const DisplayOptionTest = ({
         // === REBUILD GROUPS AFTER FILTERING ===
         const grouped = [];
         const includedGroupIds = new Set(
-          flattened.filter((q) => q.part >= 3).map((q) => q.groupId)
+          flattened.filter((q) => q.part >= 3).map((q) => q.groupId),
         );
 
         rawData.forEach((section) => {
@@ -103,7 +111,7 @@ const DisplayOptionTest = ({
               });
             } else if (includedGroupIds.has(section._id || section.id)) {
               const group = flattened.filter(
-                (q) => q.groupId === (section._id || section.id)
+                (q) => q.groupId === (section._id || section.id),
               );
               if (group.length) grouped.push(group);
             }
@@ -126,7 +134,7 @@ const DisplayOptionTest = ({
     if (timeLimitMinutes === 0 || timeLeft <= 0) return;
     const timer = setInterval(
       () => setTimeLeft((prev) => Math.max(0, prev - 1)),
-      1000
+      1000,
     );
     return () => clearInterval(timer);
   }, [timeLeft, timeLimitMinutes]);
@@ -147,7 +155,6 @@ const DisplayOptionTest = ({
   const goToQuestion = (idx) => {
     if (idx >= 0 && idx < questions.length) {
       setCurrentIndex(idx);
-      window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
 
@@ -166,9 +173,7 @@ const DisplayOptionTest = ({
       // 1. Chuẩn bị map: number → userAnswer
       const numberToUserAnswer = new Map();
       questions.forEach((q) => {
-        if (answers[q._id]) {
-          numberToUserAnswer.set(q.number, answers[q._id]);
-        }
+        numberToUserAnswer.set(q.number, answers[q._id] || null);
       });
 
       // 2. Gọi API lấy đáp án đúng
@@ -207,6 +212,13 @@ const DisplayOptionTest = ({
           // Tìm câu hỏi trong danh sách đã load để lấy part (nếu cần xác minh)
           const foundQ = questions.find((x) => x.number === q.number);
 
+          // ✅ Ưu tiên lấy mediaUrl/imageUrl từ section của API result
+          const sectionMediaUrl = section?.mediaUrl || null;
+          const sectionImageUrl =
+            Array.isArray(section?.imageUrl) && section.imageUrl.length > 0
+              ? section.imageUrl
+              : section?.imageUrl || null;
+
           detailedAnswers.push({
             number: q.number,
             part: foundQ?.part ?? part,
@@ -214,6 +226,14 @@ const DisplayOptionTest = ({
             userAnswer: userAnswer || null,
             correctAnswer,
             isCorrect,
+            questionText: foundQ?.questionText || "",
+            options: foundQ?.options || [],
+            // Ưu tiên lấy từ section API, fallback về foundQ từ state
+            imageUrl:
+              sectionImageUrl || foundQ?.imageUrls || foundQ?.imageUrl || "",
+            mediaUrl: sectionMediaUrl || foundQ?.mediaUrl || "",
+            paragraph: section?.paragraph || foundQ?.paragraph || "",
+            explanation: foundQ?.explanation || section?.explanation || "",
           });
         });
       });
@@ -222,8 +242,37 @@ const DisplayOptionTest = ({
       const listeningScore = score.calculateListeningScore(listeningCorrect);
       const readingScore = score.calculateReadingScore(readingCorrect);
       const totalScore = listeningScore + readingScore;
+      const totalCorrect = listeningCorrect + readingCorrect;
 
-      // 6. Lưu kết quả
+      // 6. ✅ Chuẩn bị payload để POST lên backend (SAVE results)
+      const answersPayload = questions.map((q) => ({
+        number: q.number,
+        answer: answers[q._id] || null,
+        part: q.part,
+        questionText: q.questionText || "",
+        options: q.options || [],
+        imageUrl: q.imageUrls || q.imageUrl || "",
+        mediaUrl: q.mediaUrl || "",
+        paragraph: q.paragraph || "",
+        explanation: q.explanation || "",
+      }));
+
+      const postPayload = {
+        answers: answersPayload,
+        mark: totalScore,
+        rightAnswerNumber: totalCorrect,
+      };
+
+      // 7. ✅ POST to save answers to database
+      try {
+        await axiosInstance.post(`/tests/${examId}`, postPayload);
+        console.log("Practice answers saved successfully");
+      } catch (saveError) {
+        console.error("Error saving practice answers:", saveError);
+        // Không throw lỗi ở đây để vẫn cho phép xem kết quả
+      }
+
+      // 8. Lưu kết quả vào state để hiển thị
       const resultState = {
         summary: {
           listeningCorrect,
@@ -243,7 +292,7 @@ const DisplayOptionTest = ({
 
       sessionStorage.setItem(
         `toeic_result_${examId}`,
-        JSON.stringify(resultState)
+        JSON.stringify(resultState),
       );
       navigate(`/toeic-home/test-online/${examId}/result`, {
         state: resultState,
@@ -269,6 +318,7 @@ const DisplayOptionTest = ({
     <div className="flex flex-col min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white border-b px-6 py-4 flex justify-between items-center shadow">
+        <h1 className="font-bold text-2xl text-gray-800">{testName}</h1>
         <h1 className="font-bold text-2xl text-gray-800">
           {timeLimitMinutes > 0
             ? `Luyện Tập - ${timeLimitMinutes} phút`
@@ -288,7 +338,6 @@ const DisplayOptionTest = ({
       <div className="bg-white border-b px-6 py-4">
         <div className="flex flex-wrap gap-3">
           {selectedParts.map((partNum) => {
-            const info = PART_INFO[partNum];
             const partQs = questions.filter((q) => q.part === partNum);
             const answered = partQs.filter((q) => answers[q._id]).length;
             return (
@@ -526,7 +575,7 @@ const DisplayOptionTest = ({
           <div className="mt-6 space-y-5">
             {Object.entries(PART_INFO).map(([partNum, info]) => {
               const partQuestions = questions.filter(
-                (q) => q.part === parseInt(partNum)
+                (q) => q.part === parseInt(partNum),
               );
               if (partQuestions.length === 0) return null;
 

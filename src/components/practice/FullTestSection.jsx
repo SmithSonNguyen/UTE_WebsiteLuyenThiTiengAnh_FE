@@ -1,13 +1,14 @@
-import React, { useState } from "react";
 import DisplayFullTest from "@/components/test/DisplayFullTest";
+import { useNavigate, useParams } from "react-router-dom";
 
-const FullTestSection = () => {
-  const [isStarted, setIsStarted] = useState(false);
+const FullTestSection = ({ testName }) => {
+  const { examId } = useParams();
+  const navigate = useNavigate();
 
-  // Khi bấm nút "BẮT ĐẦU THI" thì hiển thị component DisplayFullTest
-  if (isStarted) {
-    return <DisplayFullTest />;
-  }
+  const handleStart = () => {
+    sessionStorage.setItem("fullTestConfig", JSON.stringify({ testName }));
+    navigate(`/toeic-home/test-online/${examId}/full-test`);
+  };
 
   return (
     <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-gray-800">
@@ -17,7 +18,7 @@ const FullTestSection = () => {
       </div>
 
       <button
-        onClick={() => setIsStarted(true)}
+        onClick={handleStart}
         className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2 rounded-lg transition"
       >
         BẮT ĐẦU THI

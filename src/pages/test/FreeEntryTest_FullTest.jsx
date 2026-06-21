@@ -81,20 +81,29 @@ const FreeEntryTest_FullTest = () => {
             return [];
           }
 
-          return section.questions.map((q, idx) => ({
-            ...q,
-            _id: `${section._id || section.id || "section"}-${q.number}`,
-            part: section.part || 1,
-            mediaUrl: section.mediaUrl || "",
-            imageUrls: Array.isArray(section.imageUrl)
-              ? section.imageUrl
-              : section.imageUrls
-              ? section.imageUrls
-              : [],
-            paragraph: section.paragraph || "",
-            groupId: section._id || section.id || `group-${idx}`,
-            groupIndex: idx,
-          }));
+          return section.questions.map((q, idx) => {
+            const qExplain = q.explanation?.trim();
+            const secExplain = section.explanation?.trim();
+            const combinedExplanation = qExplain && secExplain
+              ? `${qExplain}\n\n${secExplain}`
+              : (qExplain || secExplain || "");
+
+            return {
+              ...q,
+              _id: `${section._id || section.id || "section"}-${q.number}`,
+              part: section.part || 1,
+              mediaUrl: section.mediaUrl || "",
+              imageUrls: Array.isArray(section.imageUrl)
+                ? section.imageUrl
+                : section.imageUrls
+                ? section.imageUrls
+                : [],
+              paragraph: section.paragraph || "",
+              groupId: section._id || section.id || `group-${idx}`,
+              groupIndex: idx,
+              explanation: combinedExplanation,
+            };
+          });
         });
 
         console.log("Flattened questions:", flattened);
@@ -309,6 +318,13 @@ const FreeEntryTest_FullTest = () => {
             userAnswer: userAnswer || null,
             correctAnswer: correctAnswer || null,
             isCorrect: !!isCorrect,
+            // Thêm các field từ question data
+            questionText: foundQ?.questionText || "",
+            options: foundQ?.options || [],
+            imageUrl: foundQ?.imageUrls || foundQ?.imageUrl || "",
+            mediaUrl: foundQ?.mediaUrl || "",
+            paragraph: foundQ?.paragraph || "",
+            explanation: foundQ?.explanation || section?.explanation || "",
           });
         });
       });

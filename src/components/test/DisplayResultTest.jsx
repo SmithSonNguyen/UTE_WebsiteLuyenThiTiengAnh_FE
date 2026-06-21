@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useLocation, useParams, useNavigate } from "react-router-dom";
+import { explainToeicQuestion } from "@/utils/geminiExplain";
 
 export default function ResultTOEIC() {
   const location = useLocation();
@@ -9,7 +10,21 @@ export default function ResultTOEIC() {
   // State để xử lý trường hợp không có dữ liệu
   const [hasData, setHasData] = useState(true);
   const [payload, setPayload] = useState(null);
+  const [selectedQuestion, setSelectedQuestion] = useState(null);
 
+  // AI Explanation states
+  const [isExplaining, setIsExplaining] = useState(false);
+  const [explanationText, setExplanationText] = useState("");
+  const [explanationError, setExplanationError] = useState("");
+  const [showExplanation, setShowExplanation] = useState(false);
+  const explanationRef = useRef(null);
+
+  const hasMediaContent =
+    (Array.isArray(selectedQuestion?.imageUrl)
+      ? selectedQuestion?.imageUrl.length > 0
+      : !!selectedQuestion?.imageUrl?.trim()) ||
+    !!selectedQuestion?.mediaUrl?.trim() ||
+    !!selectedQuestion?.paragraph?.trim();
   // Load data khi component mount
   useEffect(() => {
     console.log("=== RESULT PAGE LOADED ===");
@@ -35,7 +50,7 @@ export default function ResultTOEIC() {
       if (raw) {
         console.log(
           "Raw data from sessionStorage:",
-          raw.substring(0, 200) + "..."
+          raw.substring(0, 200) + "...",
         );
         const parsed = JSON.parse(raw);
 
@@ -84,6 +99,97 @@ export default function ResultTOEIC() {
       console.log("Meta:", meta);
     }
   }, [hasData, summary, detailedAnswers, meta]);
+
+  // Reset explanation khi đổi câu hỏi
+  useEffect(() => {
+    setExplanationText("");
+    setExplanationError("");
+    setShowExplanation(false);
+    setIsExplaining(false);
+  }, [selectedQuestion]);
+
+  // Hàm gọi AI giải thích
+  const handleExplain = useCallback(async () => {
+    if (!selectedQuestion || isExplaining) return;
+    setIsExplaining(true);
+    setExplanationText("");
+    setExplanationError("");
+    setShowExplanation(true);
+
+    try {
+      await explainToeicQuestion(selectedQuestion, (chunk) => {
+        setExplanationText((prev) => prev + chunk);
+        // Auto-scroll explanation vùng xuống dưới
+        if (explanationRef.current) {
+          explanationRef.current.scrollTop =
+            explanationRef.current.scrollHeight;
+        }
+      });
+    } catch (err) {
+      setExplanationError(
+        err.message || "Có lỗi xảy ra khi gọi AI. Vui lòng thử lại.",
+      );
+    } finally {
+      setIsExplaining(false);
+    }
+  }, [selectedQuestion, isExplaining]);
+
+  // Hàm render markdown đơn giản
+  const renderMarkdown = (text) => {
+    if (!text) return null;
+    return text.split("\n").map((line, i) => {
+      // Bold **text**
+      const boldParsed = line.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+      // Heading ##
+      if (/^#{1,3}\s/.test(line)) {
+        const headingText = line.replace(/^#{1,3}\s/, "");
+        return (
+          <div
+            key={i}
+            className="explain-heading"
+            dangerouslySetInnerHTML={{
+              __html: headingText.replace(
+                /\*\*(.+?)\*\*/g,
+                "<strong>$1</strong>",
+              ),
+            }}
+          />
+        );
+      }
+      // Numbered list 1.
+      if (/^\d+\.\s/.test(line)) {
+        return (
+          <div
+            key={i}
+            className="explain-numbered"
+            dangerouslySetInnerHTML={{ __html: boldParsed }}
+          />
+        );
+      }
+      // Bullet -
+      if (/^[-•]\s/.test(line)) {
+        return (
+          <div
+            key={i}
+            className="explain-bullet"
+            dangerouslySetInnerHTML={{
+              __html: boldParsed.replace(/^[-•]\s/, ""),
+            }}
+          />
+        );
+      }
+      // Empty line
+      if (line.trim() === "") return <div key={i} className="explain-spacer" />;
+      // Normal text
+      return (
+        <div
+          key={i}
+          className="explain-text"
+          dangerouslySetInnerHTML={{ __html: boldParsed }}
+        />
+      );
+    });
+  };
 
   // Tính toán thống kê bổ sung
   const totalCorrect = summary.listeningCorrect + summary.readingCorrect;
@@ -474,6 +580,476 @@ export default function ResultTOEIC() {
             grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
         }
     }
+
+    /* Modal Styles */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        animation: fadeIn 0.3s ease-in;
+    }
+
+    .modal-content {
+        background: white;
+        border-radius: 15px;
+        padding: 40px;
+        max-width: 800px;
+        width: 90%;
+        max-height: 85vh;
+        overflow-y: auto;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        animation: slideUp 0.3s ease-out;
+    }
+
+    @keyframes slideUp {
+        from { 
+            opacity: 0; 
+            transform: translateY(30px); 
+        }
+        to { 
+            opacity: 1; 
+            transform: translateY(0); 
+        }
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 25px;
+        border-bottom: 2px solid #667eea;
+        padding-bottom: 15px;
+    }
+
+    .modal-header h2 {
+        color: #333;
+        font-size: 1.8em;
+        margin: 0;
+    }
+
+    .modal-close-btn {
+        background: none;
+        border: none;
+        font-size: 1.8em;
+        cursor: pointer;
+        color: #666;
+        padding: 0;
+        width: 30px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        transition: all 0.2s ease;
+    }
+
+    .modal-close-btn:hover {
+        background: #f0f0f0;
+        color: #333;
+    }
+
+    .modal-meta {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+        font-size: 0.95em;
+    }
+
+    .modal-meta-title {
+        font-weight: bold;
+        color: #333;
+        margin-bottom: 8px;
+    }
+
+    .modal-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 10px;
+    }
+
+    .modal-tag {
+        background: #667eea;
+        color: white;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.85em;
+        display: inline-block;
+    }
+
+    .modal-question {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 10px;
+        margin-bottom: 25px;
+        line-height: 1.8;
+        border-left: 4px solid #667eea;
+    }
+
+    .modal-question p {
+        margin: 0;
+        color: #333;
+        font-weight: 500;
+    }
+
+    .modal-options {
+        margin-bottom: 25px;
+    }
+
+    .modal-option {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 12px;
+        margin-bottom: 10px;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        transition: all 0.2s ease;
+        background: white;
+    }
+
+    .modal-option:hover {
+        border-color: #667eea;
+        background: #f8f9fa;
+    }
+
+    .modal-option.selected {
+        border-color: #667eea;
+        background: #e8f0ff;
+    }
+
+    .modal-option.correct {
+        border-color: #28a745;
+        background: #d4edda;
+    }
+
+    .modal-option.incorrect {
+        border-color: #dc3545;
+        background: #f8d7da;
+    }
+
+    .modal-option input[type="radio"] {
+        margin-top: 2px;
+        width: 18px;
+        height: 18px;
+        accent-color: #667eea;
+    }
+
+    .modal-option label {
+        flex: 1;
+        margin: 0;
+        cursor: pointer;
+        font-weight: 500;
+    }
+
+    .modal-option-text {
+        color: #333;
+        font-size: 0.95em;
+    }
+
+    .modal-result {
+        background: #f0f8ff;
+        border-left: 4px solid #667eea;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 25px;
+        font-size: 0.95em;
+    }
+
+    .modal-result.correct {
+        background: #d4edda;
+        border-color: #28a745;
+    }
+
+    .modal-result.incorrect {
+        background: #f8d7da;
+        border-color: #dc3545;
+    }
+
+    .modal-result-title {
+        font-weight: bold;
+        margin-bottom: 8px;
+    }
+
+    .modal-footer {
+        display: flex;
+        gap: 12px;
+        margin-top: 25px;
+    }
+
+    .modal-btn {
+        flex: 1;
+        padding: 12px 20px;
+        border: none;
+        border-radius: 8px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-size: 0.95em;
+    }
+
+    .modal-btn-explain {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+
+    .modal-btn-explain:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    .modal-btn-explain:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    .modal-btn-close {
+        background: #e0e0e0;
+        color: #333;
+    }
+
+    .modal-btn-close:hover {
+        background: #d0d0d0;
+    }
+
+    /* ===== Static Explanation Panel ===== */
+    .db-explain-panel {
+        margin-top: 20px;
+        background: #f5f3ff;
+        border-left: 4px solid #7c3aed;
+        padding: 18px;
+        border-radius: 0 10px 10px 0;
+        font-size: 0.95em;
+        line-height: 1.6;
+        color: #4c1d95;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+
+    .db-explain-title {
+        font-weight: bold;
+        color: #5b21b6;
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        font-size: 0.85em;
+        letter-spacing: 0.5px;
+    }
+
+    /* ===== AI Explanation Panel ===== */
+    .explain-panel {
+        margin-top: 20px;
+        border-radius: 14px;
+        overflow: hidden;
+        border: 1.5px solid #c4b5fd;
+        animation: fadeIn 0.4s ease;
+    }
+
+    .explain-panel-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 14px 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: bold;
+        font-size: 1em;
+    }
+
+    .explain-panel-header .ai-badge {
+        background: rgba(255,255,255,0.22);
+        padding: 2px 10px;
+        border-radius: 20px;
+        font-size: 0.8em;
+        letter-spacing: 0.5px;
+    }
+
+    .explain-body {
+        background: #faf9ff;
+        padding: 20px 22px;
+        max-height: 400px;
+        overflow-y: auto;
+        font-size: 0.93em;
+        line-height: 1.75;
+        color: #2d2d2d;
+    }
+
+    .explain-heading {
+        font-size: 1em;
+        font-weight: 700;
+        color: #5b21b6;
+        margin: 14px 0 6px;
+        padding-left: 10px;
+        border-left: 3px solid #7c3aed;
+    }
+
+    .explain-numbered {
+        margin: 8px 0 4px 10px;
+        font-weight: 600;
+        color: #3730a3;
+    }
+
+    .explain-bullet {
+        margin: 4px 0 4px 24px;
+        position: relative;
+        color: #374151;
+    }
+
+    .explain-bullet::before {
+        content: "•";
+        position: absolute;
+        left: -14px;
+        color: #7c3aed;
+    }
+
+    .explain-text {
+        margin: 4px 0;
+        color: #374151;
+    }
+
+    .explain-spacer {
+        height: 8px;
+    }
+
+    .explain-loading {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 24px 22px;
+        background: #faf9ff;
+        color: #7c3aed;
+        font-size: 0.95em;
+    }
+
+    .explain-spinner {
+        width: 22px;
+        height: 22px;
+        border: 3px solid #e9d5ff;
+        border-top-color: #7c3aed;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        flex-shrink: 0;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    .explain-cursor {
+        display: inline-block;
+        width: 2px;
+        height: 1em;
+        background: #7c3aed;
+        margin-left: 2px;
+        vertical-align: middle;
+        animation: blink 0.8s step-end infinite;
+    }
+
+    @keyframes blink {
+        50% { opacity: 0; }
+    }
+
+    .explain-error {
+        background: #fef2f2;
+        border-left: 4px solid #ef4444;
+        padding: 14px 18px;
+        color: #b91c1c;
+        font-size: 0.9em;
+        border-radius: 0 8px 8px 0;
+        margin: 14px 22px;
+    }
+
+    .explain-retry-btn {
+        background: none;
+        border: 1.5px solid #ef4444;
+        color: #b91c1c;
+        padding: 5px 14px;
+        border-radius: 20px;
+        cursor: pointer;
+        font-size: 0.85em;
+        margin-top: 8px;
+        display: inline-block;
+        transition: all 0.2s;
+    }
+
+    .explain-retry-btn:hover {
+        background: #fef2f2;
+    }
+
+    .explain-done-tag {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.82em;
+        color: #6b7280;
+        padding: 8px 22px 12px;
+        background: #faf9ff;
+        border-top: 1px solid #ede9fe;
+    }
+
+    .explain-dot-done {
+        width: 8px;
+        height: 8px;
+        background: #22c55e;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+
+    /* Media & Image Styles */
+    .modal-media-section {
+        margin-bottom: 25px;
+        padding: 15px;
+        background: #f8f9fa;
+        border-radius: 10px;
+        border-left: 4px solid #667eea;
+    }
+
+    .modal-media-section-title {
+        font-weight: bold;
+        margin-bottom: 15px;
+        color: #333;
+        font-size: 0.95em;
+    }
+
+    .modal-images {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 15px;
+    }
+
+    .modal-image {
+        max-width: 100%;
+        
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        border: 1px solid #e0e0e0;
+        object-fit: contain;
+    }
+
+    .modal-audio {
+        width: 100%;
+        margin-bottom: 12px;
+        border-radius: 24px;
+    }
+
+    .modal-paragraph {
+        background: white;
+        padding: 12px;
+        border-radius: 8px;
+        border: 1px solid #e0e0e0;
+        white-space: pre-wrap;
+        line-height: 1.6;
+        font-size: 0.95em;
+        color: #333;
+    }
   `;
 
   // Nếu không có dữ liệu
@@ -590,7 +1166,7 @@ export default function ResultTOEIC() {
           {/* Part Analysis */}
           {Object.keys(answersByPart).length > 0 && (
             <div className="part-analysis">
-              <div className="section-title">📊 Phân Tích Theo Part</div>
+              <div className="section-title">Kết quả từng part</div>
               {Object.entries(answersByPart)
                 .sort(([a], [b]) => {
                   const numA = parseInt(a.replace("Part ", "")) || 0;
@@ -635,6 +1211,8 @@ export default function ResultTOEIC() {
                       className={`answer-item ${
                         a.isCorrect ? "correct" : "incorrect"
                       }`}
+                      onClick={() => setSelectedQuestion(a)}
+                      style={{ cursor: "pointer" }}
                       title={`Câu ${a.number} - Part ${a.part}
                       Bạn chọn: ${a.userAnswer || "Chưa trả lời"}
                       Đáp án đúng: ${a.correctAnswer}`}
@@ -663,7 +1241,10 @@ export default function ResultTOEIC() {
 
           {/* Action Buttons */}
           <div className="button-group">
-            <button onClick={() => navigate(-1)} className="btn btn-secondary">
+            <button
+              onClick={() => navigate(`/toeic-home/test-online/${examId}`)}
+              className="btn btn-secondary"
+            >
               📚 Quay Về
             </button>
             <button
@@ -688,6 +1269,232 @@ export default function ResultTOEIC() {
       </div>
 
       <style>{css}</style>
+
+      {/* Detail Modal */}
+      {selectedQuestion && (
+        <div
+          className="modal-overlay"
+          onClick={() => setSelectedQuestion(null)}
+        >
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Đáp án chi tiết #{selectedQuestion.number}</h2>
+              <button
+                className="modal-close-btn"
+                onClick={() => setSelectedQuestion(null)}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Media Section - Images & Audio */}
+            {hasMediaContent && (
+              <div className="modal-media-section">
+                {/* Images */}
+                {selectedQuestion.imageUrl && (
+                  <div className="modal-images">
+                    {Array.isArray(selectedQuestion.imageUrl) ? (
+                      selectedQuestion.imageUrl.map((url, idx) => (
+                        <img
+                          key={idx}
+                          src={url}
+                          alt={`question-${idx}`}
+                          className="modal-image"
+                          onError={(e) => {
+                            e.target.style.display = "none";
+                          }}
+                        />
+                      ))
+                    ) : (
+                      <img
+                        src={selectedQuestion.imageUrl}
+                        alt="question"
+                        className="modal-image"
+                        onError={(e) => {
+                          e.target.style.display = "none";
+                        }}
+                      />
+                    )}
+                  </div>
+                )}
+
+                {/* Audio */}
+                {selectedQuestion.mediaUrl && (
+                  <audio
+                    controls
+                    className="modal-audio"
+                    onError={(e) => {
+                      e.style.display = "none";
+                    }}
+                  >
+                    <source src={selectedQuestion.mediaUrl} />
+                    Your browser does not support the audio element.
+                  </audio>
+                )}
+
+                {/* Paragraph */}
+                {selectedQuestion.paragraph && (
+                  <div className="modal-paragraph">
+                    {selectedQuestion.paragraph}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Question */}
+            {selectedQuestion.questionText && (
+              <div className="modal-question">
+                <p>{selectedQuestion.questionText}</p>
+              </div>
+            )}
+
+            {/* Options */}
+            {selectedQuestion.options &&
+              selectedQuestion.options.length > 0 && (
+                <div className="modal-options">
+                  {selectedQuestion.options.map((opt, idx) => {
+                    const label = String.fromCharCode(65 + idx);
+                    const isUserAnswer = selectedQuestion.userAnswer === label;
+                    const isCorrectAnswer =
+                      selectedQuestion.correctAnswer === label;
+
+                    return (
+                      <div
+                        key={idx}
+                        className={`modal-option ${
+                          isUserAnswer && isCorrectAnswer
+                            ? "correct selected"
+                            : isUserAnswer
+                              ? "incorrect"
+                              : isCorrectAnswer
+                                ? "correct"
+                                : ""
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          id={`opt-${idx}`}
+                          name="answer"
+                          checked={isUserAnswer}
+                          disabled
+                        />
+                        <label
+                          htmlFor={`opt-${idx}`}
+                          className="modal-option-text"
+                        >
+                          <strong>{label}.</strong> {opt}
+                        </label>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+            {/* Result Summary */}
+            <div
+              className={`modal-result ${
+                selectedQuestion.isCorrect ? "correct" : "incorrect"
+              }`}
+            >
+              <div className="modal-result-title">
+                {selectedQuestion.isCorrect ? "✔ Đáp án đúng" : "✖ Đáp án sai"}
+              </div>
+              <div>
+                Bạn chọn:{" "}
+                <strong>{selectedQuestion.userAnswer || "Chưa trả lời"}</strong>
+              </div>
+              <div>
+                Đáp án đúng: <strong>{selectedQuestion.correctAnswer}</strong>
+              </div>
+            </div>
+
+            {/* Static Explanation (from Database/Test) */}
+            {selectedQuestion.explanation && (
+              <div className="db-explain-panel">
+                <div className="db-explain-title">💡 Giải thích từ đề thi:</div>
+                <div className="whitespace-pre-wrap leading-relaxed">
+                  {selectedQuestion.explanation}
+                </div>
+              </div>
+            )}
+
+            {/* AI Explanation Panel */}
+            {showExplanation && (
+              <div className="explain-panel">
+                <div className="explain-panel-header">
+                  <span>✨</span>
+                  <span>Giải thích chi tiết bởi AI</span>
+                  {/* <span className="ai-badge">Gemini</span> */}
+                </div>
+
+                {/* Loading khi chưa có text */}
+                {isExplaining && explanationText === "" && (
+                  <div className="explain-loading">
+                    <div className="explain-spinner" />
+                    <span>
+                      AI đang phân tích câu hỏi Part {selectedQuestion.part}...
+                    </span>
+                  </div>
+                )}
+
+                {/* Nội dung đang stream / đã xong */}
+                {explanationText !== "" && (
+                  <>
+                    <div className="explain-body" ref={explanationRef}>
+                      {renderMarkdown(explanationText)}
+                      {isExplaining && <span className="explain-cursor" />}
+                    </div>
+                    {!isExplaining && !explanationError && (
+                      <div className="explain-done-tag">
+                        <span className="explain-dot-done" />
+                        <span>Giải thích hoàn tất </span>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* Lỗi */}
+                {explanationError && (
+                  <div className="explain-error">
+                    <div>⚠️ {explanationError}</div>
+                    <button
+                      className="explain-retry-btn"
+                      onClick={handleExplain}
+                    >
+                      🔄 Thử lại
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="modal-footer">
+              <button
+                className="modal-btn modal-btn-explain"
+                onClick={handleExplain}
+                disabled={isExplaining}
+              >
+                {isExplaining ? (
+                  <>
+                    <span style={{ marginRight: 8 }}>⏳</span>Đang phân tích...
+                  </>
+                ) : showExplanation && explanationText ? (
+                  "🔄 Giải thích lại"
+                ) : (
+                  "💡 Giải thích chi tiết"
+                )}
+              </button>
+              <button
+                className="modal-btn modal-btn-close"
+                onClick={() => setSelectedQuestion(null)}
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
