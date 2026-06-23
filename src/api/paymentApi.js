@@ -42,3 +42,18 @@ export const checkCourseAccess = async (courseId) => {
     throw error.response?.data || error;
   }
 };
+
+/**
+ * Kiểm tra user có ít nhất 1 payment status=completed hay không
+ * Dùng để mở khoá toàn bộ Speaking Test
+ * @returns {Promise<{hasPurchase: boolean}>}
+ */
+export const checkHasPurchase = async () => {
+  try {
+    const response = await axiosInstance.get("/payment/has-purchase");
+    return response.result;
+  } catch (error) {
+    console.error("Check has purchase error:", error);
+    return { hasPurchase: false };
+  }
+};
