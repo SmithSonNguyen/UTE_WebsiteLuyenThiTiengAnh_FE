@@ -41,11 +41,13 @@ import PreRecordedCourseManagement from "@/pages/admin/PreRecordedCourseManageme
 import UserManagement from "@/pages/admin/UserManagement";
 import VocabularyManagement from "@/pages/admin/VocabularyManagement";
 import TestManagement from "@/pages/admin/TestManagement";
-import WritingTestSelect from "@/pages/WritingTestSelect";
+import WritingTestSelect from "../pages/WritingTestSelect";
 import DisplayWritingTest from "@/components/test/DisplayWritingTest";
 import DisplayOptionTest from "@/components/test/DisplayOptionTest";
 import PracticeTestPage from "@/components/practice/PracticeTestPage";
 import FullTestPage from "@/components/practice/FullTestPage";
+import SpeakingTestSelect from "../pages/SpeakingTestSelect";
+import DisplaySpeakingTest from "../components/test/DisplaySpeakingTest";
 
 function AppRouter() {
   return (
@@ -141,6 +143,18 @@ function AppRouter() {
           element={<DisplayWritingTest />}
         />
 
+        <Route
+          path="/toeic-home/speaking-test"
+          element={
+            <ToeicLayout>
+              <SpeakingTestSelect />
+            </ToeicLayout>
+          }
+        />
+        <Route
+          path="/toeic-home/speaking-test/:testId"
+          element={<DisplaySpeakingTest />}
+        />
         <Route
           path="/toeic-home/free-entry-test"
           // cái này để mà chỉ khi user đăng kí rồi mới được sử dụng, có thể bỏ cmt ở ProtectedRouter ra

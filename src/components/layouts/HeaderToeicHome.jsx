@@ -9,6 +9,7 @@ import AvatarMenu from "../common/AvatarMenu";
 const practiceLinks = [
   { href: "/toeic-home/test-online", label: "🎯 Luyện đề" },
   { href: "/toeic-home/writing-test", label: "✍️ Luyện Viết" },
+  { href: "/toeic-home/speaking-test", label: "🎙️ Luyện Nói" },
   { href: "/toeic-home/vocabulary", label: "📖 Học từ vựng" },
   { href: "/toeic-home/my-vocabulary", label: "⭐ Từ vựng của tôi" },
   { href: "/toeic-home/news-portal", label: "📰 Luyện đọc qua báo" },
