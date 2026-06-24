@@ -16,6 +16,21 @@ export const createPayment = async (paymentData) => {
 };
 
 /**
+ * Tạo payment MoMo và lấy payUrl
+ * @param {Object} paymentData - { courseId?, classId?, amount, orderInfo? }
+ * @returns {Promise} - { paymentId, payUrl, orderId }
+ */
+export const createMomoPayment = async (paymentData) => {
+  try {
+    const response = await axiosInstance.post("/payment/momo", paymentData);
+    return response.result;
+  } catch (error) {
+    console.error("Create MoMo payment error:", error);
+    throw error.response?.data || error;
+  }
+};
+
+/**
  * Lấy lịch sử thanh toán
  * @param {Object} params - { status?, page?, limit? }
  */
