@@ -127,9 +127,8 @@ function AppRouter() {
       </Route>
 
       <Route element={<StudentProtectedRouter />}>
-        <Route path="/payment/success" element={<PaymentSuccess />} />
-        <Route path="/payment/failed" element={<PaymentFailed />} />
-        <Route path="/payment/error" element={<PaymentError />} />
+        {/* NOTE: payment/success, failed, error KHÔNG đặt ở đây
+            vì MoMo/VNPay redirect về là browser mới, token không có trong memory */}
 
         {/* TOEIC routes with shared layout */}
         <Route
@@ -371,6 +370,12 @@ function AppRouter() {
       {/* Route mặc định, redirect thông minh dựa trên role */}
       <Route path="/" element={<RoleBasedRedirect />} />
       <Route path="/example" element={<MySchedulePage />} />
+
+      {/* Payment result routes - NGOÀI protected router vì là redirect từ cổng thanh toán */}
+      <Route path="/payment/success" element={<PaymentSuccess />} />
+      <Route path="/payment/failed" element={<PaymentFailed />} />
+      <Route path="/payment/error" element={<PaymentError />} />
+
       {/* Route cho trang không tìm thấy */}
       <Route
         path="*"

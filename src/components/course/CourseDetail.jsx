@@ -4,7 +4,7 @@ import { getCourseReviews } from "@/api/reviewApi";
 import { getUpcomingClassesByCourse } from "@/api/classApi";
 import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
-import { createPayment } from "@/api/paymentApi"; // Import payment API
+import { createPayment, createMomoPayment } from "@/api/paymentApi";
 import { toast } from "react-hot-toast";
 
 const CourseDetail = ({ course, isLoading = false }) => {
@@ -31,6 +31,11 @@ const CourseDetail = ({ course, isLoading = false }) => {
   const [processingPayment, setProcessingPayment] = useState(false);
   const [selectedClassId, setSelectedClassId] = useState(null);
 
+  // 💳 Modal chọn phương thức thanh toán
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [pendingClassItem, setPendingClassItem] = useState(null);
+  const [selectedMethod, setSelectedMethod] = useState(null); // 'momo' | 'vnpay'
+
   // Class schedule states for live-meet courses
   const [classes, setClasses] = useState([]);
   const [loadingClasses, setLoadingClasses] = useState(false);
@@ -53,90 +58,100 @@ const CourseDetail = ({ course, isLoading = false }) => {
       }
     }
   };
+  /**
+   * Bước 1: Kiểm tra hợp lệ và mở modal chọn phương thức thanh toán
+   */
   const handleEnrollClass = async (classItem) => {
+    // 1. Kiểm tra đăng nhập
+    const accessToken =
+      accessTokenFromRedux || localStorage.getItem("accessToken");
+    if (!accessToken) {
+      toast.error("Vui lòng đăng nhập để đăng ký khóa học");
+      navigate("/login", {
+        state: {
+          from: `/courses/${course._id}`,
+          message: "Vui lòng đăng nhập để đăng ký khóa học",
+        },
+      });
+      return;
+    }
+    if (!classItem?._id) {
+      toast.error("Thông tin lớp học không hợp lệ");
+      return;
+    }
+    if (classItem.capacity.currentStudents >= classItem.capacity.maxStudents) {
+      toast.error("Lớp học đã đầy. Vui lòng chọn lớp khác.");
+      return;
+    }
+    // 2. Lưu class đang chọn và mở modal
+    setPendingClassItem(classItem);
+    setSelectedMethod(null);
+    setShowPaymentModal(true);
+  };
+
+  /**
+   * Bước 2: Thực hiện thanh toán theo phương thức đã chọn
+   */
+  const handlePayWithMethod = async (method) => {
+    if (!pendingClassItem) return;
+    const classItem = pendingClassItem;
+
+    setShowPaymentModal(false);
+    setProcessingPayment(true);
+    setSelectedClassId(classItem._id);
+
     try {
-      // 1. Kiểm tra user đã đăng nhập chưa
-      const accessToken =
-        accessTokenFromRedux || localStorage.getItem("accessToken");
-
-      if (!accessToken) {
-        toast.error("Vui lòng đăng nhập để đăng ký khóa học");
-        // Redirect to login page
-        navigate("/login", {
-          state: {
-            from: `/courses/${course._id}`,
-            message: "Vui lòng đăng nhập để đăng ký khóa học",
-          },
-        });
-        return;
-      }
-
-      // 2. Validate class data
-      if (!classItem?._id) {
-        toast.error("Thông tin lớp học không hợp lệ");
-        return;
-      }
-
-      // 3. Check if class is full
-      if (
-        classItem.capacity.currentStudents >= classItem.capacity.maxStudents
-      ) {
-        toast.error("Lớp học đã đầy. Vui lòng chọn lớp khác.");
-        return;
-      }
-
-      // 4. Check if class has started
-      const now = new Date();
-      const startDate = new Date(classItem.schedule.startDate);
-      if (now > startDate) {
-        toast(
-          "Lớp học đã bắt đầu. Tiếp tục chuyển đến thanh toán theo yêu cầu."
-        );
-      }
-
-      setProcessingPayment(true);
-      setSelectedClassId(classItem._id);
-
-      // 5. Prepare payment data
       const paymentData = {
         classId: classItem._id,
-        courseId: course._id,
-        amount: course.discountPrice || course.price, // Số tiền VND
+        amount: course.discountPrice || course.price,
         orderInfo: `Thanh toán lớp ${classItem.classCode} - ${course.title}`,
       };
 
-      console.log("💳 Creating payment:", paymentData);
+      console.log(`💳 Creating ${method} payment:`, paymentData);
 
-      // 6. Call payment API
-      const result = await createPayment(paymentData);
-
-      console.log("✅ Payment created:", result);
-
-      // 7. Redirect to VNPay
-      if (result.vnpayUrl) {
-        toast.success("Đang chuyển đến trang thanh toán...");
-
-        // Lưu thông tin để quay lại sau khi thanh toán
-        localStorage.setItem(
-          "pendingPayment",
-          JSON.stringify({
-            paymentId: result.paymentId,
-            classId: classItem._id,
-            courseId: course._id,
-            classCode: classItem.classCode,
-            timestamp: Date.now(),
-          })
-        );
-
-        // Redirect to VNPay
-        window.location.href = result.vnpayUrl;
+      if (method === "momo") {
+        // --- MOMO ---
+        const result = await createMomoPayment(paymentData);
+        if (result?.payUrl) {
+          toast.success("Đang chuyển đến trang thanh toán MoMo...");
+          localStorage.setItem(
+            "pendingPayment",
+            JSON.stringify({
+              paymentId: result.paymentId,
+              classId: classItem._id,
+              courseId: course._id,
+              classCode: classItem.classCode,
+              method: "momo",
+              timestamp: Date.now(),
+            })
+          );
+          window.location.href = result.payUrl;
+        } else {
+          throw new Error("Không nhận được URL thanh toán MoMo");
+        }
       } else {
-        throw new Error("Không nhận được URL thanh toán");
+        // --- VNPAY ---
+        const result = await createPayment(paymentData);
+        if (result?.vnpayUrl) {
+          toast.success("Đang chuyển đến trang thanh toán VNPay...");
+          localStorage.setItem(
+            "pendingPayment",
+            JSON.stringify({
+              paymentId: result.paymentId,
+              classId: classItem._id,
+              courseId: course._id,
+              classCode: classItem.classCode,
+              method: "vnpay",
+              timestamp: Date.now(),
+            })
+          );
+          window.location.href = result.vnpayUrl;
+        } else {
+          throw new Error("Không nhận được URL thanh toán VNPay");
+        }
       }
     } catch (error) {
-      console.error("❌ Enrollment error:", error);
-
-      // Handle specific errors
+      console.error("❌ Payment error:", error);
       if (error.message?.includes("đã đăng ký")) {
         toast.error("Bạn đã đăng ký lớp học này rồi");
       } else if (error.message?.includes("đã đầy")) {
@@ -150,8 +165,10 @@ const CourseDetail = ({ course, isLoading = false }) => {
     } finally {
       setProcessingPayment(false);
       setSelectedClassId(null);
+      setPendingClassItem(null);
     }
   };
+
 
   /**
    * 🆕 Handle pre-recorded course enrollment
@@ -322,6 +339,7 @@ const CourseDetail = ({ course, isLoading = false }) => {
   }
 
   return (
+    <>
     <div className="min-h-screen bg-gray-50">
       {/* Layout chính: Grid 2 cột cho lg+, sidebar cố định bên phải */}
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-8 px-4 lg:px-0">
@@ -1239,6 +1257,128 @@ const CourseDetail = ({ course, isLoading = false }) => {
         </button>
       </div>
     </div>
+
+    {/* =====================================================
+        MODAL CHỌN PHƯƠNG THỨC THANH TOÁN
+        ===================================================== */}
+    {showPaymentModal && pendingClassItem && (
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center p-4"
+        style={{ backgroundColor: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
+        onClick={(e) => {
+          if (e.target === e.currentTarget) setShowPaymentModal(false);
+        }}
+      >
+        <div
+          className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
+          style={{ animation: "modalSlideUp 0.25s ease-out" }}
+        >
+          {/* Header */}
+          <div className="bg-gradient-to-r from-violet-600 to-purple-700 px-6 py-5 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold">Chọn phương thức thanh toán</h2>
+                <p className="text-purple-200 text-sm mt-0.5">Hoàn tất đăng ký lớp học</p>
+              </div>
+              <button
+                onClick={() => setShowPaymentModal(false)}
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/20 transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          {/* Thông tin lớp học */}
+          <div className="px-6 pt-5 pb-4">
+            <div className="bg-purple-50 border border-purple-100 rounded-xl p-4 mb-5">
+              <p className="text-xs font-semibold text-purple-500 uppercase tracking-wide mb-2">Thông tin đăng ký</p>
+              <p className="font-semibold text-gray-900 text-sm">{course?.title}</p>
+              <p className="text-gray-500 text-xs mt-1">
+                Lớp: <span className="font-medium text-gray-700">{pendingClassItem.classCode}</span>
+                {" · "}
+                {pendingClassItem.capacity.currentStudents}/{pendingClassItem.capacity.maxStudents} học viên
+              </p>
+              <div className="mt-3 pt-3 border-t border-purple-100 flex items-center justify-between">
+                <span className="text-sm text-gray-500">Học phí</span>
+                <span className="text-lg font-bold text-purple-700">
+                  {(course?.discountPrice || course?.price || 0).toLocaleString("vi-VN")}₫
+                </span>
+              </div>
+            </div>
+
+            {/* Lựa chọn phương thức */}
+            <p className="text-sm font-medium text-gray-600 mb-3">Chọn hình thức thanh toán:</p>
+            <div className="space-y-3">
+
+              {/* MoMo */}
+              <button
+                onClick={() => handlePayWithMethod("momo")}
+                className="w-full flex items-center gap-4 p-4 border-2 border-transparent rounded-xl hover:border-pink-400 hover:bg-pink-50 transition-all group"
+                style={{ background: "linear-gradient(135deg, #fff5f8 0%, #fff 100%)", border: "2px solid #fce7f3" }}
+              >
+                <div
+                  className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
+                  style={{ background: "linear-gradient(135deg, #d72f6e, #a0155a)" }}
+                >
+                  {/* MoMo logo icon */}
+                  <svg width="28" height="28" viewBox="0 0 48 48" fill="none">
+                    <rect width="48" height="48" rx="12" fill="none"/>
+                    <text x="50%" y="56%" dominantBaseline="middle" textAnchor="middle" fontSize="22" fontWeight="bold" fill="white">M</text>
+                  </svg>
+                </div>
+                <div className="flex-1 text-left">
+                  <p className="font-semibold text-gray-900 group-hover:text-pink-700 transition-colors">Ví MoMo</p>
+                  <p className="text-xs text-gray-500 mt-0.5">Thanh toán qua ví điện tử MoMo · QR Code</p>
+                </div>
+                <div className="flex-shrink-0">
+                  <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium">Khuyến nghị</span>
+                </div>
+              </button>
+
+              {/* VNPay */}
+              <button
+                onClick={() => handlePayWithMethod("vnpay")}
+                className="w-full flex items-center gap-4 p-4 rounded-xl hover:bg-blue-50 transition-all group"
+                style={{ background: "linear-gradient(135deg, #f0f7ff 0%, #fff 100%)", border: "2px solid #dbeafe" }}
+              >
+                <div
+                  className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
+                  style={{ background: "linear-gradient(135deg, #005bab, #0082c8)" }}
+                >
+                  <svg width="28" height="28" viewBox="0 0 48 48" fill="none">
+                    <text x="50%" y="56%" dominantBaseline="middle" textAnchor="middle" fontSize="13" fontWeight="bold" fill="white">VNPay</text>
+                  </svg>
+                </div>
+                <div className="flex-1 text-left">
+                  <p className="font-semibold text-gray-900 group-hover:text-blue-700 transition-colors">VNPay</p>
+                  <p className="text-xs text-gray-500 mt-0.5">Thẻ ATM · Thẻ tín dụng · Internet Banking</p>
+                </div>
+              </button>
+            </div>
+
+            {/* Nút huỷ */}
+            <button
+              onClick={() => setShowPaymentModal(false)}
+              className="w-full mt-4 py-3 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+            >
+              Huỷ bỏ
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* CSS animation */}
+    <style>{`
+      @keyframes modalSlideUp {
+        from { opacity: 0; transform: translateY(24px) scale(0.97); }
+        to   { opacity: 1; transform: translateY(0)    scale(1);    }
+      }
+    `}</style>
+    </>
   );
 };
 
