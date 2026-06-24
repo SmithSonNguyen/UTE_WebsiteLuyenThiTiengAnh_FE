@@ -48,6 +48,8 @@ import PracticeTestPage from "@/components/practice/PracticeTestPage";
 import FullTestPage from "@/components/practice/FullTestPage";
 import SpeakingTestSelect from "../pages/SpeakingTestSelect";
 import DisplaySpeakingTest from "../components/test/DisplaySpeakingTest";
+import WritingTestManagement from "@/pages/admin/WritingTestManagement";
+import StudentChatPage from "@/pages/course/StudentChatPage";
 
 function AppRouter() {
   return (
@@ -111,6 +113,14 @@ function AppRouter() {
           element={
             <AdminLayout>
               <TestManagement />
+            </AdminLayout>
+          }
+        />
+        <Route
+          path="/admin/writing-tests-management"
+          element={
+            <AdminLayout>
+              <WritingTestManagement />
             </AdminLayout>
           }
         />
@@ -340,6 +350,14 @@ function AppRouter() {
           element={
             <ToeicLayout>
               <ClassDetailPage />
+            </ToeicLayout>
+          }
+        />
+        <Route
+          path="/student/chat"
+          element={
+            <ToeicLayout>
+              <StudentChatPage />
             </ToeicLayout>
           }
         />

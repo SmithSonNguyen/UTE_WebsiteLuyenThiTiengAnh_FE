@@ -6,6 +6,7 @@ import HeaderToeicHome from "../../components/layouts/HeaderToeicHome";
 import ClassesOverview from "../../components/instructor/ClassesOverview";
 import AttendanceManagement from "../../components/instructor/AttendanceManagement";
 import InstructorProfile from "../../components/instructor/InstructorProfile";
+import InstructorMessagesTab from "../../components/instructor/InstructorMessagesTab";
 import ConfirmModal from "../../components/common/ConfirmModal";
 import { logoutUser } from "@/api/userApi";
 
@@ -33,6 +34,7 @@ const InstructorDashboard = () => {
   const tabs = [
     { id: "classes", label: "Thông tin lớp học", icon: "📚" },
     { id: "attendance", label: "Điểm danh", icon: "✅" },
+    { id: "messages", label: "Tin nhắn từ học viên", icon: "💬" },
     { id: "profile", label: "Thông tin cá nhân", icon: "👤" },
   ];
 
@@ -42,6 +44,8 @@ const InstructorDashboard = () => {
         return <ClassesOverview />;
       case "attendance":
         return <AttendanceManagement />;
+      case "messages":
+        return <InstructorMessagesTab />;
       case "profile":
         return <InstructorProfile />;
       default:

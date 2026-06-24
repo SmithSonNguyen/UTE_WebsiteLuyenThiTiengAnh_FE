@@ -1,16 +1,9 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect, useCallback } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import axiosInstance from "@/utils/axiosInstance";
 
-// ── Mock image data ────────────────────────────────────────────────────────────
-const IMAGES = [
-  "https://s4-media1.study4.com/media/toeic_sw_tests/writing/image17.png",
-  "https://s4-media1.study4.com/media/toeic_sw_tests/writing/image3.png",
-  "https://s4-media1.study4.com/media/toeic_sw_tests/writing/image19.png",
-  "https://s4-media1.study4.com/media/toeic_sw_tests/writing/image41.png",
-  "https://s4-media1.study4.com/media/toeic_sw_tests/writing/image24.png",
-];
-
-const TOTAL_TIME = 60 * 60;
+// ── API base URL ────────────────────────────────────────────────────────────────
+const API_BASE = import.meta.env.VITE_BACKEND_URL?.replace("/api", "") || "http://localhost:4000";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 function countWords(text) {
@@ -25,13 +18,15 @@ function formatTime(seconds) {
   return `${m}:${s}`;
 }
 
+const TOTAL_TIME = 60 * 60;
+
 const parts = [
   { id: "part1", label: "Questions 1–5", range: [1, 5] },
   { id: "part2", label: "Questions 6–7", range: [6, 7] },
   { id: "part3", label: "Question 8", range: [8, 8] },
 ];
 
-// ── Groq config (same pattern as VocabTranslator) ─────────────────────────────
+// ── Groq config ────────────────────────────────────────────────────────────────
 const GROQ_CONFIG = {
   key: import.meta.env.VITE_GROQ_KEY,
   url: import.meta.env.VITE_GROQ_URL,
@@ -103,6 +98,16 @@ Hãy trả lời theo đúng cấu trúc JSON sau (chỉ JSON, không thêm gì 
 // ── Main component ──────────────────────────────────────────────────────────────
 export default function TOEICWritingTest() {
   const navigate = useNavigate();
+  // Lấy testId từ URL: /toeic-home/writing-test/:testId
+  const { testId } = useParams();
+  const writingTestId = testId || "writing-001";
+
+  // ── Test data state ──
+  const [testData, setTestData] = useState(null);
+  const [loadingTest, setLoadingTest] = useState(true);
+  const [loadError, setLoadError] = useState(null);
+
+  // ── Exam states ──
   const [activePart, setActivePart] = useState("part1");
   const [answers, setAnswers] = useState({});
   const [notes, setNotes] = useState({});
@@ -111,15 +116,48 @@ export default function TOEICWritingTest() {
   const [submitted, setSubmitted] = useState(false);
   const [marked, setMarked] = useState({});
 
-  // AI grading states
+  // ── AI grading states ──
   const [isGrading, setIsGrading] = useState(false);
   const [gradingResult, setGradingResult] = useState(null);
   const [gradingError, setGradingError] = useState(null);
   const [showGrading, setShowGrading] = useState(false);
 
-  // Timer
+  // ── Save states ──
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState(null);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+
+  // ── Load đề thi từ API ──────────────────────────────────────────────────────
   useEffect(() => {
-    if (submitted) return;
+    const fetchTest = async () => {
+      setLoadingTest(true);
+      setLoadError(null);
+      try {
+        const res = await axiosInstance.get(`/writing-tests/${writingTestId}`);
+        setTestData(res.result);
+      } catch (err) {
+        setLoadError("Không thể tải đề thi: " + (err.message || "Lỗi không xác định"));
+      } finally {
+        setLoadingTest(false);
+      }
+    };
+    fetchTest();
+  }, [writingTestId]);
+
+  // ── Lấy questions theo part ─────────────────────────────────────────────────
+  const getQuestionsByPart = useCallback(
+    (partNum) => {
+      if (!testData?.questions) return [];
+      return testData.questions
+        .filter((q) => q.part === partNum)
+        .sort((a, b) => a.questionNumber - b.questionNumber);
+    },
+    [testData],
+  );
+
+  // ── Timer ───────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (submitted || loadingTest) return;
     const timer = setInterval(() => {
       setTimeLeft((t) => {
         if (t <= 1) {
@@ -131,7 +169,7 @@ export default function TOEICWritingTest() {
       });
     }, 1000);
     return () => clearInterval(timer);
-  }, [submitted]);
+  }, [submitted, loadingTest]);
 
   const setAnswer = (qid, val) => setAnswers((a) => ({ ...a, [qid]: val }));
   const setNote = (qid, val) => setNotes((n) => ({ ...n, [qid]: val }));
@@ -147,27 +185,78 @@ export default function TOEICWritingTest() {
     }, 50);
   };
 
-  // ── Submit + AI grading ──
+  // ── Lưu kết quả lên BE ─────────────────────────────────────────────────────
+  const saveResultToBackend = async (aiFeedback = null) => {
+    setIsSaving(true);
+    setSaveError(null);
+
+    // Chuẩn bị answers array
+    const answersArray = Object.entries(answers).map(([qid, text]) => {
+      const num = parseInt(qid);
+      return {
+        questionNumber: num,
+        part: num <= 5 ? 1 : num <= 7 ? 2 : 3,
+        answerText: text || "",
+        wordCount: countWords(text || ""),
+      };
+    });
+
+    // Đảm bảo tất cả 8 câu đều có entry (kể cả câu bỏ trống)
+    for (let q = 1; q <= 8; q++) {
+      if (!answersArray.find((a) => a.questionNumber === q)) {
+        answersArray.push({
+          questionNumber: q,
+          part: q <= 5 ? 1 : q <= 7 ? 2 : 3,
+          answerText: "",
+          wordCount: 0,
+        });
+      }
+    }
+
+    try {
+      await axiosInstance.post(`/writing-tests/${writingTestId}/submit`, {
+        answers: answersArray,
+        aiFeedback: aiFeedback ?? undefined,
+      });
+
+      setSaveSuccess(true);
+    } catch (err) {
+      if (err?.status === 401 || err?.message === 'Unauthorized') {
+        setSaveError("Bạn chưa đăng nhập – kết quả không được lưu.");
+      } else {
+        setSaveError("Lưu kết quả thất bại: " + (err.message || "Lỗi không xác định"));
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // ── Submit + AI grading ─────────────────────────────────────────────────────
   const handleSubmit = async () => {
     setSubmitted(true);
     setIsGrading(true);
     setGradingError(null);
     setShowGrading(true);
+
+    let aiResult = null;
     try {
-      const result = await gradeWithAI(answers);
-      setGradingResult(result);
+      aiResult = await gradeWithAI(answers);
+      setGradingResult(aiResult);
     } catch (err) {
       setGradingError("Lỗi chấm điểm AI: " + err.message);
     } finally {
       setIsGrading(false);
     }
+
+    // Lưu kết quả lên BE (kèm AI feedback nếu có)
+    await saveResultToBackend(aiResult);
   };
 
   const timePercent = (timeLeft / TOTAL_TIME) * 100;
   const timerColor =
     timeLeft < 300 ? "#ef4444" : timeLeft < 600 ? "#f59e0b" : "#6366f1";
 
-  // ── Shared answer block ──
+  // ── Shared answer block ─────────────────────────────────────────────────────
   const AnswerBlock = ({ qid, minH = 180 }) => {
     const wc = countWords(answers[qid] || "");
     return (
@@ -197,6 +286,71 @@ export default function TOEICWritingTest() {
       </div>
     );
   };
+
+  // ── Loading / Error states ──────────────────────────────────────────────────
+  if (loadingTest) {
+    return (
+      <div
+        style={{
+          background: "#0d0f14",
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexDirection: "column",
+          gap: "1rem",
+          color: "#a5b4fc",
+          fontFamily: "'Sora', sans-serif",
+        }}
+      >
+        <div style={{ fontSize: "2rem" }}>📝</div>
+        <p style={{ fontSize: "1.1rem", fontWeight: 600 }}>Đang tải đề thi...</p>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div
+        style={{
+          background: "#0d0f14",
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexDirection: "column",
+          gap: "1rem",
+          color: "#fca5a5",
+          fontFamily: "'Sora', sans-serif",
+          padding: "2rem",
+          textAlign: "center",
+        }}
+      >
+        <div style={{ fontSize: "2rem" }}>⚠️</div>
+        <p style={{ fontSize: "1rem" }}>{loadError}</p>
+        <button
+          onClick={() => navigate(-1)}
+          style={{
+            marginTop: "1rem",
+            padding: "0.6rem 1.5rem",
+            background: "transparent",
+            border: "1px solid #252840",
+            borderRadius: 8,
+            color: "#7c7f99",
+            cursor: "pointer",
+            fontFamily: "'Sora', sans-serif",
+          }}
+        >
+          ← Quay lại
+        </button>
+      </div>
+    );
+  }
+
+  // Lấy questions theo part từ API data
+  const part1Questions = getQuestionsByPart(1);
+  const part2Questions = getQuestionsByPart(2);
+  const part3Questions = getQuestionsByPart(3);
 
   return (
     <>
@@ -241,7 +395,7 @@ export default function TOEICWritingTest() {
         .tw-email-box { background: #0d0f14; border: 1px solid #1e2130; border-radius: 10px; padding: 1rem 1.25rem; font-size: 0.82rem; line-height: 1.7; color: #c8cae0; }
         .tw-email-box .field { display: flex; gap: 0.5rem; margin-bottom: 0.2rem; }
         .tw-email-box .field-label { color: #6366f1; font-weight: 600; min-width: 60px; }
-        .tw-email-body { margin-top: 0.75rem; color: #a5a8c4; }
+        .tw-email-body { margin-top: 0.75rem; color: #a5a8c4; white-space: pre-line; }
         .tw-email-directions { margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid #1e2130; color: #f59e0b; font-style: italic; font-size: 0.78rem; }
         .tw-essay-prompt { font-size: 0.92rem; line-height: 1.7; color: #c8cae0; }
         .tw-card-answer { padding: 1.25rem; flex: 1; display: flex; flex-direction: column; gap: 0.75rem; }
@@ -254,6 +408,10 @@ export default function TOEICWritingTest() {
         .tw-answer-input:disabled { opacity: 0.7; cursor: not-allowed; }
         .tw-wordcount { font-size: 0.72rem; color: #5c5f7a; font-family: 'JetBrains Mono', monospace; text-align: right; }
         .tw-wordcount.has-words { color: #6366f1; }
+        .tw-save-banner { position: fixed; bottom: 1.5rem; right: 1.5rem; padding: 0.75rem 1.25rem; border-radius: 10px; font-family: 'Sora', sans-serif; font-size: 0.82rem; font-weight: 500; z-index: 999; animation: fadeUp 0.3s ease; }
+        .tw-save-banner.success { background: #064e3b; border: 1px solid #059669; color: #34d399; }
+        .tw-save-banner.error { background: #1e0a0a; border: 1px solid #7f1d1d; color: #fca5a5; }
+        .tw-save-banner.saving { background: #1e1a3a; border: 1px solid #6366f1; color: #a5b4fc; }
       `}</style>
 
       <div className="tw-root">
@@ -261,6 +419,11 @@ export default function TOEICWritingTest() {
         <div className="tw-topbar">
           <div className="tw-logo">
             TOEIC <span>Writing</span>
+            {testData && (
+              <span style={{ marginLeft: "0.75rem", fontSize: "0.78rem", color: "#5c5f7a", fontWeight: 400 }}>
+                – {testData.name}
+              </span>
+            )}
           </div>
           <div className="tw-timer">
             <div className="tw-timer-bar">
@@ -378,6 +541,11 @@ export default function TOEICWritingTest() {
                       >
                         {gradingResult.overallFeedback}
                       </p>
+                      {saveSuccess && (
+                        <div style={{ marginTop: "1rem", padding: "0.5rem 0.75rem", background: "#064e3b", border: "1px solid #059669", borderRadius: 8, color: "#34d399", fontSize: "0.78rem" }}>
+                          ✅ Kết quả đã được lưu vào hệ thống
+                        </div>
+                      )}
                     </div>
 
                     {/* Per-question feedbacks */}
@@ -560,10 +728,10 @@ export default function TOEICWritingTest() {
               </div>
             )}
 
-            {/* ── PART 1 ── */}
+            {/* ── PART 1: Photo Description ── */}
             {activePart === "part1" &&
-              IMAGES.map((src, i) => {
-                const qid = i + 1;
+              part1Questions.map((q) => {
+                const qid = q.questionNumber;
                 return (
                   <div className="tw-question-card" key={qid} id={`q-${qid}`}>
                     <div className="tw-card-header">
@@ -580,7 +748,7 @@ export default function TOEICWritingTest() {
                     </div>
                     <div className="tw-card-body">
                       <div className="tw-card-context">
-                        <img src={src} alt={`Question ${qid}`} />
+                        <img src={q.imageUrl} alt={`Question ${qid}`} />
                       </div>
                       <AnswerBlock qid={qid} />
                     </div>
@@ -588,148 +756,78 @@ export default function TOEICWritingTest() {
                 );
               })}
 
-            {/* ── PART 2 ── */}
-            {activePart === "part2" && (
-              <>
-                {/* Q6 */}
-                <div className="tw-question-card" id="q-6">
-                  <div className="tw-card-header">
-                    <div
-                      className={`tw-qnum ${marked[6] ? "marked" : ""}`}
-                      onClick={() => toggleMark(6)}
-                    >
-                      6
+            {/* ── PART 2: Email Response ── */}
+            {activePart === "part2" &&
+              part2Questions.map((q) => {
+                const qid = q.questionNumber;
+                return (
+                  <div className="tw-question-card" key={qid} id={`q-${qid}`}>
+                    <div className="tw-card-header">
+                      <div
+                        className={`tw-qnum ${marked[qid] ? "marked" : ""}`}
+                        onClick={() => toggleMark(qid)}
+                      >
+                        {qid}
+                      </div>
+                      <span className="tw-card-label">Respond to an email</span>
                     </div>
-                    <span className="tw-card-label">Respond to an email</span>
-                  </div>
-                  <div className="tw-card-body">
-                    <div className="tw-card-context">
-                      <div className="tw-email-box">
-                        <div className="field">
-                          <span className="field-label">From:</span>
-                          <span>update@dailyjobseeker.com</span>
-                        </div>
-                        <div className="field">
-                          <span className="field-label">To:</span>
-                          <span>Anna Billings</span>
-                        </div>
-                        <div className="field">
-                          <span className="field-label">Subject:</span>
-                          <span>Daily Jobseeker update</span>
-                        </div>
-                        <div className="field">
-                          <span className="field-label">Sent:</span>
-                          <span>March 14, 20—</span>
-                        </div>
-                        <div className="tw-email-body">
-                          <p style={{ marginBottom: "0.5rem" }}>
-                            Dear Daily Jobseeker subscriber,
-                          </p>
-                          <p>
-                            Marleyhome Inc. is looking for an experienced
-                            accountant to fill a vacancy in its Accounting
-                            Department. The company needs someone with an
-                            accounting degree and at least three years of
-                            experience. Contact Ralph Kramer,
-                            r_kramer@marleyhome.com.
-                          </p>
-                        </div>
-                        <div className="tw-email-directions">
-                          Directions: Respond to the e-mail as if you are
-                          interested in applying for the position. Make ONE
-                          statement about your professional background and TWO
-                          requests for information about the job.
+                    <div className="tw-card-body">
+                      <div className="tw-card-context">
+                        <div className="tw-email-box">
+                          <div className="field">
+                            <span className="field-label">From:</span>
+                            <span>{q.emailFrom}</span>
+                          </div>
+                          <div className="field">
+                            <span className="field-label">To:</span>
+                            <span>{q.emailTo}</span>
+                          </div>
+                          <div className="field">
+                            <span className="field-label">Subject:</span>
+                            <span>{q.emailSubject}</span>
+                          </div>
+                          <div className="field">
+                            <span className="field-label">Sent:</span>
+                            <span>{q.emailSent}</span>
+                          </div>
+                          <div className="tw-email-body">
+                            {q.emailBody}
+                          </div>
+                          <div className="tw-email-directions">
+                            {q.emailDirections}
+                          </div>
                         </div>
                       </div>
+                      <AnswerBlock qid={qid} />
                     </div>
-                    <AnswerBlock qid={6} />
                   </div>
-                </div>
+                );
+              })}
 
-                {/* Q7 */}
-                <div className="tw-question-card" id="q-7">
-                  <div className="tw-card-header">
-                    <div
-                      className={`tw-qnum ${marked[7] ? "marked" : ""}`}
-                      onClick={() => toggleMark(7)}
-                    >
-                      7
-                    </div>
-                    <span className="tw-card-label">Respond to an email</span>
-                  </div>
-                  <div className="tw-card-body">
-                    <div className="tw-card-context">
-                      <div className="tw-email-box">
-                        <div className="field">
-                          <span className="field-label">From:</span>
-                          <span>Elisa Hays, Front Desk Supervisor</span>
-                        </div>
-                        <div className="field">
-                          <span className="field-label">To:</span>
-                          <span>Front desk agents, Hotel Mediterraneo</span>
-                        </div>
-                        <div className="field">
-                          <span className="field-label">Subject:</span>
-                          <span>Reservation system</span>
-                        </div>
-                        <div className="field">
-                          <span className="field-label">Sent:</span>
-                          <span>December 1, 20—</span>
-                        </div>
-                        <div className="tw-email-body">
-                          <p>
-                            It has come to my attention that several of you have
-                            experienced problems with the reservation system
-                            recently. Please send me a complete list of the
-                            issues that each of you have encountered.
-                          </p>
-                          <p style={{ marginTop: "0.75rem" }}>
-                            Sincerely,
-                            <br />
-                            Elisa Hays
-                            <br />
-                            Front Desk Supervisor
-                          </p>
-                        </div>
-                        <div className="tw-email-directions">
-                          Directions: Respond to the e-mail as if you are a
-                          front desk agent at Hotel Mediterraneo. In your
-                          e-mail, describe THREE problems with the reservation
-                          system.
-                        </div>
+            {/* ── PART 3: Opinion Essay ── */}
+            {activePart === "part3" &&
+              part3Questions.map((q) => {
+                const qid = q.questionNumber;
+                return (
+                  <div className="tw-question-card" key={qid} id={`q-${qid}`}>
+                    <div className="tw-card-header">
+                      <div
+                        className={`tw-qnum ${marked[qid] ? "marked" : ""}`}
+                        onClick={() => toggleMark(qid)}
+                      >
+                        {qid}
                       </div>
+                      <span className="tw-card-label">Write an opinion essay</span>
                     </div>
-                    <AnswerBlock qid={7} />
+                    <div className="tw-card-body">
+                      <div className="tw-card-context">
+                        <p className="tw-essay-prompt">{q.essayPrompt}</p>
+                      </div>
+                      <AnswerBlock qid={qid} minH={280} />
+                    </div>
                   </div>
-                </div>
-              </>
-            )}
-
-            {/* ── PART 3 ── */}
-            {activePart === "part3" && (
-              <div className="tw-question-card" id="q-8">
-                <div className="tw-card-header">
-                  <div
-                    className={`tw-qnum ${marked[8] ? "marked" : ""}`}
-                    onClick={() => toggleMark(8)}
-                  >
-                    8
-                  </div>
-                  <span className="tw-card-label">Write an opinion essay</span>
-                </div>
-                <div className="tw-card-body">
-                  <div className="tw-card-context">
-                    <p className="tw-essay-prompt">
-                      Many people enjoy spending time playing and watching
-                      sports. Why do you think sports are important to people?
-                      Give specific reasons and examples to support your
-                      opinion.
-                    </p>
-                  </div>
-                  <AnswerBlock qid={8} minH={280} />
-                </div>
-              </div>
-            )}
+                );
+              })}
           </div>
 
           {/* ── Sidebar ── */}
@@ -787,6 +885,17 @@ export default function TOEICWritingTest() {
           </div>
         </div>
       </div>
+
+      {/* Save status banner */}
+      {isSaving && (
+        <div className="tw-save-banner saving">⏳ Đang lưu kết quả...</div>
+      )}
+      {saveSuccess && !isSaving && (
+        <div className="tw-save-banner success">✅ Đã lưu kết quả thành công!</div>
+      )}
+      {saveError && !isSaving && (
+        <div className="tw-save-banner error">⚠️ {saveError}</div>
+      )}
     </>
   );
 }
