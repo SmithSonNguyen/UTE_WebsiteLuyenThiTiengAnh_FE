@@ -1,143 +1,202 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { io } from "socket.io-client";
 import { useSelector } from "react-redux";
+import { jwtDecode } from "jwt-decode";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL?.replace("/api", "") || "http://localhost:8080";
 
-/**
- * Hook quản lý kết nối Socket.IO cho chat realtime
- * @param {string|null} roomId - ID phòng chat hiện tại
- */
+// Singleton socket instance
+let sharedSocket = null;
+let activeConnections = 0;
+
+// Global state cho chat để đồng bộ giữa các component
+let globalMessages = {}; // { roomId: messages[] }
+let globalNotifications = [];
+const listeners = new Set();
+
+const notifyListeners = () => {
+  listeners.forEach(listener => listener());
+};
+
 export const useChat = (roomId = null) => {
-  const [messages, setMessages] = useState([]);
-  const [isConnected, setIsConnected] = useState(false);
-  const [notifications, setNotifications] = useState([]); // Tin nhắn mới khi không ở trong room
-  const socketRef = useRef(null);
-  const currentRoomRef = useRef(null);
+  const [localMessages, setLocalMessages] = useState(globalMessages[roomId] || []);
+  const [localNotifications, setLocalNotifications] = useState(globalNotifications);
+  const [isConnected, setIsConnected] = useState(sharedSocket?.connected || false);
+  const currentRoomRef = useRef(roomId);
 
-  const accessToken = useSelector(
-    (state) => state.auth.login?.accessToken
-  );
+  const accessToken = useSelector((state) => state.auth.login?.accessToken);
 
-  // Kết nối Socket.IO
+  // Sync state thay đổi
   useEffect(() => {
-    if (!accessToken) return;
-
-    const socket = io(BACKEND_URL, {
-      auth: { token: accessToken },
-      transports: ["websocket", "polling"],
-      reconnection: true,
-      reconnectionDelay: 1000,
-      reconnectionAttempts: 5,
-    });
-
-    socket.on("connect", () => {
-      console.log("✅ Socket.IO connected:", socket.id);
-      setIsConnected(true);
-
-      // Tham gia lại room nếu có
-      if (currentRoomRef.current) {
-        socket.emit("join_room", currentRoomRef.current);
-      }
-    });
-
-    socket.on("disconnect", () => {
-      console.log("❌ Socket.IO disconnected");
-      setIsConnected(false);
-    });
-
-    socket.on("new_message", (message) => {
-      setMessages((prev) => {
-        // Tránh duplicate
-        if (prev.some((m) => m._id === message._id)) return prev;
-        return [...prev, message];
-      });
-    });
-
-    socket.on("new_message_notification", (notification) => {
-      setNotifications((prev) => [...prev, notification]);
-    });
-
-    socket.on("messages_read", ({ roomId: readRoomId, readBy }) => {
-      if (readRoomId === currentRoomRef.current) {
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.senderId?._id !== readBy ? { ...m, isRead: true } : m
-          )
-        );
-      }
-    });
-
-    socket.on("error", (err) => {
-      console.error("Socket error:", err);
-    });
-
-    socketRef.current = socket;
-
-    return () => {
-      socket.disconnect();
-      socketRef.current = null;
+    const listener = () => {
+      setLocalMessages(globalMessages[currentRoomRef.current] || []);
+      setLocalNotifications([...globalNotifications]);
+      setIsConnected(sharedSocket?.connected || false);
     };
-  }, [accessToken]);
-
-  // Join/leave room khi roomId thay đổi
-  useEffect(() => {
-    const socket = socketRef.current;
-    if (!socket || !isConnected) return;
-
-    // Rời room cũ
-    if (currentRoomRef.current && currentRoomRef.current !== roomId) {
-      socket.emit("leave_room", currentRoomRef.current);
-    }
-
-    if (roomId) {
-      socket.emit("join_room", roomId);
-      currentRoomRef.current = roomId;
-      // Reset notifications cho room này
-      setNotifications((prev) =>
-        prev.filter((n) => n.roomId !== roomId)
-      );
-    } else {
-      currentRoomRef.current = null;
-    }
-  }, [roomId, isConnected]);
-
-  // Gửi tin nhắn
-  const sendMessage = useCallback(
-    (receiverId, content) => {
-      const socket = socketRef.current;
-      if (!socket || !currentRoomRef.current || !content.trim()) return;
-
-      socket.emit("send_message", {
-        roomId: currentRoomRef.current,
-        receiverId,
-        content: content.trim(),
-      });
-    },
-    []
-  );
-
-  // Đánh dấu đã đọc
-  const markRead = useCallback((targetRoomId) => {
-    const socket = socketRef.current;
-    if (!socket) return;
-    socket.emit("mark_read", targetRoomId || currentRoomRef.current);
+    listeners.add(listener);
+    return () => listeners.delete(listener);
   }, []);
 
-  // Reset messages khi đổi room
-  const resetMessages = useCallback(() => {
-    setMessages([]);
+  // Update globalMessages khi roomId thay đổi
+  useEffect(() => {
+    currentRoomRef.current = roomId;
+    setLocalMessages(globalMessages[roomId] || []);
+  }, [roomId]);
+
+  // Cập nhật messages (từ API history)
+  const setMessages = useCallback((newMessagesOrUpdater) => {
+    if (!currentRoomRef.current) return;
+    const room = currentRoomRef.current;
+    
+    if (typeof newMessagesOrUpdater === 'function') {
+      globalMessages[room] = newMessagesOrUpdater(globalMessages[room] || []);
+    } else {
+      globalMessages[room] = newMessagesOrUpdater;
+    }
+    notifyListeners();
   }, []);
 
   const clearNotifications = useCallback(() => {
-    setNotifications([]);
+    globalNotifications = [];
+    notifyListeners();
+  }, []);
+
+  const resetMessages = useCallback(() => {
+    if (currentRoomRef.current) {
+      globalMessages[currentRoomRef.current] = [];
+      notifyListeners();
+    }
+  }, []);
+
+  // Socket connection
+  useEffect(() => {
+    if (!accessToken) return;
+
+    if (!sharedSocket) {
+      sharedSocket = io(BACKEND_URL, {
+        auth: { token: accessToken },
+        transports: ["websocket", "polling"],
+        reconnection: true,
+      });
+    }
+
+    const socket = sharedSocket;
+    activeConnections++;
+    notifyListeners();
+
+    const onConnect = () => {
+      console.log("✅ Socket connected:", socket.id);
+      notifyListeners();
+      // Join room nếu đang ở trong room
+      if (currentRoomRef.current) {
+        socket.emit("join_room", currentRoomRef.current);
+      }
+    };
+
+    const onDisconnect = () => {
+      console.log("❌ Socket disconnected");
+      notifyListeners();
+    };
+
+    const onNewMessage = (message) => {
+      console.log("📩 received new_message:", message);
+      const mRoom = message.roomId;
+      
+      if (!globalMessages[mRoom]) globalMessages[mRoom] = [];
+      
+      // Chống trùng lặp tin nhắn
+      const exists = globalMessages[mRoom].some(m => m._id === message._id);
+      if (!exists) {
+        globalMessages[mRoom] = [...globalMessages[mRoom], message];
+        notifyListeners();
+      }
+    };
+
+    const onNotification = (notification) => {
+      console.log("🔔 received notification:", notification);
+      // Chỉ thêm nếu không ở trong room đó
+      if (notification.roomId !== currentRoomRef.current) {
+        globalNotifications = [...globalNotifications, notification];
+        notifyListeners();
+      }
+    };
+
+    const onMessagesRead = ({ roomId: readRoomId, readBy }) => {
+      if (globalMessages[readRoomId]) {
+        globalMessages[readRoomId] = globalMessages[readRoomId].map((m) => {
+          const rawSenderId = m.senderId;
+          const senderIdStr =
+            rawSenderId?._id?.toString() ||
+            (typeof rawSenderId === "string" ? rawSenderId : null) ||
+            rawSenderId?.toString?.();
+          return senderIdStr !== readBy ? { ...m, isRead: true } : m;
+        });
+        notifyListeners();
+      }
+    };
+
+    socket.on("connect", onConnect);
+    socket.on("disconnect", onDisconnect);
+    socket.on("new_message", onNewMessage);
+    socket.on("new_message_notification", onNotification);
+    socket.on("messages_read", onMessagesRead);
+
+    if (socket.connected) {
+      onConnect();
+    }
+
+    return () => {
+      socket.off("connect", onConnect);
+      socket.off("disconnect", onDisconnect);
+      socket.off("new_message", onNewMessage);
+      socket.off("new_message_notification", onNotification);
+      socket.off("messages_read", onMessagesRead);
+
+      activeConnections--;
+      if (activeConnections === 0) {
+        socket.disconnect();
+        sharedSocket = null;
+      }
+    };
+  }, [accessToken]);
+
+  // Join/leave room
+  useEffect(() => {
+    const socket = sharedSocket;
+    if (!socket || !socket.connected || !roomId) return;
+
+    socket.emit("join_room", roomId);
+    // Xóa notification của room này
+    globalNotifications = globalNotifications.filter(n => n.roomId !== roomId);
+    notifyListeners();
+
+    return () => {
+      socket.emit("leave_room", roomId);
+    };
+  }, [roomId, isConnected]); // isConnected để trigger lại khi reconnect
+
+  const sendMessage = useCallback((receiverId, content) => {
+    const socket = sharedSocket;
+    if (!socket || !socket.connected || !currentRoomRef.current || !content.trim()) return;
+
+    socket.emit("send_message", {
+      roomId: currentRoomRef.current,
+      receiverId,
+      content: content.trim(),
+    });
+  }, []);
+
+  const markRead = useCallback((targetRoomId) => {
+    const socket = sharedSocket;
+    if (!socket || !socket.connected) return;
+    socket.emit("mark_read", targetRoomId || currentRoomRef.current);
   }, []);
 
   return {
-    messages,
+    messages: localMessages,
     setMessages,
     isConnected,
-    notifications,
+    notifications: localNotifications,
     sendMessage,
     markRead,
     resetMessages,
