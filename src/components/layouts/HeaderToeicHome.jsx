@@ -56,7 +56,7 @@ const HeaderToeicHome = () => {
             <a href="/toeic-home">
               <div className="relative rounded-[140px] bg-white px-3 py-2.5 shadow-sm hover:shadow-md transition">
                 <img
-                  src="../../../public/Superman_shield.svg.png"
+                  src="https://i.postimg.cc/vmt1rhM4/Superman-shield-svg.png"
                   alt="Logo DTT"
                   className="h-8 w-auto md:h-12 lg:h-14 2xl:h-16 object-contain"
                 />

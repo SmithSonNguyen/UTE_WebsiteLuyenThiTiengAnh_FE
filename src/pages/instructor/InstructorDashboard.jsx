@@ -59,7 +59,7 @@ const InstructorDashboard = () => {
               <a href="/instructor">
                 <div className="relative rounded-[140px] bg-white px-3 py-2.5 shadow-sm hover:shadow-md transition">
                   <img
-                    src="../../../public/Superman_shield.svg.png"
+                    src="https://i.postimg.cc/vmt1rhM4/Superman-shield-svg.png"
                     alt="Logo DTT"
                     className="h-2 w-auto md:h-6 lg:h-7 2xl:h-8 object-contain"
                   />

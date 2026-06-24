@@ -7,7 +7,7 @@ const FormWrapper = ({ title, children }) => {
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full">
         <img
-          src="../../../public/Superman_shield.svg.png"
+          src="https://i.postimg.cc/vmt1rhM4/Superman-shield-svg.png"
           alt="Logo DTT"
           className="h-8 w-auto md:h-12 lg:h-14 2xl:h-16 object-contain mx-auto mb-4"
         />
