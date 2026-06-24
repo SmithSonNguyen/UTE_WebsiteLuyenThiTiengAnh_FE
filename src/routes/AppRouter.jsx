@@ -44,6 +44,8 @@ import VocabularyManagement from "@/pages/admin/VocabularyManagement";
 import TestManagement from "@/pages/admin/TestManagement";
 import WritingTestSelect from "@/pages/WritingTestSelect";
 import DisplayWritingTest from "@/components/test/DisplayWritingTest";
+import WritingTestManagement from "@/pages/admin/WritingTestManagement";
+import StudentChatPage from "@/pages/course/StudentChatPage";
 
 function AppRouter() {
   return (
@@ -107,6 +109,14 @@ function AppRouter() {
           element={
             <AdminLayout>
               <TestManagement />
+            </AdminLayout>
+          }
+        />
+        <Route
+          path="/admin/writing-tests-management"
+          element={
+            <AdminLayout>
+              <WritingTestManagement />
             </AdminLayout>
           }
         />
@@ -318,6 +328,14 @@ function AppRouter() {
           element={
             <ToeicLayout>
               <ClassDetailPage />
+            </ToeicLayout>
+          }
+        />
+        <Route
+          path="/student/chat"
+          element={
+            <ToeicLayout>
+              <StudentChatPage />
             </ToeicLayout>
           }
         />

@@ -439,7 +439,7 @@ const MySchedulePage = () => {
               </h2>
               <div className="bg-white rounded-lg shadow-md p-6 space-y-3">
                 <button
-                  onClick={() => navigate("/contact-instructor")}
+                  onClick={() => navigate("/student/chat")}
                   className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-lg text-sm font-medium"
                 >
                   Liên Hệ Giảng Viên
@@ -801,7 +801,7 @@ const MySchedulePage = () => {
             </h2>
             <div className="bg-white rounded-lg shadow-md p-6 space-y-3">
               <button
-                onClick={() => navigate("/contact-instructor")}
+                onClick={() => navigate("/student/chat")}
                 className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-lg text-sm font-medium"
               >
                 Liên Hệ Giảng Viên

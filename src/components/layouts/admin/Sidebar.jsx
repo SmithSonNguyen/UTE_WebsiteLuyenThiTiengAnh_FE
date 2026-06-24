@@ -9,6 +9,7 @@ import {
   BookMarked,
   X,
   School,
+  PenLine,
 } from "lucide-react";
 import { NavLink } from "react-router-dom"; // QUAN TRỌNG: phải import cái này
 
@@ -35,6 +36,11 @@ const Sidebar = ({ isOpen, onClose }) => {
       icon: TestTube2Icon,
       label: "Tests Management",
       href: "/admin/tests-management",
+    },
+    {
+      icon: PenLine,
+      label: "Writing Tests",
+      href: "/admin/writing-tests-management",
     },
     {
       icon: BookMarked,
