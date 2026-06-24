@@ -43,7 +43,7 @@ const FreeEntryTestResult = () => {
 
       // Fetch courses từ API và filter theo điểm số
       try {
-        const response = await fetch("http://localhost:4000/courses/featured");
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/courses/featured`);
         const courses = await response.json();
 
         // Filter courses dựa trên điểm số của user

@@ -54,7 +54,7 @@ const CourseLearningPage = () => {
   const fetchCourseData = async () => {
     try {
       const response = await fetch(
-        `http://localhost:4000/courses/enrolled/${courseId}`,
+        `${import.meta.env.VITE_BACKEND_URL}/courses/enrolled/${courseId}`,
         {
           headers: {
             Authorization: `Bearer ${accessTokenFromStore}`,

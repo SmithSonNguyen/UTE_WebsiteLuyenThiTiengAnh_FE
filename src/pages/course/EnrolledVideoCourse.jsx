@@ -26,7 +26,7 @@ export default function MyEnrolledCourses() {
   const fetchEnrolledCourses = async () => {
     try {
       const response = await fetch(
-        "http://localhost:4000/courses/my-enrolled-courses",
+        `${import.meta.env.VITE_BACKEND_URL}/courses/my-enrolled-courses`,
         {
           headers: {
             Authorization: `Bearer ${accessTokenFromStore}`,

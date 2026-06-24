@@ -16,8 +16,8 @@ import {
   Languages,
 } from "lucide-react";
 
-const API_BASE_URL = "http://localhost:4000/news";
-const EXTRACT_API_URL = "http://localhost:4000/extract";
+const API_BASE_URL = `${import.meta.env.VITE_BACKEND_URL}/news`;
+const EXTRACT_API_URL = `${import.meta.env.VITE_BACKEND_URL}/extract`;
 
 // Groq API configuration
 const GROQ_CONFIG = {
