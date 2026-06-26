@@ -5,29 +5,35 @@ import { useState } from "react"; // Thêm import useState
 import ConfirmModal from "@/components/common/ConfirmModal"; // Import ConfirmModal
 import { toast } from "react-toastify"; // Import toast nếu chưa có
 import { cancelMakeupRequest } from "@/api/makeuprequestApi"; // Import API cancel
+import instance from "@/utils/axiosInstance"; // ← Đường dẫn đến file axios của bạn
+import LiveKitRoomComponent from "@/components/livekitroom/LiveKitRoomComponent"; // Component LiveKit
 
 const MakeupRequestItem = ({ makeup, onCancelClick }) => {
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false); // State local cho modal
+
+  const [showLiveKit, setShowLiveKit] = useState(false);
+  const [liveKitData, setLiveKitData] = useState(null);
+  const [joiningSessionId, setJoiningSessionId] = useState(null);
 
   // Compute full start datetime for makeup slot
   const makeupStartTimeStr = makeup.makeupSlot.time.split(" - ")[0]; // e.g., "20:00"
   const makeupDateStr = makeup.makeupSlot.date.split("T")[0]; // e.g., "2025-11-26"
   const fullStartDateTime = new Date(
-    `${makeupDateStr}T${makeupStartTimeStr}:00`
+    `${makeupDateStr}T${makeupStartTimeStr}:00`,
   );
   const now = new Date();
   const thirtyMinBefore = new Date(
-    fullStartDateTime.getTime() - 30 * 60 * 1000
+    fullStartDateTime.getTime() - 30 * 60 * 1000,
   );
 
   const canJoin = now >= thirtyMinBefore;
 
   // Join handler
   const handleJoinMakeup = () => {
-    const meetLink = makeup.makeupSlot.classId.schedule.meetLink;
-    if (meetLink) {
-      window.open(meetLink, "_blank");
-    }
+    joinLiveClass({
+      classId: makeup.makeupSlot.classId._id,
+      sessionNumber: makeup.makeupSlot.sessionNumber,
+    });
   };
 
   // Local handlers cho confirm
@@ -50,6 +56,50 @@ const MakeupRequestItem = ({ makeup, onCancelClick }) => {
       toast.error("Đã xảy ra lỗi khi hủy đăng ký buổi bù. Vui lòng thử lại.");
     }
     setIsCancelModalOpen(false);
+  };
+
+  // ==================== JOIN LIVEKIT ====================
+  /**
+   * Hàm học viên tham gia lớp học qua LiveKit
+   */
+  // ==================== JOIN LIVEKIT ====================
+  const joinLiveClass = async (session) => {
+    const sessionKey = `${session.classId}-${session.sessionNumber}`;
+    if (joiningSessionId === sessionKey) return; // chống click nhiều lần
+
+    setJoiningSessionId(sessionKey);
+
+    try {
+      const roomName = `class-${session.classId}-session-${session.sessionNumber}`;
+
+      const data = await instance.post("/api/livekit/token", {
+        roomName,
+        classId: session.classId,
+        sessionNumber: session.sessionNumber,
+      });
+
+      setLiveKitData(data);
+      setShowLiveKit(true);
+      toast.success("Đang kết nối vào lớp học...");
+    } catch (err) {
+      console.error("Lỗi join LiveKit:", err);
+      toast.error(
+        err?.error ||
+          err?.message ||
+          "Không thể tham gia lớp học. Vui lòng thử lại.",
+      );
+    } finally {
+      setJoiningSessionId(null);
+    }
+  };
+
+  /**
+   * Hàm rời khỏi phòng LiveKit
+   */
+  const handleLeaveLiveKit = () => {
+    setShowLiveKit(false);
+    setLiveKitData(null);
+    toast.info("Đã rời khỏi lớp học");
   };
 
   return (
@@ -80,8 +130,8 @@ const MakeupRequestItem = ({ makeup, onCancelClick }) => {
                 {makeup.status === "scheduled" && canJoin
                   ? "Đang diễn ra"
                   : makeup.status === "scheduled"
-                  ? "Đã lên lịch"
-                  : "Đã hoàn thành"}
+                    ? "Đã lên lịch"
+                    : "Đã hoàn thành"}
               </span>
               {makeup.status === "scheduled" && canJoin && (
                 <button
@@ -249,6 +299,16 @@ const MakeupRequestItem = ({ makeup, onCancelClick }) => {
         cancelText="Giữ nguyên"
         confirmButtonClass="bg-red-600 hover:bg-red-700"
       />
+
+      {/* ==================== LIVEKIT ROOM ==================== */}
+      {showLiveKit && liveKitData && (
+        <LiveKitRoomComponent
+          token={liveKitData.token}
+          serverUrl={liveKitData.serverUrl}
+          roomName={liveKitData.roomName}
+          onLeave={handleLeaveLiveKit}
+        />
+      )}
     </div>
   );
 };
