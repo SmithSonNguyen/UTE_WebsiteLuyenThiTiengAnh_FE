@@ -19,3 +19,40 @@
     animation: fadeIn 0.2s ease-out;
   }
 }
+
+/* ====================== LIVEKIT CONTROL BAR OVERRIDE ====================== */
+@layer components {
+  .lk-control-bar .lk-menu,
+  .lk-control-bar .lk-popover,
+  .lk-menu,
+  .lk-popover {
+    background-color: #18181b !important;
+    border-color: #3f3f46 !important;
+    color: white !important;
+  }
+
+  .lk-menu-item,
+  .lk-popover-item,
+  .lk-menu-item span,
+  .lk-popover-item span {
+    color: white !important;
+  }
+
+  .lk-menu-item:hover,
+  .lk-popover-item:hover {
+    background-color: #27272a !important;
+  }
+
+  /* Icon trong menu */
+  .lk-menu-item svg,
+  .lk-popover-item svg {
+    color: #a1a1aa !important;
+  }
+}
+
+/* Fix một số class sâu hơn */
+div[role="menu"],
+div[role="dialog"] {
+  background-color: #18181b !important;
+  color: white !important;
+}

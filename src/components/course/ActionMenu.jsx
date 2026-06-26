@@ -1,7 +1,12 @@
 import { useState, useRef, useEffect } from "react";
-import { MoreVertical, LogIn, RefreshCw } from "lucide-react";
+import { MoreVertical, LogIn, RefreshCw, Loader2 } from "lucide-react";
 
-const ActionMenu = ({ session, onJoinClass, onRegisterMakeup }) => {
+const ActionMenu = ({
+  session,
+  onJoinClass,
+  onRegisterMakeup,
+  isJoining = false, // ← Thêm prop này để hiển thị loading
+}) => {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef(null);
 
@@ -22,6 +27,10 @@ const ActionMenu = ({ session, onJoinClass, onRegisterMakeup }) => {
     };
   }, [isOpen]);
 
+  const currentSessionKey = `${session.classId}-${session.sessionNumber}`;
+  const isThisSessionJoining =
+    isJoining === currentSessionKey || isJoining === true;
+
   return (
     <div className="relative" ref={menuRef}>
       {/* Menu Button */}
@@ -29,6 +38,7 @@ const ActionMenu = ({ session, onJoinClass, onRegisterMakeup }) => {
         onClick={() => setIsOpen(!isOpen)}
         className="p-2 hover:bg-gray-100 rounded-full transition-colors"
         title="Tùy chọn"
+        disabled={isThisSessionJoining}
       >
         <MoreVertical className="w-5 h-5 text-gray-600" />
       </button>
@@ -42,15 +52,20 @@ const ActionMenu = ({ session, onJoinClass, onRegisterMakeup }) => {
               onJoinClass();
               setIsOpen(false);
             }}
-            className="w-full px-4 py-2.5 text-left hover:bg-blue-50 transition-colors flex items-center gap-3 group"
+            disabled={isThisSessionJoining}
+            className="w-full px-4 py-2.5 text-left hover:bg-blue-50 transition-colors flex items-center gap-3 group disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            <LogIn className="w-4 h-4 text-blue-600 group-hover:scale-110 transition-transform" />
+            {isThisSessionJoining ? (
+              <Loader2 className="w-4 h-4 text-blue-600 animate-spin" />
+            ) : (
+              <LogIn className="w-4 h-4 text-blue-600 group-hover:scale-110 transition-transform" />
+            )}
             <div>
               <div className="text-sm font-medium text-gray-900">
-                Tham Gia Lớp Học
+                {isThisSessionJoining ? "Đang kết nối..." : "Tham Gia Lớp Học"}
               </div>
               <div className="text-xs text-gray-500">
-                Vào phòng học trực tuyến
+                Vào phòng học trực tuyến LiveKit
               </div>
             </div>
           </button>

@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import { getInstructorClasses } from "@/api/instructorApi";
 import { updateClassLink } from "@/api/classApi";
 import { toast } from "react-toastify";
+import instance from "@/utils/axiosInstance";
+import LiveKitRoomComponent from "@/components/livekitroom/LiveKitRoomComponent"; // Component LiveKit
 
 const dayMap = {
   Monday: "Thứ 2",
@@ -21,6 +23,58 @@ const ClassesOverview = () => {
   const [selectedClass, setSelectedClass] = useState(null);
   const [editingClass, setEditingClass] = useState(null);
   const [editLink, setEditLink] = useState("");
+
+  const now = new Date();
+  now.setHours(0, 0, 0, 0); // Normalize to midnight
+
+  // === LIVEKIT STATES ===
+  const [showLiveKit, setShowLiveKit] = useState(false);
+  const [liveKitData, setLiveKitData] = useState(null);
+  const [joiningSessionId, setJoiningSessionId] = useState(null);
+
+  // ==================== JOIN LIVEKIT ====================
+  /**
+   * Hàm học viên tham gia lớp học qua LiveKit
+   */
+  // ==================== JOIN LIVEKIT ====================
+  const joinLiveClass = async (session) => {
+    const sessionKey = `${session.classId}-${session.sessionNumber}`;
+    if (joiningSessionId === sessionKey) return; // chống click nhiều lần
+
+    setJoiningSessionId(sessionKey);
+
+    try {
+      const roomName = `class-${session.classId}-session-${session.sessionNumber}`;
+
+      const data = await instance.post("/api/livekit/token", {
+        roomName,
+        classId: session.classId,
+        sessionNumber: session.sessionNumber,
+      });
+
+      setLiveKitData(data);
+      setShowLiveKit(true);
+      toast.success("Đang kết nối vào lớp học...");
+    } catch (err) {
+      console.error("Lỗi join LiveKit:", err);
+      toast.error(
+        err?.error ||
+          err?.message ||
+          "Không thể tham gia lớp học. Vui lòng thử lại.",
+      );
+    } finally {
+      setJoiningSessionId(null);
+    }
+  };
+
+  /**
+   * Hàm rời khỏi phòng LiveKit
+   */
+  const handleLeaveLiveKit = () => {
+    setShowLiveKit(false);
+    setLiveKitData(null);
+    toast.info("Đã rời khỏi lớp học");
+  };
 
   // Fetch classes from API
   useEffect(() => {
@@ -42,12 +96,12 @@ const ClassesOverview = () => {
 
   // Join class by opening meet link
   const joinClass = (classItem) => {
-    const meetLink = classItem.schedule?.meetLink;
-    if (meetLink) {
-      window.open(meetLink, "_blank");
-    } else {
-      toast.warning("Chưa có link tham gia lớp học");
-    }
+    const sessions = generateSessions(classItem);
+    const nearestSession = getNearestSession(sessions);
+    joinLiveClass({
+      classId: nearestSession.classId,
+      sessionNumber: nearestSession.sessionNumber,
+    });
   };
 
   // Open edit modal for link
@@ -71,7 +125,7 @@ const ClassesOverview = () => {
               ...cls,
               schedule: { ...cls.schedule, meetLink: response.meetLink },
             }
-          : cls
+          : cls,
       );
       setClasses(updatedClasses);
       if (selectedClass?._id === editingClass._id) {
@@ -172,6 +226,76 @@ const ClassesOverview = () => {
     }
   };
 
+  const generateSessions = (cls) => {
+    const dayMap = {
+      Sunday: 0,
+      Monday: 1,
+      Tuesday: 2,
+      Wednesday: 3,
+      Thursday: 4,
+      Friday: 5,
+      Saturday: 6,
+    };
+
+    const startDate = new Date(cls.schedule.startDate);
+    const durationWeeks = cls.schedule.durationWeeks;
+    const activeDays = cls.schedule.days.map((d) => dayMap[d]);
+
+    const sessions = [];
+
+    let sessionNumber = 1;
+
+    for (let week = 0; week < durationWeeks; week++) {
+      for (const dayOfWeek of activeDays) {
+        const date = new Date(startDate);
+
+        // nhảy tới tuần hiện tại
+        date.setDate(date.getDate() + week * 7);
+
+        // chỉnh về đúng thứ trong tuần
+        const currentDay = date.getDay();
+        const diff = dayOfWeek - currentDay;
+        date.setDate(date.getDate() + diff);
+
+        sessions.push({
+          sessionNumber: sessionNumber++,
+          date: date.toISOString().split("T")[0],
+          classId: cls._id,
+        });
+      }
+    }
+
+    // sort lại cho chắc chắn đúng thứ tự thời gian
+    return sessions.sort((a, b) => new Date(a.date) - new Date(b.date));
+  };
+
+  const getNearestSession = (sessions) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // convert + normalize date
+    const normalized = sessions.map((s) => ({
+      ...s,
+      _date: new Date(s.date),
+    }));
+
+    // 1. tìm session hôm nay
+    const todaySession = normalized.find((s) => {
+      const d = new Date(s._date);
+      d.setHours(0, 0, 0, 0);
+      return d.getTime() === today.getTime();
+    });
+
+    if (todaySession) return todaySession;
+
+    // 2. nếu không có → tìm session gần nhất trong tương lai
+    const futureSessions = normalized
+      .filter((s) => s._date > today)
+      .sort((a, b) => a._date - b._date);
+
+    return futureSessions[0] || null;
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -212,14 +336,14 @@ const ClassesOverview = () => {
                   <div className="flex flex-col gap-2">
                     <span
                       className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
-                        sessionStatus
+                        sessionStatus,
                       )}`}
                     >
                       {sessionStatus}
                     </span>
                     <span
                       className={`px-2 py-1 rounded-full text-xs font-medium ${getLevelColor(
-                        classItem.courseId.level
+                        classItem.courseId.level,
                       )}`}
                     >
                       {classItem.courseId.level}
@@ -265,7 +389,7 @@ const ClassesOverview = () => {
                     <span className="text-gray-900">
                       {classItem.schedule?.startDate
                         ? new Date(
-                            classItem.schedule.startDate
+                            classItem.schedule.startDate,
                           ).toLocaleDateString("vi-VN", {
                             day: "2-digit",
                             month: "2-digit",
@@ -275,7 +399,7 @@ const ClassesOverview = () => {
                       -{" "}
                       {classItem.schedule?.endDate
                         ? new Date(
-                            classItem.schedule.endDate
+                            classItem.schedule.endDate,
                           ).toLocaleDateString("vi-VN", {
                             day: "2-digit",
                             month: "2-digit",
@@ -376,7 +500,7 @@ const ClassesOverview = () => {
                   </label>
                   <span
                     className={`inline-block mt-1 px-3 py-1 rounded-full text-xs font-medium ${getLevelColor(
-                      selectedClass.courseId.level
+                      selectedClass.courseId.level,
                     )}`}
                   >
                     {selectedClass.courseId.level}
@@ -388,7 +512,7 @@ const ClassesOverview = () => {
                   </label>
                   <span
                     className={`inline-block mt-1 px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(
-                      computeSessionStatus(selectedClass)
+                      computeSessionStatus(selectedClass),
                     )}`}
                   >
                     {computeSessionStatus(selectedClass)}
@@ -436,7 +560,7 @@ const ClassesOverview = () => {
                       <span className="font-medium">Thời gian khóa:</span>{" "}
                       {selectedClass.schedule?.startDate
                         ? new Date(
-                            selectedClass.schedule.startDate
+                            selectedClass.schedule.startDate,
                           ).toLocaleDateString("vi-VN", {
                             day: "2-digit",
                             month: "2-digit",
@@ -446,7 +570,7 @@ const ClassesOverview = () => {
                       -{" "}
                       {selectedClass.schedule?.endDate
                         ? new Date(
-                            selectedClass.schedule.endDate
+                            selectedClass.schedule.endDate,
                           ).toLocaleDateString("vi-VN", {
                             day: "2-digit",
                             month: "2-digit",
@@ -580,6 +704,16 @@ const ClassesOverview = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ==================== LIVEKIT ROOM ==================== */}
+      {showLiveKit && liveKitData && (
+        <LiveKitRoomComponent
+          token={liveKitData.token}
+          serverUrl={liveKitData.serverUrl}
+          roomName={liveKitData.roomName}
+          onLeave={handleLeaveLiveKit}
+        />
       )}
     </div>
   );
