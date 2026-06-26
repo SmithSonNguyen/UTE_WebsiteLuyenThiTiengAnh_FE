@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
+import instance from "@/utils/axiosInstance"; // ← Đường dẫn đến file axios của bạn
 import {
   TableSkeleton,
   ProgressSkeleton,
@@ -20,6 +21,8 @@ import ConfirmModal from "@/components/common/ConfirmModal";
 import { Calendar, Clock, MapPin, User, ArrowRight, X } from "lucide-react";
 import formatDateToDDMMYY from "@/utils/formatDateToDDMMYY";
 import { toast } from "react-toastify";
+
+import LiveKitRoomComponent from "@/components/livekitroom/LiveKitRoomComponent"; // Component LiveKit
 
 // Empty State Component (bỏ test date input)
 const EmptyState = ({ userName }) => (
@@ -164,6 +167,12 @@ const MySchedulePage = () => {
   const [isMakeupModalOpen, setIsMakeupModalOpen] = useState(false);
   const [selectedMissedSession, setSelectedMissedSession] = useState(null);
   const [registeredMakeups, setRegisteredMakeups] = useState([]); // Danh sách buổi bù đã đăng ký
+
+  // === LIVEKIT STATES ===
+  const [showLiveKit, setShowLiveKit] = useState(false);
+  const [liveKitData, setLiveKitData] = useState(null);
+  const [joiningSessionId, setJoiningSessionId] = useState(null);
+
   const navigate = useNavigate();
   const user = useSelector((state) => state.auth.login?.currentUser);
   const userName = `${user.lastname} ${user.firstname}`;
@@ -171,6 +180,50 @@ const MySchedulePage = () => {
   // Define now at component level (fix ReferenceError)
   const now = new Date();
   now.setHours(0, 0, 0, 0); // Normalize to midnight
+
+  // ==================== JOIN LIVEKIT ====================
+  /**
+   * Hàm học viên tham gia lớp học qua LiveKit
+   */
+  // ==================== JOIN LIVEKIT ====================
+  const joinLiveClass = async (session) => {
+    const sessionKey = `${session.classId}-${session.sessionNumber}`;
+    if (joiningSessionId === sessionKey) return; // chống click nhiều lần
+
+    setJoiningSessionId(sessionKey);
+
+    try {
+      const roomName = `class-${session.classId}-session-${session.sessionNumber}`;
+
+      const data = await instance.post("/api/livekit/token", {
+        roomName,
+        classId: session.classId,
+        sessionNumber: session.sessionNumber,
+      });
+
+      setLiveKitData(data);
+      setShowLiveKit(true);
+      toast.success("Đang kết nối vào lớp học...");
+    } catch (err) {
+      console.error("Lỗi join LiveKit:", err);
+      toast.error(
+        err?.error ||
+          err?.message ||
+          "Không thể tham gia lớp học. Vui lòng thử lại.",
+      );
+    } finally {
+      setJoiningSessionId(null);
+    }
+  };
+
+  /**
+   * Hàm rời khỏi phòng LiveKit
+   */
+  const handleLeaveLiveKit = () => {
+    setShowLiveKit(false);
+    setLiveKitData(null);
+    toast.info("Đã rời khỏi lớp học");
+  };
 
   // Fetch data
   useEffect(() => {
@@ -196,11 +249,11 @@ const MySchedulePage = () => {
   // Tính progress tổng (từ tất cả classes)
   const totalSessions = classes.reduce(
     (sum, cls) => sum + cls.totalSessions,
-    0
+    0,
   );
   const attendedSessions = classes.reduce(
     (sum, cls) => sum + cls.sessionAttended,
-    0
+    0,
   );
   const overallPercentage =
     totalSessions > 0
@@ -244,7 +297,7 @@ const MySchedulePage = () => {
       if (periodRange) {
         classSessions = classSessions.filter((session) => {
           const sessionDate = new Date(
-            session.fullDate.split("/").reverse().join("-")
+            session.fullDate.split("/").reverse().join("-"),
           );
           sessionDate.setHours(0, 0, 0, 0);
           return (
@@ -261,7 +314,7 @@ const MySchedulePage = () => {
             (makeup) =>
               makeup.originalSession.classId._id.toString() === cls.classId &&
               makeup.originalSession.sessionNumber === session.sessionNumber &&
-              ["scheduled", "completed"].includes(makeup.status)
+              ["scheduled", "completed"].includes(makeup.status),
           );
 
           const hasMakeup = !!matchingMakeup;
@@ -282,7 +335,7 @@ const MySchedulePage = () => {
             hasMakeup,
             statusMakeup,
           };
-        })
+        }),
       );
     });
 
@@ -343,10 +396,10 @@ const MySchedulePage = () => {
                     hasMakeup: true,
                     statusMakeup,
                   } // Override
-                : s
+                : s,
             ),
           };
-        })
+        }),
       );
     } catch (error) {
       console.error("❌ Error registering makeup class:", error);
@@ -580,8 +633,8 @@ const MySchedulePage = () => {
                         session.courseLevel === "beginner"
                           ? "bg-green-100 text-green-800"
                           : session.courseLevel === "intermediate"
-                          ? "bg-yellow-100 text-yellow-800"
-                          : "bg-red-100 text-red-800";
+                            ? "bg-yellow-100 text-yellow-800"
+                            : "bg-red-100 text-red-800";
 
                       return (
                         <tr
@@ -642,20 +695,20 @@ const MySchedulePage = () => {
                             ) : session.showMakeupButton ? (
                               <ActionMenu
                                 session={session}
-                                onJoinClass={() =>
-                                  window.open(session.meetLink, "_blank")
-                                }
+                                onJoinClass={() => joinLiveClass(session)}
+                                // onJoinClass={() =>
+                                //   window.open(session.meetLink, "_blank")
+                                // }
                                 onRegisterMakeup={() =>
                                   handleOpenMakeupModal(session)
                                 }
+                                isJoining={joiningSessionId}
                                 //isRegistering={isRegistering} // Nếu bạn pass loading từ gợi ý trước
                               />
                             ) : (
                               // Optional: Show nút Join nếu không phải makeup case (luôn có cho future/present)
                               <button
-                                onClick={() =>
-                                  window.open(session.meetLink, "_blank")
-                                }
+                                onClick={() => joinLiveClass(session)}
                                 className="text-blue-600 hover:text-blue-900 text-sm font-medium"
                                 title="Tham gia lớp"
                               >
@@ -756,7 +809,7 @@ const MySchedulePage = () => {
             <div className="bg-white rounded-lg shadow-md p-6 space-y-3 max-h-64 overflow-y-auto">
               {upcomingClasses.map((cls) => (
                 <div
-                  key={cls.classId}
+                  key={`${cls.classId}-${cls.courseId}`}
                   className="flex items-center p-3 bg-gray-50 rounded-lg"
                 >
                   <div
@@ -764,8 +817,8 @@ const MySchedulePage = () => {
                       cls.courseLevel === "beginner"
                         ? "bg-green-500"
                         : cls.courseLevel === "intermediate"
-                        ? "bg-yellow-500"
-                        : "bg-red-500"
+                          ? "bg-yellow-500"
+                          : "bg-red-500"
                     }`}
                   ></div>
                   <div className="flex-1">
@@ -827,6 +880,16 @@ const MySchedulePage = () => {
         missedSession={selectedMissedSession}
         onSelectMakeup={handleSelectMakeup}
       />
+
+      {/* ==================== LIVEKIT ROOM ==================== */}
+      {showLiveKit && liveKitData && (
+        <LiveKitRoomComponent
+          token={liveKitData.token}
+          serverUrl={liveKitData.serverUrl}
+          roomName={liveKitData.roomName}
+          onLeave={handleLeaveLiveKit}
+        />
+      )}
     </div>
   );
 };
