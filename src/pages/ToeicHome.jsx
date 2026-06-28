@@ -280,6 +280,21 @@ const ToeicHome = () => {
       {/* Hero Section */}
       {renderHeroSection()}
 
+      {/* Current Level Display */}
+      {currentUser && (
+        <div className="container mx-auto px-6 max-w-7xl pt-8 pb-2 text-left">
+          <div className="inline-flex items-center gap-3 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl px-6 py-4 shadow-sm">
+            <span className="text-2xl">🏆</span>
+            <p className="text-lg md:text-xl font-bold text-slate-800">
+              Trình độ của bạn hiện tại là:{" "}
+              <span className="text-blue-600 uppercase underline decoration-2 decoration-blue-400 tracking-wider">
+                {currentUser.level || "newbie"}
+              </span>
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Courses Section */}
       <CourseCarousel courses={courses} title="Các Khóa Học TOEIC Nổi Bật" />
 

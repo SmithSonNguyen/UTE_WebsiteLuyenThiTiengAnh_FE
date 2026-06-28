@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { getAllCourses } from "@/api/courseApi";
 import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
 import {
   BookOpen,
   Clock,
@@ -15,6 +16,9 @@ import bannerImage from "@/assets/banner.png";
 
 const AllCourse = () => {
   const navigate = useNavigate();
+  const currentUser = useSelector((state) => state?.auth?.login?.currentUser);
+  const userHasLevel = currentUser && currentUser.level && currentUser.level !== "newbie";
+
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({
@@ -26,10 +30,20 @@ const AllCourse = () => {
   // Filters
   const [filters, setFilters] = useState({
     type: "",
-    level: "",
+    level: userHasLevel ? currentUser.level : "",
     page: 1,
     limit: 1000, // Lấy hết, số lớn đủ để lấy tất cả
   });
+
+  // Sync user level with filters
+  useEffect(() => {
+    if (userHasLevel) {
+      setFilters((prev) => ({
+        ...prev,
+        level: currentUser.level,
+      }));
+    }
+  }, [currentUser, userHasLevel]);
 
   // Fetch courses
   useEffect(() => {
@@ -135,7 +149,7 @@ const AllCourse = () => {
             <h2 className="text-lg font-semibold">Bộ lọc</h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className={`grid grid-cols-1 ${userHasLevel ? "md:grid-cols-1" : "md:grid-cols-2"} gap-4`}>
             {/* Type Filter */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -153,21 +167,23 @@ const AllCourse = () => {
             </div>
 
             {/* Level Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Trình độ
-              </label>
-              <select
-                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                value={filters.level}
-                onChange={(e) => handleFilterChange("level", e.target.value)}
-              >
-                <option value="">Tất cả</option>
-                <option value="beginner">Cơ bản</option>
-                <option value="intermediate">Trung cấp</option>
-                <option value="advanced">Nâng cao</option>
-              </select>
-            </div>
+            {!userHasLevel && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Trình độ
+                </label>
+                <select
+                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  value={filters.level}
+                  onChange={(e) => handleFilterChange("level", e.target.value)}
+                >
+                  <option value="">Tất cả</option>
+                  <option value="beginner">Cơ bản</option>
+                  <option value="intermediate">Trung cấp</option>
+                  <option value="advanced">Nâng cao</option>
+                </select>
+              </div>
+            )}
           </div>
 
           {/* Results count */}

@@ -4,6 +4,7 @@ import { ChevronDown } from "lucide-react";
 import ExamDropdownToeicHome from "./ExamDropdownToeicHome";
 import StartModal from "../common/StartModal";
 import AvatarMenu from "../common/AvatarMenu";
+import { useSelector } from "react-redux";
 
 // Các mục trong dropdown "Luyện tập"
 const practiceLinks = [
@@ -29,6 +30,15 @@ const HeaderToeicHome = () => {
   const [practiceOpen, setPracticeOpen] = useState(false);
   const location = useLocation();
   const dropdownRef = useRef(null);
+  const currentUser = useSelector((state) => state?.auth?.login?.currentUser);
+
+  // Lọc link chính: Ẩn kiểm tra đầu vào khi đã có level (không phải newbie)
+  const filteredMainLinks = mainLinks.filter((link) => {
+    if (link.href === "/toeic-home/free-entry-test") {
+      return !currentUser || !currentUser.level || currentUser.level === "newbie";
+    }
+    return true;
+  });
 
   // Đóng dropdown khi click ra ngoài
   useEffect(() => {
@@ -70,7 +80,7 @@ const HeaderToeicHome = () => {
           <div className="hidden lg:flex flex-1 mx-4 justify-center">
             <div className="flex items-center gap-1 bg-white rounded-full shadow-sm px-2 py-1">
               {/* Regular links */}
-              {mainLinks.map((link) => (
+              {filteredMainLinks.map((link) => (
                 <a
                   key={link.href}
                   href={link.href}

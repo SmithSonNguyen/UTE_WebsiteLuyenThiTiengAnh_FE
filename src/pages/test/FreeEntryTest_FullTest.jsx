@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Flag } from "lucide-react";
 import axiosInstance from "@/utils/axiosInstance";
 import score from "@/utils/score";
+import { useDispatch } from "react-redux";
+import { setCurrentUser } from "@/redux/authSlice";
 
 const PART_INFO = {
   1: { name: "Photographs", hasImage: true },
@@ -16,6 +18,7 @@ const PART_INFO = {
 
 const FreeEntryTest_FullTest = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const [questions, setQuestions] = useState([]);
   const [groups, setGroups] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -377,6 +380,37 @@ const FreeEntryTest_FullTest = () => {
 
       console.log("=== FINAL RESULT STATE ===");
       console.log(JSON.stringify(resultState, null, 2));
+
+      // Gửi kết quả lên server để lưu vào database và cập nhật level
+      try {
+        const postPayload = {
+          answers: detailedAnswers.map(ans => ({
+            questionNumber: ans.number,
+            userAnswer: ans.userAnswer,
+            isCorrect: ans.isCorrect,
+            part: ans.part,
+            questionText: ans.questionText,
+            options: ans.options,
+            imageUrl: ans.imageUrl,
+            mediaUrl: ans.mediaUrl,
+            paragraph: ans.paragraph,
+            explanation: ans.explanation
+          })),
+          mark: totalScore,
+          rightAnswerNumber: totalCorrect
+        };
+        await axiosInstance.post("/tests/ETS-2024-01", postPayload);
+        console.log("Submitted test answers to DB successfully!");
+
+        // Lấy thông tin user cập nhật sau khi chấm điểm và cập nhật Redux
+        const userRes = await axiosInstance.get("/users/me");
+        if (userRes?.data?.result) {
+          dispatch(setCurrentUser({ user: userRes.data.result }));
+          console.log("Updated Redux state with new user level:", userRes.data.result.level);
+        }
+      } catch (dbErr) {
+        console.error("Failed to save test answers or update user level in DB:", dbErr);
+      }
 
       // Lưu vào sessionStorage
       try {
