@@ -1,5 +1,6 @@
 // FixedRegistrationCard.jsx
 import React from "react";
+import { useSelector } from "react-redux";
 
 const FixedRegistrationCard = ({
   onTryForFree,
@@ -7,6 +8,9 @@ const FixedRegistrationCard = ({
   course,
   isProcessing = false,
 }) => {
+  const currentUser = useSelector((state) => state?.auth?.login?.currentUser);
+  const isNewbie = currentUser && (!currentUser.level || currentUser.level === "newbie");
+  const isLevelMismatched = currentUser && currentUser.level && currentUser.level !== "newbie" && currentUser.level !== course?.level;
   const discountAmount = course?.price
     ? course.price - (course.discountPrice || 0)
     : 811000;
@@ -20,8 +24,8 @@ const FixedRegistrationCard = ({
     console.log("🟡 Course type:", course?.type);
     console.log("🟡 onRegister function:", typeof onRegister);
 
-    if (isProcessing) {
-      console.log("⏸️ Already processing, ignoring click");
+    if (isProcessing || isLevelMismatched) {
+      console.log("⏸️ Already processing or level mismatched, ignoring click");
       return;
     }
 
@@ -80,12 +84,11 @@ const FixedRegistrationCard = ({
       <button
         type="button"
         onClick={handleRegisterClick}
-        disabled={isProcessing}
-        className={`w-full py-3 rounded-lg font-bold text-base mb-3 transition-colors ${
-          isProcessing
-            ? "bg-gray-400 cursor-not-allowed"
-            : "bg-blue-600 hover:bg-blue-700 text-white"
-        }`}
+        disabled={isProcessing || isLevelMismatched || isNewbie}
+        className={`w-full py-3 rounded-lg font-bold text-base mb-3 transition-colors ${isProcessing || isLevelMismatched || isNewbie
+          ? "bg-gray-400 cursor-not-allowed"
+          : "bg-blue-600 hover:bg-blue-700 text-white"
+          }`}
       >
         {isProcessing ? (
           <span className="flex items-center justify-center">
@@ -111,27 +114,23 @@ const FixedRegistrationCard = ({
             </svg>
             Đang xử lý...
           </span>
+        ) : isLevelMismatched ? (
+          "TRÌNH ĐỘ KHÔNG PHÙ HỢP"
+        ) : isNewbie ? (
+          "CHƯA KIỂM TRA ĐẦU VÀO"
         ) : (
           "ĐĂNG KÝ HỌC NGAY"
         )}
       </button>
 
-      {/* Free Trial */}
-      <button
-        type="button"
-        className="w-full border border-gray-300 text-gray-700 py-2 rounded-lg text-sm mb-4 hover:bg-gray-50 transition-colors"
-        onClick={onTryForFree}
-      >
-        Học thử miễn phí
-      </button>
+
 
       {/* Course Stats */}
       <div className="space-y-2 text-xs text-gray-600 mb-4">
         <div className="flex items-center">
           <span className="mr-2 text-yellow-400 text-base w-[17px]">★</span>
-          <span>{`${course?.rating?.average || "4.9"} sao trên ${
-            course?.rating?.reviewsCount || "70"
-          } đánh giá`}</span>
+          <span>{`${course?.rating?.average || "4.9"} sao trên ${course?.rating?.reviewsCount || "70"
+            } đánh giá`}</span>
         </div>
         <div className="flex items-center">
           <span className="mr-2 w-[17px]">👥</span>
@@ -142,20 +141,17 @@ const FixedRegistrationCard = ({
           <>
             <div className="flex items-center">
               <span className="mr-2 w-[17px]">⏱️</span>
-              <span>{`${
-                course?.courseStructure?.hoursPerSession || "1.5"
-              } giờ/buổi, mỗi tuần ${
-                Math.round(
+              <span>{`${course?.courseStructure?.hoursPerSession || "1.5"
+                } giờ/buổi, mỗi tuần ${Math.round(
                   course?.courseStructure?.totalSessions /
-                    course?.courseStructure?.durationWeeks
+                  course?.courseStructure?.durationWeeks
                 ) || "3"
-              } buổi`}</span>
+                } buổi`}</span>
             </div>
             <div className="flex items-center">
               <span className="mr-2 w-[17px]">👨‍🏫</span>
-              <span>{`Khóa học kéo dài trong ${
-                course?.courseStructure?.durationWeeks || "12"
-              } tuần`}</span>
+              <span>{`Khóa học kéo dài trong ${course?.courseStructure?.durationWeeks || "12"
+                } tuần`}</span>
             </div>
           </>
         ) : (

@@ -194,6 +194,19 @@ const AllCourse = () => {
           </div>
         </div>
 
+        {/* Level matching notice for users who have a level */}
+        {userHasLevel && (
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 mb-8 flex items-center gap-3 shadow-sm">
+            <span className="text-xl">ℹ️</span>
+            <p className="text-sm font-semibold text-slate-800">
+              Hệ thống đang hiển thị các khóa học được thiết kế riêng phù hợp với trình độ hiện tại của bạn:{" "}
+              <span className="text-blue-600 uppercase underline decoration-2 decoration-blue-400 tracking-wider font-extrabold">
+                {getLevelLabel(currentUser.level)}
+              </span>
+            </p>
+          </div>
+        )}
+
         {/* Loading State */}
         {loading && (
           <div className="text-center py-12">

@@ -146,6 +146,34 @@ const HeaderToeicHome = () => {
 
           {/* ── Right: Avatar ── */}
           <div className="flex items-center gap-3 md:gap-4">
+            {currentUser && (
+              <div className="hidden sm:flex items-center">
+                {(!currentUser.level || currentUser.level === "newbie") && (
+                  <span className="px-3 py-1 text-xs font-extrabold uppercase bg-gray-100 text-gray-600 rounded-full border border-gray-200 tracking-wider shadow-sm flex items-center gap-1.5">
+                    <span className="h-1.5 w-1.5 bg-gray-400 rounded-full"></span>
+                    Newbie
+                  </span>
+                )}
+                {currentUser.level === "beginner" && (
+                  <span className="px-3 py-1 text-xs font-extrabold uppercase bg-green-50 text-green-700 rounded-full border border-green-200 tracking-wider shadow-sm flex items-center gap-1.5">
+                    <span className="h-1.5 w-1.5 bg-green-500 rounded-full animate-pulse"></span>
+                    Beginner
+                  </span>
+                )}
+                {currentUser.level === "intermediate" && (
+                  <span className="px-3 py-1 text-xs font-extrabold uppercase bg-yellow-50 text-yellow-700 rounded-full border border-yellow-200 tracking-wider shadow-sm flex items-center gap-1.5">
+                    <span className="h-1.5 w-1.5 bg-yellow-500 rounded-full animate-pulse"></span>
+                    Intermediate
+                  </span>
+                )}
+                {currentUser.level === "advanced" && (
+                  <span className="px-3 py-1 text-xs font-extrabold uppercase bg-red-50 text-red-700 rounded-full border border-red-200 tracking-wider shadow-sm flex items-center gap-1.5">
+                    <span className="h-1.5 w-1.5 bg-red-500 rounded-full animate-pulse"></span>
+                    Advanced
+                  </span>
+                )}
+              </div>
+            )}
             <AvatarMenu />
           </div>
         </div>

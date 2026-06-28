@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
 import {
   ChevronLeft,
   ChevronRight,
@@ -15,6 +16,7 @@ import { format } from "date-fns";
 import bannerImage from "@/assets/banner.png";
 
 const TOEICSchedulePage = () => {
+  const currentUser = useSelector((state) => state.auth.login?.currentUser);
   const [selectedCourse, setSelectedCourse] = useState("all");
   const [loading, setLoading] = useState(true);
   const [scheduleData, setScheduleData] = useState([]);
@@ -174,7 +176,33 @@ const TOEICSchedulePage = () => {
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Schedule Section */}
-            <div className="lg:col-span-2">
+            <div className="lg:col-span-3">
+              {/* Newbie Redirection Card */}
+              {currentUser && (!currentUser.level || currentUser.level === "newbie") && (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl px-5 py-5 shadow-sm mb-6">
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">🏆</span>
+                    <div>
+                      <p className="text-sm sm:text-base font-bold text-slate-800">
+                        Trình độ của bạn hiện tại là:{" "}
+                        <span className="text-blue-600 uppercase underline decoration-2 decoration-blue-400 tracking-wider font-extrabold">
+                          {currentUser.level || "newbie"}
+                        </span>
+                      </p>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        Hãy làm bài kiểm tra đầu vào để nhận lộ trình học và đề xuất khóa học phù hợp nhất!
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => navigate("/toeic-home/free-entry-test")}
+                    className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold text-xs px-4 py-2.5 rounded-lg transition-all shadow-md hover:shadow-lg transform hover:scale-[1.02] whitespace-nowrap"
+                  >
+                    Kiểm tra đầu vào ngay ➔
+                  </button>
+                </div>
+              )}
+
               {/* Filter */}
               <div className="bg-white p-6 rounded-lg shadow-md mb-6">
                 <div className="grid grid-cols-1 gap-4">
@@ -282,28 +310,34 @@ const TOEICSchedulePage = () => {
                                   {classItem.capacity.maxStudents}
                                 </td>
                                 <td className="px-4 py-3 text-center">
-                                  <button
-                                    className={`px-4 py-2 rounded-md text-sm font-medium transition ${
-                                      classItem.capacity.currentStudents >=
+                                  {(!currentUser || !currentUser.level || currentUser.level === "newbie" || currentUser.level === classItem.courseId?.level) ? (
+                                    <button
+                                      className={`px-4 py-2 rounded-md text-sm font-medium transition ${
+                                        classItem.capacity.currentStudents >=
+                                        classItem.capacity.maxStudents
+                                          ? "bg-gray-400 cursor-not-allowed"
+                                          : "bg-red-600 hover:bg-red-700 text-white"
+                                      }`}
+                                      disabled={
+                                        classItem.capacity.currentStudents >=
+                                        classItem.capacity.maxStudents
+                                      }
+                                      onClick={() =>
+                                        navigate(
+                                          `/toeic-home/course/${classItem.courseId._id}`
+                                        )
+                                      }
+                                    >
+                                      {classItem.capacity.currentStudents >=
                                       classItem.capacity.maxStudents
-                                        ? "bg-gray-400 cursor-not-allowed"
-                                        : "bg-red-600 hover:bg-red-700 text-white"
-                                    }`}
-                                    disabled={
-                                      classItem.capacity.currentStudents >=
-                                      classItem.capacity.maxStudents
-                                    }
-                                    onClick={() =>
-                                      navigate(
-                                        `/toeic-home/course/${classItem.courseId._id}`
-                                      )
-                                    }
-                                  >
-                                    {classItem.capacity.currentStudents >=
-                                    classItem.capacity.maxStudents
-                                      ? "Đã đầy"
-                                      : "Đăng ký"}
-                                  </button>
+                                        ? "Đã đầy"
+                                        : "Đăng ký"}
+                                    </button>
+                                  ) : (
+                                    <span className="text-xs font-medium text-red-600 bg-red-50 border border-red-100 rounded-md p-2 block text-center max-w-[180px] mx-auto leading-snug">
+                                      Trình độ hiện tại của bạn không phù hợp để đăng ký khóa học này
+                                    </span>
+                                  )}
                                 </td>
                               </tr>
                             ))}
@@ -315,7 +349,8 @@ const TOEICSchedulePage = () => {
                 })}
             </div>
 
-            {/* Registration Form */}
+            {/* Registration Form (Temporarily Hidden) */}
+            {/*
             <div className="lg:col-span-1">
               <div className="bg-gradient-to-br from-blue-600 to-blue-800 rounded-lg shadow-lg p-6 text-white sticky top-32">
                 <h3 className="text-2xl font-bold mb-2">Đăng ký tư vấn</h3>
@@ -383,6 +418,7 @@ const TOEICSchedulePage = () => {
                 </form>
               </div>
             </div>
+            */}
           </div>
         </div>
       </section>

@@ -48,7 +48,7 @@ const FreeEntryTest_FullTest = () => {
 
         if (!res) {
           throw new Error(
-            "Không nhận được phản hồi từ server. Vui lòng kiểm tra kết nối mạng."
+            "Không nhận được phản hồi từ server. Vui lòng kiểm tra kết nối mạng.",
           );
         }
 
@@ -74,7 +74,7 @@ const FreeEntryTest_FullTest = () => {
 
         if (!Array.isArray(rawData) || rawData.length === 0) {
           throw new Error(
-            "Không tìm thấy câu hỏi nào cho bài test này. Dữ liệu API có thể chưa được load."
+            "Không tìm thấy câu hỏi nào cho bài test này. Dữ liệu API có thể chưa được load.",
           );
         }
 
@@ -87,9 +87,10 @@ const FreeEntryTest_FullTest = () => {
           return section.questions.map((q, idx) => {
             const qExplain = q.explanation?.trim();
             const secExplain = section.explanation?.trim();
-            const combinedExplanation = qExplain && secExplain
-              ? `${qExplain}\n\n${secExplain}`
-              : (qExplain || secExplain || "");
+            const combinedExplanation =
+              qExplain && secExplain
+                ? `${qExplain}\n\n${secExplain}`
+                : qExplain || secExplain || "";
 
             return {
               ...q,
@@ -99,8 +100,8 @@ const FreeEntryTest_FullTest = () => {
               imageUrls: Array.isArray(section.imageUrl)
                 ? section.imageUrl
                 : section.imageUrls
-                ? section.imageUrls
-                : [],
+                  ? section.imageUrls
+                  : [],
               paragraph: section.paragraph || "",
               groupId: section._id || section.id || `group-${idx}`,
               groupIndex: idx,
@@ -113,7 +114,7 @@ const FreeEntryTest_FullTest = () => {
 
         if (flattened.length === 0) {
           throw new Error(
-            "Không thể xử lý dữ liệu câu hỏi. Vui lòng kiểm tra format API."
+            "Không thể xử lý dữ liệu câu hỏi. Vui lòng kiểm tra format API.",
           );
         }
 
@@ -131,13 +132,13 @@ const FreeEntryTest_FullTest = () => {
               const found = flattened.find(
                 (fq) =>
                   fq._id ===
-                  `${section._id || section.id || "section"}-${q.number}`
+                  `${section._id || section.id || "section"}-${q.number}`,
               );
               if (found) grouped.push([found]);
             });
           } else {
             const group = flattened.filter(
-              (q) => q.groupId === (section._id || section.id)
+              (q) => q.groupId === (section._id || section.id),
             );
             if (group.length) grouped.push(group);
           }
@@ -251,7 +252,7 @@ const FreeEntryTest_FullTest = () => {
 
       console.log(
         "User answers map:",
-        Array.from(numberToUserAnswer.entries())
+        Array.from(numberToUserAnswer.entries()),
       );
 
       // Gọi API kết quả để lấy đáp án đúng
@@ -292,7 +293,7 @@ const FreeEntryTest_FullTest = () => {
         const qs = Array.isArray(section?.questions) ? section.questions : [];
 
         console.log(
-          `Section ${sectionIdx} - Type: ${sectionType}, Questions: ${qs.length}`
+          `Section ${sectionIdx} - Type: ${sectionType}, Questions: ${qs.length}`,
         );
 
         qs.forEach((q) => {
@@ -304,7 +305,7 @@ const FreeEntryTest_FullTest = () => {
             String(userAnswer).trim() === String(correctAnswer).trim();
 
           console.log(
-            `Q${q.number}: User=${userAnswer}, Correct=${correctAnswer}, Match=${isCorrect}`
+            `Q${q.number}: User=${userAnswer}, Correct=${correctAnswer}, Match=${isCorrect}`,
           );
 
           if (sectionType === "listening") {
@@ -384,7 +385,7 @@ const FreeEntryTest_FullTest = () => {
       // Gửi kết quả lên server để lưu vào database và cập nhật level
       try {
         const postPayload = {
-          answers: detailedAnswers.map(ans => ({
+          answers: detailedAnswers.map((ans) => ({
             questionNumber: ans.number,
             userAnswer: ans.userAnswer,
             isCorrect: ans.isCorrect,
@@ -394,22 +395,24 @@ const FreeEntryTest_FullTest = () => {
             imageUrl: ans.imageUrl,
             mediaUrl: ans.mediaUrl,
             paragraph: ans.paragraph,
-            explanation: ans.explanation
+            explanation: ans.explanation,
           })),
           mark: totalScore,
-          rightAnswerNumber: totalCorrect
+          rightAnswerNumber: totalCorrect,
         };
         await axiosInstance.post("/tests/ETS-2024-01", postPayload);
         console.log("Submitted test answers to DB successfully!");
 
         // Lấy thông tin user cập nhật sau khi chấm điểm và cập nhật Redux
         const userRes = await axiosInstance.get("/users/me");
-        if (userRes?.data?.result) {
-          dispatch(setCurrentUser({ user: userRes.data.result }));
-          console.log("Updated Redux state with new user level:", userRes.data.result.level);
+        if (userRes?.result) {
+          dispatch(setCurrentUser({ user: userRes.result }));
         }
       } catch (dbErr) {
-        console.error("Failed to save test answers or update user level in DB:", dbErr);
+        console.error(
+          "Failed to save test answers or update user level in DB:",
+          dbErr,
+        );
       }
 
       // Lưu vào sessionStorage
@@ -435,7 +438,7 @@ const FreeEntryTest_FullTest = () => {
       console.error("Error response:", err?.response);
       alert(
         err?.response?.data?.message ||
-          "Không thể nộp bài vào lúc này. Vui lòng thử lại."
+          "Không thể nộp bài vào lúc này. Vui lòng thử lại.",
       );
     } finally {
       setIsSubmitting(false);
@@ -540,7 +543,7 @@ const FreeEntryTest_FullTest = () => {
           onClick={() => {
             if (
               window.confirm(
-                "Bạn có chắc muốn thoát? Dữ liệu sẽ không được lưu."
+                "Bạn có chắc muốn thoát? Dữ liệu sẽ không được lưu.",
               )
             ) {
               window.history.back();
@@ -558,10 +561,10 @@ const FreeEntryTest_FullTest = () => {
           {Object.entries(PART_INFO).map(([partNum, info]) => {
             const isActive = currentQ.part === parseInt(partNum);
             const questionsInPart = questions.filter(
-              (q) => q.part === parseInt(partNum)
+              (q) => q.part === parseInt(partNum),
             );
             const answeredCount = questionsInPart.filter(
-              (q) => answers[q._id]
+              (q) => answers[q._id],
             ).length;
             const totalCount = questionsInPart.length;
 
@@ -572,7 +575,7 @@ const FreeEntryTest_FullTest = () => {
                 key={partNum}
                 onClick={() => {
                   const idx = questions.findIndex(
-                    (q) => q.part === parseInt(partNum)
+                    (q) => q.part === parseInt(partNum),
                   );
                   if (idx !== -1) goToQuestion(idx);
                 }}
@@ -835,7 +838,7 @@ const FreeEntryTest_FullTest = () => {
             <div className="space-y-5">
               {Object.entries(PART_INFO).map(([partNum, info]) => {
                 const partQuestions = questions.filter(
-                  (q) => q.part === parseInt(partNum)
+                  (q) => q.part === parseInt(partNum),
                 );
                 if (partQuestions.length === 0) return null;
 
@@ -850,7 +853,7 @@ const FreeEntryTest_FullTest = () => {
                     <div className="grid grid-cols-5 gap-2">
                       {partQuestions.map((q) => {
                         const globalIndex = questions.findIndex(
-                          (x) => x._id === q._id
+                          (x) => x._id === q._id,
                         );
                         const isAnswered = !!answers[q._id];
                         const isFlagged = !!flags[q._id];

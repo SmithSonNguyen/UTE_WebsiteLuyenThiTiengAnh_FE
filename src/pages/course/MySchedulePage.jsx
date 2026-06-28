@@ -34,7 +34,7 @@ const EmptyState = ({ userName }) => (
           <p className="text-lg text-gray-600 mt-5">Xin chào, {userName}!</p>
         </div>
         <Link
-          to="/toeic-home/all-course"
+          to="/toeic-home/opening-schedule"
           className="mt-4 sm:mt-0 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium"
         >
           Đăng Ký Khóa Mới
@@ -357,12 +357,23 @@ const MySchedulePage = () => {
         sDate.setHours(0, 0, 0, 0);
         return sDate >= now;
       }) || cls.sessions[0]; // Fallback first session
+
+    const lastSession = cls.sessions[cls.sessions.length - 1];
+    const lastSessionDate = lastSession
+      ? new Date(lastSession.fullDate.split("/").reverse().join("-"))
+      : null;
+    if (lastSessionDate) {
+      lastSessionDate.setHours(0, 0, 0, 0);
+    }
+    const isEnded = lastSessionDate && now > lastSessionDate;
+
     return {
       classId: cls.classId,
       courseId: cls.courseId._id,
       courseTitle: cls.courseId.title,
       courseLevel: cls.courseId.level,
       nextSession,
+      isEnded,
     };
   });
 
@@ -531,7 +542,7 @@ const MySchedulePage = () => {
             <p className="text-lg text-gray-600 mt-5">Xin chào, {userName}!</p>
           </div>
           <Link
-            to="/classes/register"
+            to="/toeic-home/opening-schedule"
             className="mt-4 sm:mt-0 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium"
           >
             Đăng Ký Khóa Mới
@@ -827,8 +838,12 @@ const MySchedulePage = () => {
                     </p>
                     <p className="text-xs text-gray-500">
                       Level: {cls.courseLevel} <br />
-                      {cls.nextSession &&
-                        `Buổi tiếp theo: ${cls.nextSession.dateLabel}`}
+                      {cls.isEnded ? (
+                        <span className="text-red-600 font-semibold">Đã kết thúc</span>
+                      ) : (
+                        cls.nextSession &&
+                        `Buổi tiếp theo: ${cls.nextSession.dateLabel}`
+                      )}
                     </p>
                   </div>
                   <button
