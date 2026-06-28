@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
+import { Star, BookOpen, ChevronRight } from "lucide-react";
 import Button from "../components/common/Button";
 import FaqSectionToeicHome from "../components/layouts/FaqSectionToeicHome";
 import CourseCarousel from "../components/course/CourseCarousel";
@@ -14,6 +15,13 @@ const ToeicHome = () => {
   const [isLoadingSchedule, setIsLoadingSchedule] = useState(false);
   const currentUser = useSelector((state) => state.auth.login.currentUser);
   const navigate = useNavigate();
+
+  const formatPrice = (price) => {
+    return new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
+    }).format(price);
+  };
 
   useEffect(() => {
     const fetchCourses = async () => {
@@ -283,14 +291,266 @@ const ToeicHome = () => {
       {/* Current Level Display */}
       {currentUser && (
         <div className="container mx-auto px-6 max-w-7xl pt-8 pb-2 text-left">
-          <div className="inline-flex items-center gap-3 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl px-6 py-4 shadow-sm">
-            <span className="text-2xl">🏆</span>
-            <p className="text-lg md:text-xl font-bold text-slate-800">
-              Trình độ của bạn hiện tại là:{" "}
-              <span className="text-blue-600 uppercase underline decoration-2 decoration-blue-400 tracking-wider">
-                {currentUser.level || "newbie"}
-              </span>
-            </p>
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl px-6 py-6 shadow-sm">
+            <div className="flex items-center gap-3">
+              <span className="text-3xl">🏆</span>
+              <div>
+                <p className="text-lg md:text-xl font-bold text-slate-800">
+                  Trình độ của bạn hiện tại là:{" "}
+                  <span className="text-blue-600 uppercase underline decoration-2 decoration-blue-400 tracking-wider font-extrabold">
+                    {currentUser.level || "newbie"}
+                  </span>
+                </p>
+                {(!currentUser.level || currentUser.level === "newbie") && (
+                  <p className="text-sm text-gray-500 mt-1">
+                    Hãy làm bài kiểm tra đầu vào để nhận lộ trình học và đề xuất khóa học phù hợp nhất!
+                  </p>
+                )}
+              </div>
+            </div>
+            {(!currentUser.level || currentUser.level === "newbie") && (
+              <button
+                onClick={() => navigate("/toeic-home/free-entry-test")}
+                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold px-6 py-3 rounded-xl transition-all shadow-md hover:shadow-lg transform hover:scale-[1.02] flex items-center justify-center gap-2"
+              >
+                <span>Kiểm tra đầu vào ngay</span>
+                <span>➔</span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Recommended Courses (For users with level) */}
+      {currentUser && currentUser.level && currentUser.level !== "newbie" && (
+        <div className="container mx-auto px-6 max-w-7xl pt-8 pb-12">
+          <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
+            <div className="flex items-center gap-3 mb-8">
+              <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-500 rounded-full flex items-center justify-center text-white font-bold">
+                🎓
+              </div>
+              <div>
+                <h3 className="text-2xl font-bold text-gray-800">
+                  Khóa học phù hợp với trình độ của bạn
+                </h3>
+                <p className="text-gray-600">
+                  Dựa trên trình độ hiện tại của bạn: <span className="font-semibold uppercase text-blue-600">{currentUser.level}</span>
+                </p>
+              </div>
+            </div>
+
+            {/* Recommended courses display (Grouped into columns) */}
+            <div className="grid md:grid-cols-2 gap-8 items-start">
+              {/* Cột Live Courses */}
+              <div className="space-y-4">
+                <h4 className="font-bold text-lg text-indigo-900 border-b pb-2 flex items-center gap-2">
+                  <span>👩‍🏫</span> Khóa Live (live-meet)
+                </h4>
+                {courses.filter(c => c.level === currentUser.level && c.type === "live-meet").length > 0 ? (
+                  courses.filter(c => c.level === currentUser.level && c.type === "live-meet").map((course) => (
+                    <div
+                      key={course._id}
+                      className="border-2 border-indigo-200 hover:border-indigo-400 rounded-xl p-6 hover:shadow-lg transition-all duration-300 bg-white"
+                    >
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex-1">
+                          <span className="inline-block px-2.5 py-1 bg-indigo-100 text-indigo-800 text-xs font-semibold rounded-full mb-2">
+                            Học trực tuyến Live-Meet
+                          </span>
+                          <h4 className="font-bold text-base text-gray-800 mb-2">
+                            {course.title}
+                          </h4>
+                          <p className="text-xs text-gray-600 mb-3 line-clamp-2">
+                            {course.description}
+                          </p>
+                        </div>
+                        <div
+                          className={`px-3 py-1 rounded-full text-xs font-semibold ml-2 whitespace-nowrap ${
+                            course.level === "beginner"
+                              ? "bg-green-100 text-green-700"
+                              : course.level === "intermediate"
+                              ? "bg-blue-100 text-blue-700"
+                              : "bg-purple-100 text-purple-700"
+                          }`}
+                        >
+                          {course.level === "beginner"
+                            ? "Cơ bản"
+                            : course.level === "intermediate"
+                            ? "Trung cấp"
+                            : "Nâng cao"}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-4 mb-4 text-xs">
+                        <div className="flex items-center gap-1">
+                          <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                          <span className="font-semibold text-gray-700">
+                            {course.rating?.average || 5}
+                          </span>
+                          <span className="text-gray-500">
+                            ({course.rating?.reviewsCount || 0})
+                          </span>
+                        </div>
+                        <div className="text-gray-600 flex items-center gap-1">
+                          <BookOpen className="w-4 h-4 inline mr-1" />
+                          {course.studentsCount || 0} học viên
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+                        <div>
+                          {course.discountPrice &&
+                          course.discountPrice < course.price ? (
+                            <div>
+                              <span className="text-xs text-gray-500 line-through mr-2">
+                                {formatPrice(course.price)}
+                              </span>
+                              <span className="text-base font-bold text-indigo-600">
+                                {formatPrice(course.discountPrice)}
+                              </span>
+                              <span className="ml-2 px-1.5 py-0.5 bg-red-100 text-red-600 text-[10px] font-semibold rounded">
+                                -{course.discountPercent}%
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-base font-bold text-gray-800">
+                              {formatPrice(course.price)}
+                            </span>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => {
+                            navigate(`/toeic-home/course/${course._id}`);
+                          }}
+                          className="flex items-center gap-1 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors font-medium text-xs"
+                        >
+                          Xem chi tiết
+                          <ChevronRight className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      {course.targetScoreRange && (
+                        <div className="mt-3 pt-3 border-t border-gray-100 text-xs">
+                          <p className="text-gray-600">
+                            <span className="font-semibold">Mục tiêu điểm:</span>{" "}
+                            {course.targetScoreRange.min} - {course.targetScoreRange.max}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-center text-xs text-gray-500 py-6 bg-gray-50 rounded-xl border border-dashed">
+                    Không có khóa học Live phù hợp với trình độ của bạn.
+                  </p>
+                )}
+              </div>
+
+              {/* Cột Video Courses */}
+              <div className="space-y-4">
+                <h4 className="font-bold text-lg text-emerald-900 border-b pb-2 flex items-center gap-2">
+                  <span>📹</span> Khóa Video (pre-recorded)
+                </h4>
+                {courses.filter(c => c.level === currentUser.level && c.type === "pre-recorded").length > 0 ? (
+                  courses.filter(c => c.level === currentUser.level && c.type === "pre-recorded").map((course) => (
+                    <div
+                      key={course._id}
+                      className="border-2 border-emerald-200 hover:border-emerald-400 rounded-xl p-6 hover:shadow-lg transition-all duration-300 bg-white"
+                    >
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex-1">
+                          <span className="inline-block px-2.5 py-1 bg-emerald-100 text-emerald-800 text-xs font-semibold rounded-full mb-2">
+                            Khóa học Video thu sẵn
+                          </span>
+                          <h4 className="font-bold text-base text-gray-800 mb-2">
+                            {course.title}
+                          </h4>
+                          <p className="text-xs text-gray-600 mb-3 line-clamp-2">
+                            {course.description}
+                          </p>
+                        </div>
+                        <div
+                          className={`px-3 py-1 rounded-full text-xs font-semibold ml-2 whitespace-nowrap ${
+                            course.level === "beginner"
+                              ? "bg-green-100 text-green-700"
+                              : course.level === "intermediate"
+                              ? "bg-blue-100 text-blue-700"
+                              : "bg-purple-100 text-purple-700"
+                          }`}
+                        >
+                          {course.level === "beginner"
+                            ? "Cơ bản"
+                            : course.level === "intermediate"
+                            ? "Trung cấp"
+                            : "Nâng cao"}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-4 mb-4 text-xs">
+                        <div className="flex items-center gap-1">
+                          <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                          <span className="font-semibold text-gray-700">
+                            {course.rating?.average || 5}
+                          </span>
+                          <span className="text-gray-500">
+                            ({course.rating?.reviewsCount || 0})
+                          </span>
+                        </div>
+                        <div className="text-gray-600 flex items-center gap-1">
+                          <BookOpen className="w-4 h-4 inline mr-1" />
+                          {course.studentsCount || 0} học viên
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+                        <div>
+                          {course.discountPrice &&
+                          course.discountPrice < course.price ? (
+                            <div>
+                              <span className="text-xs text-gray-500 line-through mr-2">
+                                {formatPrice(course.price)}
+                              </span>
+                              <span className="text-base font-bold text-emerald-600">
+                                {formatPrice(course.discountPrice)}
+                              </span>
+                              <span className="ml-2 px-1.5 py-0.5 bg-red-100 text-red-600 text-[10px] font-semibold rounded">
+                                -{course.discountPercent}%
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-base font-bold text-gray-800">
+                              {formatPrice(course.price)}
+                            </span>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => {
+                            navigate(`/toeic-home/course/${course._id}`);
+                          }}
+                          className="flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors font-medium text-xs"
+                        >
+                          Xem chi tiết
+                          <ChevronRight className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      {course.targetScoreRange && (
+                        <div className="mt-3 pt-3 border-t border-gray-100 text-xs">
+                          <p className="text-gray-600">
+                            <span className="font-semibold">Mục tiêu điểm:</span>{" "}
+                            {course.targetScoreRange.min} - {course.targetScoreRange.max}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-center text-xs text-gray-500 py-6 bg-gray-50 rounded-xl border border-dashed">
+                    Không có khóa học Video phù hợp với trình độ của bạn.
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       )}

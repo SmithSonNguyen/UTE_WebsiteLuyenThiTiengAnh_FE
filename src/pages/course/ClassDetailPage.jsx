@@ -151,12 +151,6 @@ const ClassDetailPage = () => {
                   {capacity.currentStudents}/{capacity.maxStudents}
                 </span>
               </div>
-              <button
-                onClick={() => window.open(schedule.meetLink, "_blank")}
-                className="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg font-medium"
-              >
-                Tham Gia Lớp Học (Meet Link)
-              </button>
             </div>
           </div>
 
@@ -237,14 +231,6 @@ const ClassDetailPage = () => {
                   </p>
                 </div>
               </div>
-              <button
-                onClick={() =>
-                  (window.location.href = `mailto:${instructor.email}`)
-                }
-                className="w-full mt-4 bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-lg font-medium"
-              >
-                Gửi Email
-              </button>
             </div>
           </div>
 
@@ -278,32 +264,7 @@ const ClassDetailPage = () => {
             )}
           </div>
 
-          {/* Quick Actions */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">
-              Hành Động
-            </h2>
-            <div className="space-y-3">
-              <button
-                onClick={() => setShowNoteModal(true)}
-                className="w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg font-medium"
-              >
-                Ghi Chú Cá Nhân
-              </button>
-              <Link
-                to={`/enrollments/${classId}/report-absence`}
-                className="w-full block bg-gray-600 hover:bg-gray-700 text-white py-2 px-4 rounded-lg font-medium text-center"
-              >
-                Báo Cáo Vắng Mặt
-              </Link>
-              <button
-                onClick={() => navigate("/my-schedule")}
-                className="w-full bg-gray-300 hover:bg-gray-400 text-gray-900 py-2 px-4 rounded-lg font-medium"
-              >
-                Quay Về Lịch Học
-              </button>
-            </div>
-          </div>
+
         </div>
       </div>
 
