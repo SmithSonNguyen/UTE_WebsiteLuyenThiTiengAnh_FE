@@ -50,6 +50,7 @@ import SpeakingTestSelect from "../pages/SpeakingTestSelect";
 import DisplaySpeakingTest from "../components/test/DisplaySpeakingTest";
 import WritingTestManagement from "@/pages/admin/WritingTestManagement";
 import StudentChatPage from "@/pages/course/StudentChatPage";
+import CourseEndTestPage from "@/pages/course/CourseEndTestPage";
 
 function AppRouter() {
   return (
@@ -359,6 +360,10 @@ function AppRouter() {
               <StudentChatPage />
             </ToeicLayout>
           }
+        />
+        <Route
+          path="/course-end-test"
+          element={<CourseEndTestPage />}
         />
       </Route>
 

@@ -7,12 +7,21 @@ import FaqSectionToeicHome from "../components/layouts/FaqSectionToeicHome";
 import CourseCarousel from "../components/course/CourseCarousel";
 import { getFeaturedCourses } from "@/api/courseApi";
 import { getTodaySchedule } from "@/api/enrollmentApi";
+import { toast } from "react-toastify";
+import instance from "@/utils/axiosInstance";
+import LiveKitRoomComponent from "@/components/livekitroom/LiveKitRoomComponent";
 import bannerImage from "@/assets/banner.png";
 
 const ToeicHome = () => {
   const [courses, setCourses] = useState([]);
   const [todaySessions, setTodaySessions] = useState([]);
   const [isLoadingSchedule, setIsLoadingSchedule] = useState(false);
+  
+  // === LIVEKIT STATES ===
+  const [showLiveKit, setShowLiveKit] = useState(false);
+  const [liveKitData, setLiveKitData] = useState(null);
+  const [joiningSessionId, setJoiningSessionId] = useState(null);
+
   const currentUser = useSelector((state) => state.auth.login.currentUser);
   const navigate = useNavigate();
 
@@ -52,6 +61,44 @@ const ToeicHome = () => {
     };
     fetchTodaySchedule();
   }, [currentUser]);
+
+  // ==================== JOIN LIVEKIT ====================
+  const joinLiveClass = async (session) => {
+    const sessionKey = `${session.classId}-${session.sessionNumber}`;
+    if (joiningSessionId === sessionKey) return; // chống click nhiều lần
+
+    setJoiningSessionId(sessionKey);
+
+    try {
+      const roomName = `class-${session.classId}-session-${session.sessionNumber}`;
+
+      const data = await instance.post("/api/livekit/token", {
+        roomName,
+        classId: session.classId,
+        sessionNumber: session.sessionNumber,
+      });
+
+      setLiveKitData(data);
+      setShowLiveKit(true);
+      toast.success("Đang kết nối vào lớp học...");
+    } catch (err) {
+      console.error("Lỗi join LiveKit:", err);
+      toast.error(
+        err?.error ||
+          err?.message ||
+          "Không thể tham gia lớp học. Vui lòng thử lại.",
+      );
+    } finally {
+      setJoiningSessionId(null);
+    }
+  };
+
+  const handleLeaveLiveKit = () => {
+    setShowLiveKit(false);
+    setLiveKitData(null);
+    toast.info("Đã rời khỏi lớp học");
+  };
+  // ======================================================
 
   // Helper: Compute if can join (for makeup only)
   const canJoinSession = (session) => {
@@ -191,13 +238,13 @@ const ToeicHome = () => {
                         <button
                           onClick={
                             canJoin
-                              ? () => window.open(session.meetLink, "_blank")
+                              ? () => joinLiveClass(session)
                               : undefined
                           }
-                          disabled={!canJoin}
+                          disabled={!canJoin || joiningSessionId === `${session.classId}-${session.sessionNumber}`}
                           className={`mt-2 px-4 py-2 rounded text-sm font-semibold transition-colors ${buttonClass}`}
                         >
-                          Tham gia ngay
+                          {joiningSessionId === `${session.classId}-${session.sessionNumber}` ? "Đang kết nối..." : "Tham gia ngay"}
                         </button>
                       </div>
                     </div>
@@ -615,6 +662,16 @@ const ToeicHome = () => {
           Đăng ký ngay
         </Button>
       </section>
+
+      {/* ==================== LIVEKIT ROOM ==================== */}
+      {showLiveKit && liveKitData && (
+        <LiveKitRoomComponent
+          token={liveKitData.token}
+          serverUrl={liveKitData.serverUrl}
+          roomName={liveKitData.roomName}
+          onLeave={handleLeaveLiveKit}
+        />
+      )}
     </div>
   );
 };
