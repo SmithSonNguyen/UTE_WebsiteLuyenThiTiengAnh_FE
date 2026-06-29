@@ -67,7 +67,7 @@ export default function FreeEntryTest() {
         {/* Header with user info */}
         <div className="mb-8">
           <h1 className="text-3xl font-extrabold text-gray-900 text-center">
-            Chọn Bài Thi TOEIC
+            Bài thi đánh giá năng lực
           </h1>
           {currentUser && (
             <p className="text-sm text-gray-500 text-center mt-2">
@@ -106,67 +106,6 @@ export default function FreeEntryTest() {
               </div>
               <p className="text-sm text-gray-500 ml-10 mt-3 leading-relaxed">
                 Bài thi gồm 2 phần - Bài Nghe (100 câu) và Bài Đọc (100 câu)
-              </p>
-            </div>
-          </label>
-
-          {/* TOEIC Quick Test */}
-          <label className="block">
-            <div
-              className="flex flex-col bg-white rounded-xl p-6 w-full border border-gray-200 shadow-md hover:shadow-lg transition-shadow duration-300 cursor-pointer"
-              onClick={() => handleCardClick("TOEIC Quick Test")}
-            >
-              <div className="flex flex-col justify-between">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
-                  <div className="flex flex-row items-center">
-                    <Radio
-                      name="test-option"
-                      className="w-6 h-6"
-                      checked={selectedTest === "TOEIC Quick Test"}
-                      onChange={() => setSelectedTest("TOEIC Quick Test")}
-                    />
-                    <p className="font-bold text-xl ml-4 text-gray-900">
-                      TOEIC Quick Test (L+R: 30p)
-                    </p>
-                  </div>
-                </div>
-                <div className="flex ml-10 text-sm text-gray-600 items-center mt-2">
-                  Thời gian làm bài: 00:30:00
-                </div>
-              </div>
-              <p className="text-sm text-gray-500 ml-10 mt-3 leading-relaxed">
-                Bài thi nhanh gồm 2 phần - Bài Nghe (15 câu) và Bài Đọc (15 câu)
-              </p>
-            </div>
-          </label>
-
-          {/* TOEIC Entry Test 4 KN */}
-          <label className="block">
-            <div
-              className="flex flex-col bg-white rounded-xl p-6 w-full border border-gray-200 shadow-md hover:shadow-lg transition-shadow duration-300 cursor-pointer"
-              onClick={() => handleCardClick("TOEIC Entry Test 4 KN")}
-            >
-              <div className="flex flex-col justify-between">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
-                  <div className="flex flex-row items-center">
-                    <Radio
-                      name="test-option"
-                      className="w-6 h-6"
-                      checked={selectedTest === "TOEIC Entry Test 4 KN"}
-                      onChange={() => setSelectedTest("TOEIC Entry Test 4 KN")}
-                    />
-                    <p className="font-bold text-xl ml-4 text-gray-900">
-                      TOEIC Entry Test 4 KN (30p)
-                    </p>
-                  </div>
-                </div>
-                <div className="flex ml-10 text-sm text-gray-600 items-center mt-2">
-                  Thời gian làm bài: 00:30:00
-                </div>
-              </div>
-              <p className="text-sm text-gray-500 ml-10 mt-3 leading-relaxed">
-                Bài thi kiểm tra 4 kỹ năng - Nghe, Đọc, Nói, Viết (15 câu mỗi
-                phần)
               </p>
             </div>
           </label>
