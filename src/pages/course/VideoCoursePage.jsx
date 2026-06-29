@@ -1,13 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useSelector } from "react-redux";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Play,
   CheckCircle,
   Clock,
-  MessageSquare,
-  ThumbsUp,
-  Send,
   Menu,
   X,
   ChevronRight,
@@ -15,28 +12,228 @@ import {
   BookOpen,
   ArrowLeft,
   Lock,
+  HelpCircle,
+  CheckCircle2,
+  XCircle,
+  RefreshCw,
+  Trophy,
+  ChevronDown,
 } from "lucide-react";
 
+// ─── Quiz Component ──────────────────────────────────────────────────────────
+const VideoQuiz = ({ questions, onPassed }) => {
+  const [answers, setAnswers] = useState({});
+  const [submitted, setSubmitted] = useState(false);
+  const [results, setResults] = useState(null);
+
+  if (!questions || questions.length === 0) return null;
+
+  const handleSelect = (qIndex, label) => {
+    if (submitted) return;
+    setAnswers((prev) => ({ ...prev, [qIndex]: label }));
+  };
+
+  const handleSubmit = () => {
+    let correct = 0;
+    const detail = questions.map((q, i) => {
+      const isCorrect = answers[i] === q.correctAnswer;
+      if (isCorrect) correct++;
+      return { isCorrect, chosen: answers[i], correct: q.correctAnswer };
+    });
+    const passed = correct === questions.length;
+    setResults({ correct, total: questions.length, passed, detail });
+    setSubmitted(true);
+    if (passed) onPassed();
+  };
+
+  const handleRetry = () => {
+    setAnswers({});
+    setSubmitted(false);
+    setResults(null);
+  };
+
+  const allAnswered = Object.keys(answers).length === questions.length;
+
+  return (
+    <div className="mt-6 bg-gray-950 rounded-xl border border-gray-800 overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-800 bg-gradient-to-r from-indigo-900/40 to-purple-900/40">
+        <div className="w-8 h-8 rounded-lg bg-indigo-500/20 flex items-center justify-center">
+          <HelpCircle className="w-4 h-4 text-indigo-400" />
+        </div>
+        <div>
+          <h3 className="text-white font-semibold">Kiểm tra sau video</h3>
+          <p className="text-xs text-gray-400">
+            Trả lời đúng tất cả {questions.length} câu hỏi để tiếp tục
+          </p>
+        </div>
+      </div>
+
+      <div className="p-6 space-y-6">
+        {questions.map((q, qIndex) => {
+          const chosen = answers[qIndex];
+          const result = results?.detail[qIndex];
+          return (
+            <div key={qIndex} className="space-y-3">
+              {/* Question text */}
+              <p className="text-white font-medium leading-relaxed">
+                <span className="text-indigo-400 mr-2">Câu {qIndex + 1}.</span>
+                {q.questionText}
+              </p>
+
+              {/* Options */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {q.options.map((opt) => {
+                  let optClass =
+                    "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all";
+
+                  if (!submitted) {
+                    optClass +=
+                      chosen === opt.label
+                        ? " border-indigo-500 bg-indigo-500/10 text-white"
+                        : " border-gray-700 bg-gray-800/50 text-gray-300 hover:border-gray-600 hover:bg-gray-800";
+                  } else {
+                    // After submit
+                    if (opt.label === q.correctAnswer) {
+                      optClass += " border-green-500 bg-green-500/10 text-green-300";
+                    } else if (opt.label === chosen && !result?.isCorrect) {
+                      optClass += " border-red-500 bg-red-500/10 text-red-300";
+                    } else {
+                      optClass += " border-gray-700 bg-gray-800/30 text-gray-500";
+                    }
+                  }
+
+                  return (
+                    <div
+                      key={opt.label}
+                      className={optClass}
+                      onClick={() => handleSelect(qIndex, opt.label)}
+                    >
+                      <span
+                        className={`w-7 h-7 flex-shrink-0 flex items-center justify-center rounded-full text-xs font-bold
+                          ${
+                            !submitted
+                              ? chosen === opt.label
+                                ? "bg-indigo-500 text-white"
+                                : "bg-gray-700 text-gray-400"
+                              : opt.label === q.correctAnswer
+                              ? "bg-green-500 text-white"
+                              : opt.label === chosen && !result?.isCorrect
+                              ? "bg-red-500 text-white"
+                              : "bg-gray-700 text-gray-500"
+                          }`}
+                      >
+                        {opt.label}
+                      </span>
+                      <span className="text-sm leading-snug">{opt.text}</span>
+                      {submitted && opt.label === q.correctAnswer && (
+                        <CheckCircle2 className="w-4 h-4 text-green-400 ml-auto flex-shrink-0" />
+                      )}
+                      {submitted &&
+                        opt.label === chosen &&
+                        !result?.isCorrect && (
+                          <XCircle className="w-4 h-4 text-red-400 ml-auto flex-shrink-0" />
+                        )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+
+        {/* Result banner */}
+        {submitted && results && (
+          <div
+            className={`flex items-center gap-3 p-4 rounded-xl border ${
+              results.passed
+                ? "border-green-500/50 bg-green-500/10"
+                : "border-red-500/50 bg-red-500/10"
+            }`}
+          >
+            {results.passed ? (
+              <Trophy className="w-6 h-6 text-green-400 flex-shrink-0" />
+            ) : (
+              <XCircle className="w-6 h-6 text-red-400 flex-shrink-0" />
+            )}
+            <div className="flex-1">
+              {results.passed ? (
+                <p className="text-green-300 font-semibold">
+                  Xuất sắc! Bạn đã trả lời đúng {results.correct}/{results.total} câu — có thể chuyển sang bài tiếp!
+                </p>
+              ) : (
+                <p className="text-red-300 font-semibold">
+                  Bạn trả lời đúng {results.correct}/{results.total} câu. Cần đúng tất cả để tiếp tục.
+                </p>
+              )}
+            </div>
+            {!results.passed && (
+              <button
+                onClick={handleRetry}
+                className="flex items-center gap-2 px-3 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg transition-colors text-sm"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Làm lại
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Submit button */}
+        {!submitted && (
+          <button
+            onClick={handleSubmit}
+            disabled={!allAnswered}
+            className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-colors"
+          >
+            {allAnswered
+              ? "Nộp câu trả lời"
+              : `Còn ${questions.length - Object.keys(answers).length} câu chưa trả lời`}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// THAY ĐỔI THỜI GIAN XEM BẮT BUỘC TẠI ĐÂY (đơn vị: giây)
+// Mặc định: 90 * 60 = 5400 giây (90 phút). Bạn có thể đổi thành ví dụ: 5 để test nhanh.
+const REQUIRED_WATCH_TIME = 90 * 60;
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
 const CourseLearningPage = () => {
   const { courseId } = useParams();
   const navigate = useNavigate();
   const [course, setCourse] = useState(null);
   const [currentVideo, setCurrentVideo] = useState(null);
-  const [completedVideos, setCompletedVideos] = useState([]);
+  const [completedVideos, setCompletedVideos] = useState([]); // orders already completed
+  const [currentVideoPassed, setCurrentVideoPassed] = useState(false); // quiz passed for current video
+  const [watchTime, setWatchTime] = useState(0); // watch time for current video (seconds)
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [accessDenied, setAccessDenied] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("overview");
-  const [comments, setComments] = useState([]);
-  const [newComment, setNewComment] = useState("");
-  const [replyTo, setReplyTo] = useState(null);
-  const [replyText, setReplyText] = useState("");
+  const [progressLoading, setProgressLoading] = useState(false);
 
   const accessTokenFromStore = useSelector(
     (state) => state?.auth?.login?.accessToken
   );
 
+  // Synchronous references to prevent race conditions during state updates on video switch
+  const watchTimeRef = useRef(0);
+  const currentVideoPassedRef = useRef(false);
+  const currentVideoRef = useRef(null);
+
+  // Keep references synced with their state equivalents
+  useEffect(() => {
+    currentVideoPassedRef.current = currentVideoPassed;
+  }, [currentVideoPassed]);
+
+  useEffect(() => {
+    currentVideoRef.current = currentVideo;
+  }, [currentVideo]);
+
+  // ── Data fetching ──────────────────────────────────────────────────────────
   useEffect(() => {
     if (!accessTokenFromStore) {
       setError("Vui lòng đăng nhập để xem khóa học");
@@ -44,34 +241,95 @@ const CourseLearningPage = () => {
       setLoading(false);
       return;
     }
-
     if (courseId) {
       fetchCourseData();
-      fetchComments();
     }
   }, [courseId, accessTokenFromStore]);
 
+  // Reset quiz state whenever video changes
+  useEffect(() => {
+    if (!currentVideo) return;
+    const hasQuestions =
+      currentVideo.questions && currentVideo.questions.length > 0;
+    // If no questions or already completed → auto-pass
+    setCurrentVideoPassed(
+      !hasQuestions || completedVideos.includes(currentVideo.order)
+    );
+  }, [currentVideo, completedVideos]);
+
+  // Watch Time Timer logic
+  useEffect(() => {
+    if (!currentVideo) return;
+
+    // Reset watchTime ref and state synchronously
+    const isCompleted = completedVideos.includes(currentVideo.order);
+    if (isCompleted) {
+      watchTimeRef.current = REQUIRED_WATCH_TIME;
+      setWatchTime(REQUIRED_WATCH_TIME);
+      return;
+    }
+
+    watchTimeRef.current = 0;
+    setWatchTime(0);
+
+    const interval = setInterval(() => {
+      // Only increment if document is active / visible
+      if (document.visibilityState === "visible") {
+        watchTimeRef.current += 1;
+        setWatchTime(watchTimeRef.current);
+
+        // Check if both watch time and quiz requirements are met
+        if (watchTimeRef.current >= REQUIRED_WATCH_TIME) {
+          clearInterval(interval);
+          if (currentVideoPassedRef.current) {
+            triggerVideoCompletion();
+          }
+        }
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [currentVideo, completedVideos]);
+
+  // Separate trigger when quiz passes after watch time is already met
+  useEffect(() => {
+    if (!currentVideo) return;
+    if (completedVideos.includes(currentVideo.order)) return;
+
+    if (currentVideoPassed && watchTimeRef.current >= REQUIRED_WATCH_TIME) {
+      triggerVideoCompletion();
+    }
+  }, [currentVideoPassed]);
+
   const fetchCourseData = async () => {
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/courses/enrolled/${courseId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${accessTokenFromStore}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      const [courseRes, progressRes] = await Promise.all([
+        fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/courses/enrolled/${courseId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${accessTokenFromStore}`,
+              "Content-Type": "application/json",
+            },
+          }
+        ),
+        fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/courses/progress/${courseId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${accessTokenFromStore}`,
+            },
+          }
+        ),
+      ]);
 
-      // Xử lý các trường hợp lỗi khác nhau
-      if (response.status === 401) {
+      if (courseRes.status === 401) {
         setError("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
         setAccessDenied(true);
         setLoading(false);
         return;
       }
-
-      if (response.status === 403) {
+      if (courseRes.status === 403) {
         setError(
           "Bạn chưa mua khóa học này. Vui lòng mua khóa học để tiếp tục."
         );
@@ -79,21 +337,16 @@ const CourseLearningPage = () => {
         setLoading(false);
         return;
       }
-
-      if (response.status === 404) {
+      if (courseRes.status === 404) {
         setError("Không tìm thấy khóa học.");
         setAccessDenied(true);
         setLoading(false);
         return;
       }
+      if (!courseRes.ok) throw new Error("Không thể tải khóa học");
 
-      if (!response.ok) {
-        throw new Error("Không thể tải khóa học");
-      }
-
-      const data = await response.json();
-
-      // Kiểm tra data có hợp lệ không
+      const data = await courseRes.json();
+      console.log("Course API Response:", data);
       if (!data || !data.videoLessons) {
         setError("Dữ liệu khóa học không hợp lệ.");
         setAccessDenied(true);
@@ -103,82 +356,89 @@ const CourseLearningPage = () => {
 
       setCourse(data);
 
-      if (data.videoLessons && data.videoLessons.length > 0) {
-        setCurrentVideo(data.videoLessons[0]);
+      // Load progress
+      let completed = [];
+      if (progressRes.ok) {
+        const progressData = await progressRes.json();
+        console.log("Progress API Response:", progressData);
+        completed = progressData.result?.completedVideoOrders || [];
+        setCompletedVideos(completed);
+      }
+
+      // Set first video
+      if (data.videoLessons.length > 0) {
+        const firstVideo = data.videoLessons[0];
+        console.log("Setting first video:", firstVideo);
+        setCurrentVideo(firstVideo);
+        const hasQ =
+          firstVideo.questions && firstVideo.questions.length > 0;
+        setCurrentVideoPassed(!hasQ || completed.includes(firstVideo.order));
       }
 
       setLoading(false);
-    } catch (error) {
-      console.error("Error fetching course:", error);
-      setError(error.message || "Có lỗi xảy ra khi tải khóa học");
+    } catch (err) {
+      console.error("Error fetching course:", err);
+      setError(err.message || "Có lỗi xảy ra khi tải khóa học");
       setAccessDenied(true);
       setLoading(false);
     }
   };
 
-  const fetchComments = async () => {
-    const mockComments = [
-      {
-        id: 1,
-        userId: "1",
-        userName: "Nguyễn Văn A",
-        avatar:
-          "https://ui-avatars.com/api/?name=Nguyen+Van+A&background=4F46E5&color=fff",
-        content: "Bài giảng rất hay và dễ hiểu. Cảm ơn thầy!",
-        timestamp: "2 giờ trước",
-        likes: 15,
-        replies: [
-          {
-            id: 11,
-            userId: "2",
-            userName: "Giảng viên",
-            avatar:
-              "https://ui-avatars.com/api/?name=Teacher&background=10B981&color=fff",
-            content: "Cảm ơn bạn đã theo dõi. Chúc bạn học tốt!",
-            timestamp: "1 giờ trước",
-            likes: 3,
-          },
-        ],
-      },
-      {
-        id: 2,
-        userId: "3",
-        userName: "Trần Thị B",
-        avatar:
-          "https://ui-avatars.com/api/?name=Tran+Thi+B&background=EF4444&color=fff",
-        content:
-          "Phần ngữ pháp ở phút thứ 15 em chưa hiểu lắm. Thầy có thể giải thích thêm được không ạ?",
-        timestamp: "5 giờ trước",
-        likes: 8,
-        replies: [],
-      },
-    ];
-
-    setComments(mockComments);
-  };
-
+  // ── Navigation helpers ────────────────────────────────────────────────────
   const getYouTubeEmbedUrl = (url) => {
     if (!url) return "";
-    const videoId = url.split("v=")[1]?.split("&")[0] || url.split("/").pop();
+    const videoId =
+      url.split("v=")[1]?.split("&")[0] || url.split("/").pop();
     return `https://www.youtube.com/embed/${videoId}`;
   };
 
   const handleVideoSelect = (video) => {
+    console.log("Selected video details:", video);
     setCurrentVideo(video);
     setSidebarOpen(false);
+    const hasQ = video.questions && video.questions.length > 0;
+    setCurrentVideoPassed(!hasQ || completedVideos.includes(video.order));
+  };
 
-    if (currentVideo && !completedVideos.includes(currentVideo.order)) {
-      setCompletedVideos([...completedVideos, currentVideo.order]);
+  /** Called by VideoQuiz when user answers all correctly */
+  const handleQuizPassed = () => {
+    setCurrentVideoPassed(true);
+  };
+
+  const triggerVideoCompletion = async () => {
+    if (!currentVideo || completedVideos.includes(currentVideo.order)) return;
+
+    // Optimistic update
+    const newCompleted = [...completedVideos, currentVideo.order];
+    setCompletedVideos(newCompleted);
+
+    // Persist to backend
+    try {
+      setProgressLoading(true);
+      await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/courses/progress/${courseId}/complete-video`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessTokenFromStore}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ videoOrder: currentVideo.order }),
+        }
+      );
+      console.log("Successfully saved progress for video order:", currentVideo.order);
+    } catch (err) {
+      console.error("Failed to save progress:", err);
+    } finally {
+      setProgressLoading(false);
     }
   };
 
   const handleNextVideo = () => {
-    if (!course || !currentVideo) return;
-
+    if (!course || !currentVideo || !completedVideos.includes(currentVideo.order)) return;
     const currentIndex = course.videoLessons.findIndex(
       (v) => v.order === currentVideo.order
     );
-
     if (currentIndex < course.videoLessons.length - 1) {
       handleVideoSelect(course.videoLessons[currentIndex + 1]);
     }
@@ -186,60 +446,12 @@ const CourseLearningPage = () => {
 
   const handlePreviousVideo = () => {
     if (!course || !currentVideo) return;
-
     const currentIndex = course.videoLessons.findIndex(
       (v) => v.order === currentVideo.order
     );
-
     if (currentIndex > 0) {
       handleVideoSelect(course.videoLessons[currentIndex - 1]);
     }
-  };
-
-  const handlePostComment = () => {
-    if (!newComment.trim()) return;
-
-    const comment = {
-      id: Date.now(),
-      userId: "current-user",
-      userName: "Bạn",
-      avatar:
-        "https://ui-avatars.com/api/?name=You&background=6366F1&color=fff",
-      content: newComment,
-      timestamp: "Vừa xong",
-      likes: 0,
-      replies: [],
-    };
-
-    setComments([comment, ...comments]);
-    setNewComment("");
-  };
-
-  const handleReply = (commentId) => {
-    if (!replyText.trim()) return;
-
-    const reply = {
-      id: Date.now(),
-      userId: "current-user",
-      userName: "Bạn",
-      avatar:
-        "https://ui-avatars.com/api/?name=You&background=6366F1&color=fff",
-      content: replyText,
-      timestamp: "Vừa xong",
-      likes: 0,
-    };
-
-    setComments(
-      comments.map((c) => {
-        if (c.id === commentId) {
-          return { ...c, replies: [...(c.replies || []), reply] };
-        }
-        return c;
-      })
-    );
-
-    setReplyText("");
-    setReplyTo(null);
   };
 
   const calculateProgress = () => {
@@ -249,18 +461,18 @@ const CourseLearningPage = () => {
     );
   };
 
+  // ── Guards ─────────────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-indigo-500 mx-auto"></div>
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-indigo-500 mx-auto" />
           <p className="mt-4 text-gray-300">Đang tải khóa học...</p>
         </div>
       </div>
     );
   }
 
-  // Hiển thị lỗi khi không có quyền truy cập
   if (accessDenied || error) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
@@ -270,7 +482,6 @@ const CourseLearningPage = () => {
               <Lock className="w-8 h-8 text-red-500" />
             </div>
           </div>
-
           <div className="p-8 text-center">
             <h2 className="text-2xl font-bold text-white mb-3">
               Không thể truy cập
@@ -278,7 +489,6 @@ const CourseLearningPage = () => {
             <p className="text-gray-300 mb-6">
               {error || "Bạn chưa mua khóa học này."}
             </p>
-
             <div className="space-y-3">
               <button
                 onClick={() => navigate("/toeic-home/all-course")}
@@ -287,7 +497,6 @@ const CourseLearningPage = () => {
                 <BookOpen className="w-5 h-5" />
                 <span>Khám phá khóa học</span>
               </button>
-
               <button
                 onClick={() => navigate("/my-enrolled-courses")}
                 className="w-full bg-gray-800 hover:bg-gray-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2"
@@ -314,10 +523,16 @@ const CourseLearningPage = () => {
   }
 
   const progress = calculateProgress();
+  const currentVideoHasQuestions =
+    currentVideo?.questions && currentVideo.questions.length > 0;
+  const isLastVideo =
+    currentVideo?.order === course.videoLessons?.length;
+  const isFirstVideo = currentVideo?.order === 1;
 
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-gray-900">
-      {/* Header */}
+      {/* ── Header ── */}
       <div className="bg-gray-950 border-b border-gray-800 sticky top-0 z-40">
         <div className="px-4 py-3">
           <div className="flex items-center justify-between">
@@ -351,7 +566,7 @@ const CourseLearningPage = () => {
                   <div className="hidden sm:flex items-center gap-2">
                     <div className="w-32 h-1.5 bg-gray-700 rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-indigo-500 transition-all duration-300"
+                        className="h-full bg-indigo-500 transition-all duration-500"
                         style={{ width: `${progress}%` }}
                       />
                     </div>
@@ -372,15 +587,13 @@ const CourseLearningPage = () => {
       </div>
 
       <div className="flex">
-        {/* Sidebar - Video List */}
+        {/* ── Sidebar ── */}
         <div
           className={`
-          fixed lg:sticky top-[73px] left-0 h-[calc(100vh-73px)] w-80 bg-gray-950 border-r border-gray-800 
-          transform transition-transform duration-300 z-30 overflow-hidden flex flex-col
-          ${
-            sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
-          }
-        `}
+            fixed lg:sticky top-[73px] left-0 h-[calc(100vh-73px)] w-80 bg-gray-950 border-r border-gray-800
+            transform transition-transform duration-300 z-30 overflow-hidden flex flex-col
+            ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
+          `}
         >
           <div className="p-4 border-b border-gray-800 flex-shrink-0">
             <div className="flex items-center justify-between">
@@ -401,31 +614,37 @@ const CourseLearningPage = () => {
             {course.videoLessons?.map((video, index) => {
               const isActive = currentVideo?.order === video.order;
               const isCompleted = completedVideos.includes(video.order);
+              const isUnlocked = video.order === 1 || completedVideos.includes(video.order - 1);
+              const hasQ = video.questions && video.questions.length > 0;
 
               return (
                 <button
                   key={video.order}
-                  onClick={() => handleVideoSelect(video)}
+                  disabled={!isUnlocked}
+                  onClick={() => isUnlocked && handleVideoSelect(video)}
                   className={`
                     w-full p-4 border-b border-gray-800 hover:bg-gray-800 transition-colors text-left
-                    ${
-                      isActive ? "bg-gray-800 border-l-4 border-indigo-500" : ""
-                    }
+                    ${isActive ? "bg-gray-800 border-l-4 border-indigo-500" : ""}
+                    ${!isUnlocked ? "opacity-40 cursor-not-allowed" : ""}
                   `}
                 >
                   <div className="flex items-start gap-3">
                     <div
                       className={`
-                      flex-shrink-0 w-8 h-8 rounded flex items-center justify-center text-sm
-                      ${
-                        isCompleted
-                          ? "bg-green-500/20 text-green-400"
-                          : "bg-gray-800 text-gray-400"
-                      }
-                    `}
+                        flex-shrink-0 w-8 h-8 rounded flex items-center justify-center text-sm
+                        ${
+                          isCompleted
+                            ? "bg-green-500/20 text-green-400"
+                            : !isUnlocked
+                            ? "bg-gray-900 text-gray-600"
+                            : "bg-gray-800 text-gray-400"
+                        }
+                      `}
                     >
                       {isCompleted ? (
                         <CheckCircle className="w-5 h-5" />
+                      ) : !isUnlocked ? (
+                        <Lock className="w-4 h-4" />
                       ) : (
                         <Play className="w-4 h-4" fill="currentColor" />
                       )}
@@ -434,7 +653,7 @@ const CourseLearningPage = () => {
                     <div className="flex-1 min-w-0">
                       <p
                         className={`text-sm font-medium line-clamp-2 ${
-                          isActive ? "text-white" : "text-gray-300"
+                          isActive ? "text-white" : !isUnlocked ? "text-gray-500" : "text-gray-300"
                         }`}
                       >
                         {index + 1}. {video.title}
@@ -443,6 +662,12 @@ const CourseLearningPage = () => {
                         <div className="flex items-center gap-1 mt-1 text-xs text-gray-500">
                           <Clock className="w-3 h-3" />
                           <span>{video.duration}</span>
+                        </div>
+                      )}
+                      {hasQ && (
+                        <div className={`flex items-center gap-1 mt-1 text-xs ${!isUnlocked ? "text-gray-600" : "text-indigo-400"}`}>
+                          <HelpCircle className="w-3 h-3" />
+                          <span>{video.questions.length} câu hỏi</span>
                         </div>
                       )}
                     </div>
@@ -461,11 +686,11 @@ const CourseLearningPage = () => {
           />
         )}
 
-        {/* Main Content */}
+        {/* ── Main Content ── */}
         <div className="flex-1 min-w-0">
           <div className="max-w-6xl mx-auto p-4 lg:p-6">
             {/* Video Player */}
-            <div className="bg-black rounded-lg overflow-hidden shadow-2xl mb-6">
+            <div className="bg-black rounded-lg overflow-hidden shadow-2xl mb-4">
               <iframe
                 src={getYouTubeEmbedUrl(currentVideo?.url)}
                 title={currentVideo?.title}
@@ -476,10 +701,10 @@ const CourseLearningPage = () => {
             </div>
 
             {/* Video Controls */}
-            <div className="flex items-center justify-between mb-6 gap-4">
+            <div className="flex items-center justify-between mb-4 gap-4">
               <button
                 onClick={handlePreviousVideo}
-                disabled={currentVideo?.order === 1}
+                disabled={isFirstVideo}
                 className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 disabled:bg-gray-800/50 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
               >
                 <ChevronRight className="w-4 h-4 rotate-180" />
@@ -491,214 +716,141 @@ const CourseLearningPage = () => {
                   {currentVideo?.title}
                 </h2>
                 <p className="text-sm text-gray-400">
-                  Bài {currentVideo?.order} / {course.videoLessons?.length || 0}
+                  Bài {currentVideo?.order} /{" "}
+                  {course.videoLessons?.length || 0}
                 </p>
               </div>
 
               <button
                 onClick={handleNextVideo}
-                disabled={currentVideo?.order === course.videoLessons?.length}
-                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-800/50 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+                disabled={isLastVideo || !completedVideos.includes(currentVideo?.order)}
+                title={
+                  !completedVideos.includes(currentVideo?.order)
+                    ? "Hoàn thành các yêu cầu (xem video & trả lời quiz) để tiếp tục"
+                    : ""
+                }
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors text-white ${
+                  isLastVideo || !completedVideos.includes(currentVideo?.order)
+                    ? "bg-gray-800/50 cursor-not-allowed opacity-60"
+                    : "bg-indigo-600 hover:bg-indigo-700"
+                }`}
               >
                 <span className="hidden sm:inline">Bài tiếp</span>
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Tabs */}
-            <div className="bg-gray-950 rounded-lg shadow-xl">
-              <div className="border-b border-gray-800">
-                <div className="flex gap-1 p-1">
+            {/* Watch progress banner */}
+            <div className="bg-gray-950 border border-gray-800 rounded-xl p-4 mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-indigo-500/10 flex items-center justify-center">
+                  <Clock className="w-5 h-5 text-indigo-400" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-white">Yêu cầu xem video</h4>
+                  <p className="text-xs text-gray-400">Bắt buộc xem ít nhất {Math.floor(REQUIRED_WATCH_TIME / 60)} phút</p>
+                </div>
+              </div>
+              <div className="flex flex-col items-end gap-1.5 w-full sm:w-auto">
+                <div className="flex justify-between w-full sm:justify-end text-xs text-gray-400 gap-2">
+                  <span>Tiến độ xem:</span>
+                  <span className="font-semibold text-white">
+                    {Math.floor(watchTime / 60)} phút {watchTime % 60} giây / {Math.floor(REQUIRED_WATCH_TIME / 60)} phút
+                  </span>
+                </div>
+                <div className="w-full sm:w-48 h-2 bg-gray-800 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-indigo-500 transition-all duration-300"
+                    style={{ width: `${Math.min((watchTime / REQUIRED_WATCH_TIME) * 100, 100)}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Lock notice */}
+            {((currentVideoHasQuestions && !currentVideoPassed) || watchTime < REQUIRED_WATCH_TIME) && !completedVideos.includes(currentVideo?.order) && (
+              <div className="flex items-center gap-3 px-4 py-3 mb-4 bg-amber-500/10 border border-amber-500/30 rounded-xl">
+                <Lock className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                <div className="text-sm text-amber-300">
+                  {watchTime < REQUIRED_WATCH_TIME && (
+                    <p>• Bạn cần xem thêm {Math.ceil((REQUIRED_WATCH_TIME - watchTime) / 60)} phút để đạt thời lượng yêu cầu.</p>
+                  )}
+                  {currentVideoHasQuestions && !currentVideoPassed && (
+                    <p>• Bạn cần trả lời đúng tất cả câu hỏi trắc nghiệm bên dưới.</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Completed badge */}
+            {completedVideos.includes(currentVideo?.order) && (
+              <div className="flex items-center gap-3 px-4 py-3 mb-4 bg-green-500/10 border border-green-500/30 rounded-xl">
+                <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0" />
+                <p className="text-sm text-green-300">
+                  Bạn đã hoàn thành đầy đủ yêu cầu cho bài học này! (Đã xem đủ {Math.floor(REQUIRED_WATCH_TIME / 60)} phút & vượt qua quiz).
+                  {progressLoading && (
+                    <span className="text-gray-400 text-xs ml-1">
+                      Đang lưu...
+                    </span>
+                  )}
+                </p>
+              </div>
+            )}
+
+            {/* Course completion banner */}
+            {completedVideos.length > 0 && course.videoLessons && completedVideos.length === course.videoLessons.length && (
+              <div className="bg-gradient-to-r from-indigo-900/60 via-purple-900/60 to-pink-900/60 border border-indigo-500/50 rounded-2xl p-6 mb-6 text-center relative overflow-hidden shadow-2xl">
+                <div className="absolute -top-10 -left-10 w-32 h-32 bg-indigo-500/20 rounded-full blur-2xl" />
+                <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-pink-500/20 rounded-full blur-2xl" />
+                
+                <div className="relative z-10 space-y-4">
+                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-indigo-400 to-pink-500 text-white text-3xl shadow-lg animate-bounce">
+                    🎉
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-black text-white">Chúc mừng! Bạn đã hoàn thành khóa học!</h3>
+                    <p className="text-sm text-gray-300 mt-1 max-w-lg mx-auto leading-relaxed">
+                      Bạn đã xem toàn bộ các bài học và trả lời đúng tất cả quiz. Hãy làm bài test cuối khóa ngay bây giờ để đánh giá năng lực và thăng cấp trình độ của bạn!
+                    </p>
+                  </div>
                   <button
-                    onClick={() => setActiveTab("overview")}
-                    className={`flex-1 px-4 py-3 rounded-lg font-medium transition-colors ${
-                      activeTab === "overview"
-                        ? "bg-gray-800 text-white"
-                        : "text-gray-400 hover:text-white hover:bg-gray-800/50"
-                    }`}
+                    onClick={() => navigate("/course-end-test")}
+                    className="inline-flex items-center gap-2 px-8 py-3.5 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:opacity-95 text-white font-extrabold rounded-xl transition-all shadow-md hover:shadow-indigo-500/20 hover:scale-105 active:scale-95 text-sm"
                   >
-                    Tổng quan
-                  </button>
-                  <button
-                    onClick={() => setActiveTab("qa")}
-                    className={`flex-1 px-4 py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 ${
-                      activeTab === "qa"
-                        ? "bg-gray-800 text-white"
-                        : "text-gray-400 hover:text-white hover:bg-gray-800/50"
-                    }`}
-                  >
-                    <MessageSquare className="w-4 h-4" />
-                    Q&A ({comments.length})
+                    <Trophy className="w-5 h-5" />
+                    Làm bài test cuối khóa ngay
                   </button>
                 </div>
               </div>
+            )}
 
-              <div className="p-6">
-                {activeTab === "overview" && (
-                  <div className="space-y-6">
-                    <div>
-                      <h3 className="text-lg font-semibold text-white mb-3">
-                        Về khóa học này
-                      </h3>
-                      <p className="text-gray-300 leading-relaxed">
-                        {course.description}
-                      </p>
-                    </div>
-
-                    {course.targetScoreRange && (
-                      <div className="bg-gray-800/50 rounded-lg p-4">
-                        <h4 className="text-sm font-semibold text-white mb-2">
-                          Mục tiêu điểm số
-                        </h4>
-                        <p className="text-gray-300">
-                          {course.targetScoreRange.min} -{" "}
-                          {course.targetScoreRange.max} điểm
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {activeTab === "qa" && (
-                  <div className="space-y-6">
-                    {/* Post Comment */}
-                    <div className="bg-gray-800/50 rounded-lg p-4">
-                      <textarea
-                        value={newComment}
-                        onChange={(e) => setNewComment(e.target.value)}
-                        placeholder="Đặt câu hỏi hoặc chia sẻ suy nghĩ của bạn..."
-                        className="w-full bg-gray-900 text-white rounded-lg p-3 min-h-24 resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      />
-                      <div className="flex justify-end mt-3">
-                        <button
-                          onClick={handlePostComment}
-                          disabled={!newComment.trim()}
-                          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
-                        >
-                          <Send className="w-4 h-4" />
-                          <span>Đăng</span>
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Comments List */}
-                    <div className="space-y-4">
-                      {comments.map((comment) => (
-                        <div
-                          key={comment.id}
-                          className="bg-gray-800/30 rounded-lg p-4"
-                        >
-                          <div className="flex gap-3">
-                            <img
-                              src={comment.avatar}
-                              alt={comment.userName}
-                              className="w-10 h-10 rounded-full flex-shrink-0"
-                            />
-
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className="font-semibold text-white">
-                                  {comment.userName}
-                                </span>
-                                <span className="text-xs text-gray-500">
-                                  {comment.timestamp}
-                                </span>
-                              </div>
-
-                              <p className="text-gray-300 mb-3">
-                                {comment.content}
-                              </p>
-
-                              <div className="flex items-center gap-4">
-                                <button className="flex items-center gap-1 text-gray-400 hover:text-white transition-colors text-sm">
-                                  <ThumbsUp className="w-4 h-4" />
-                                  <span>{comment.likes}</span>
-                                </button>
-
-                                <button
-                                  onClick={() => setReplyTo(comment.id)}
-                                  className="text-gray-400 hover:text-white transition-colors text-sm"
-                                >
-                                  Trả lời
-                                </button>
-                              </div>
-
-                              {/* Reply Form */}
-                              {replyTo === comment.id && (
-                                <div className="mt-3 ml-4 space-y-2">
-                                  <textarea
-                                    value={replyText}
-                                    onChange={(e) =>
-                                      setReplyText(e.target.value)
-                                    }
-                                    placeholder="Viết câu trả lời..."
-                                    className="w-full bg-gray-900 text-white rounded-lg p-3 min-h-20 resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
-                                  />
-                                  <div className="flex gap-2 justify-end">
-                                    <button
-                                      onClick={() => setReplyTo(null)}
-                                      className="px-3 py-1.5 text-gray-400 hover:text-white transition-colors text-sm"
-                                    >
-                                      Hủy
-                                    </button>
-                                    <button
-                                      onClick={() => handleReply(comment.id)}
-                                      disabled={!replyText.trim()}
-                                      className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-700 text-white rounded-lg transition-colors text-sm"
-                                    >
-                                      Trả lời
-                                    </button>
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* Replies */}
-                              {comment.replies &&
-                                comment.replies.length > 0 && (
-                                  <div className="mt-4 ml-4 space-y-3 border-l-2 border-gray-700 pl-4">
-                                    {comment.replies.map((reply) => (
-                                      <div
-                                        key={reply.id}
-                                        className="flex gap-3"
-                                      >
-                                        <img
-                                          src={reply.avatar}
-                                          alt={reply.userName}
-                                          className="w-8 h-8 rounded-full flex-shrink-0"
-                                        />
-
-                                        <div className="flex-1">
-                                          <div className="flex items-center gap-2 mb-1">
-                                            <span className="font-semibold text-white text-sm">
-                                              {reply.userName}
-                                            </span>
-                                            <span className="text-xs text-gray-500">
-                                              {reply.timestamp}
-                                            </span>
-                                          </div>
-
-                                          <p className="text-gray-300 text-sm mb-2">
-                                            {reply.content}
-                                          </p>
-
-                                          <button className="flex items-center gap-1 text-gray-400 hover:text-white transition-colors text-sm">
-                                            <ThumbsUp className="w-3 h-3" />
-                                            <span>{reply.likes}</span>
-                                          </button>
-                                        </div>
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
+            {/* Course overview */}
+            <div className="bg-gray-950 rounded-xl border border-gray-800 p-6 mb-2">
+              <h3 className="text-lg font-semibold text-white mb-3">
+                Về khóa học này
+              </h3>
+              <p className="text-gray-300 leading-relaxed">
+                {course.description}
+              </p>
+              {course.targetScoreRange && (
+                <div className="mt-4 bg-gray-800/50 rounded-lg p-4">
+                  <h4 className="text-sm font-semibold text-white mb-1">
+                    Mục tiêu điểm số
+                  </h4>
+                  <p className="text-gray-300">
+                    {course.targetScoreRange.min} –{" "}
+                    {course.targetScoreRange.max} điểm
+                  </p>
+                </div>
+              )}
             </div>
+
+            {/* Quiz section */}
+            <VideoQuiz
+              key={currentVideo?.order}
+              questions={currentVideo?.questions || []}
+              onPassed={handleQuizPassed}
+            />
           </div>
         </div>
       </div>

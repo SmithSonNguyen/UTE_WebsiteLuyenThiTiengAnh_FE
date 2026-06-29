@@ -9,12 +9,12 @@ import { checkHasPurchase } from "@/api/paymentApi";
 const SPEAKING_TESTS = [
   {
     id: "mock-speaking-01",
-    title: "TOEIC Speaking — Practice Test 01",
+    title: "TOEIC Speaking — Practice Test 01 (Beginner)",
     description:
-      "Bài luyện tập chuẩn ETS đầy đủ 11 câu / 5 Parts. Từ đọc to đoạn văn, miêu tả tranh, trả lời câu hỏi theo thông tin cho đến bày tỏ quan điểm.",
+      "Bài luyện tập mức độ Cơ bản chuẩn cấu trúc ETS. Giúp người học làm quen với các dạng câu hỏi cơ bản, từ đọc to đoạn văn ngắn đến miêu tả tranh đơn giản.",
     duration: 20,
     totalQuestions: 11,
-    level: "Intermediate",
+    level: "Beginner",
     badge: "🗣️",
     parts: [
       { label: "Part 1: Read Aloud", qs: "Q1–Q2", free: true },
@@ -26,13 +26,81 @@ const SPEAKING_TESTS = [
   },
   {
     id: "mock-speaking-02",
-    title: "TOEIC Speaking — Practice Test 02",
+    title: "TOEIC Speaking — Practice Test 02 (Beginner)",
     description:
-      "Bài luyện nói nâng cao với các đoạn văn dài hơn và tình huống phức tạp hơn, lý tưởng để ôn tập trước kỳ thi thật.",
+      "Bài kiểm tra phản xạ nói sơ cấp. Tập trung vào các chủ đề giao tiếp hàng ngày quen thuộc trong môi trường làm việc cơ bản.",
+    duration: 20,
+    totalQuestions: 11,
+    level: "Beginner",
+    badge: "🗣️",
+    parts: [
+      { label: "Part 1: Read Aloud", qs: "Q1–Q2", free: true },
+      { label: "Part 2: Describe Picture", qs: "Q3", free: false },
+      { label: "Part 3: Respond to Qs", qs: "Q4–Q6", free: false },
+      { label: "Part 4: Using Information", qs: "Q7–Q9", free: false },
+      { label: "Part 5: Express Opinion", qs: "Q10–Q11", free: false },
+    ],
+  },
+  {
+    id: "mock-speaking-03",
+    title: "TOEIC Speaking — Practice Test 03 (Intermediate)",
+    description:
+      "Bài luyện tập trung cấp. Đầy đủ 11 câu hỏi ôn luyện với từ vựng chuyên sâu hơn, cải thiện tư duy diễn đạt mạch lạc.",
+    duration: 20,
+    totalQuestions: 11,
+    level: "Intermediate",
+    badge: "🎙️",
+    parts: [
+      { label: "Part 1: Read Aloud", qs: "Q1–Q2", free: true },
+      { label: "Part 2: Describe Picture", qs: "Q3", free: false },
+      { label: "Part 3: Respond to Qs", qs: "Q4–Q6", free: false },
+      { label: "Part 4: Using Information", qs: "Q7–Q9", free: false },
+      { label: "Part 5: Express Opinion", qs: "Q10–Q11", free: false },
+    ],
+  },
+  {
+    id: "mock-speaking-04",
+    title: "TOEIC Speaking — Practice Test 04 (Intermediate)",
+    description:
+      "Bài khảo sát năng lực nói mức trung cấp. Đánh giá khả năng xử lý thông tin từ tài liệu và trình bày luận điểm logic.",
+    duration: 20,
+    totalQuestions: 11,
+    level: "Intermediate",
+    badge: "🎙️",
+    parts: [
+      { label: "Part 1: Read Aloud", qs: "Q1–Q2", free: true },
+      { label: "Part 2: Describe Picture", qs: "Q3", free: false },
+      { label: "Part 3: Respond to Qs", qs: "Q4–Q6", free: false },
+      { label: "Part 4: Using Information", qs: "Q7–Q9", free: false },
+      { label: "Part 5: Express Opinion", qs: "Q10–Q11", free: false },
+    ],
+  },
+  {
+    id: "mock-speaking-05",
+    title: "TOEIC Speaking — Practice Test 05 (Advanced)",
+    description:
+      "Bài kiểm tra mô phỏng kỳ thi nâng cao. Yêu cầu phản xạ nhanh, từ vựng phong phú và cấu trúc ngữ pháp học thuật.",
     duration: 20,
     totalQuestions: 11,
     level: "Advanced",
-    badge: "🎙️",
+    badge: "💬",
+    parts: [
+      { label: "Part 1: Read Aloud", qs: "Q1–Q2", free: true },
+      { label: "Part 2: Describe Picture", qs: "Q3", free: false },
+      { label: "Part 3: Respond to Qs", qs: "Q4–Q6", free: false },
+      { label: "Part 4: Using Information", qs: "Q7–Q9", free: false },
+      { label: "Part 5: Express Opinion", qs: "Q10–Q11", free: false },
+    ],
+  },
+  {
+    id: "mock-speaking-06",
+    title: "TOEIC Speaking — Practice Test 06 (Advanced)",
+    description:
+      "Bài đánh giá năng lực nói cao cấp nhất. Thách thức người học với các đề luận biểu đạt quan điểm sâu sắc về xã hội và quản trị doanh nghiệp.",
+    duration: 20,
+    totalQuestions: 11,
+    level: "Advanced",
+    badge: "💬",
     parts: [
       { label: "Part 1: Read Aloud", qs: "Q1–Q2", free: true },
       { label: "Part 2: Describe Picture", qs: "Q3", free: false },
@@ -61,6 +129,15 @@ const SpeakingTestSelect = () => {
 
   // isPaidUser = admin/instructor HOẶC đã có ít nhất 1 payment completed
   const isPaidUser = isAdminOrInstructor || hasPurchase;
+
+  // Lấy level của user, chuẩn hóa sang dạng Capitalized ("Beginner", "Intermediate", "Advanced")
+  const rawLevel = currentUser?.level || "beginner";
+  const userLevel = 
+    rawLevel === "newbie" || rawLevel === "beginner"
+      ? "Beginner"
+      : rawLevel === "intermediate"
+      ? "Intermediate"
+      : "Advanced";
 
   useEffect(() => {
     // Nếu đã là admin/instructor → không cần gọi API
@@ -178,9 +255,38 @@ const SpeakingTestSelect = () => {
             </div>
           )}
 
+          {/* ── User Level Banner ── */}
+          {currentUser && (
+            <div 
+              className="mb-6 p-4 rounded-xl border flex items-center justify-between"
+              style={{ background: "rgba(99, 102, 241, 0.05)", borderColor: "rgba(99, 102, 241, 0.15)" }}
+            >
+              <div className="flex items-center gap-3">
+                <div 
+                  className="w-10 h-10 rounded-lg flex items-center justify-center text-lg"
+                  style={{ background: "rgba(99, 102, 241, 0.1)" }}
+                >
+                  🎓
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 font-medium">Trình độ luyện nói của bạn</p>
+                  <h4 className="text-sm font-bold text-gray-800" style={{ margin: 0 }}>
+                    Cấp độ {userLevel === "Beginner" ? "Cơ bản (Beginner)" : userLevel === "Intermediate" ? "Trung cấp (Intermediate)" : "Nâng cao (Advanced)"}
+                  </h4>
+                </div>
+              </div>
+              <div 
+                className="text-xs text-gray-500 bg-white border px-3 py-1.5 rounded-lg shadow-sm"
+                style={{ borderColor: "#e5e7eb" }}
+              >
+                Đang hiển thị đề thi phù hợp
+              </div>
+            </div>
+          )}
+
           {/* ── Test Cards ── */}
           <div>
-            {SPEAKING_TESTS.map((test) => {
+            {SPEAKING_TESTS.filter((test) => test.level === userLevel).map((test) => {
               const lvStyle = levelStyle[test.level] || { bg: "#f3f4f6", color: "#374151" };
               return (
                 <div key={test.id} className="sps-card">
