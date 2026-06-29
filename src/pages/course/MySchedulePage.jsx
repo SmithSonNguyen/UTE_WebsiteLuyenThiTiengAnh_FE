@@ -18,7 +18,7 @@ import {
   cancelMakeupRequest,
 } from "@/api/makeuprequestApi";
 import ConfirmModal from "@/components/common/ConfirmModal";
-import { Calendar, Clock, MapPin, User, ArrowRight, X } from "lucide-react";
+import { Calendar, Clock, MapPin, User, ArrowRight, X, Trophy, Lock, ChevronRight, Zap } from "lucide-react";
 import formatDateToDDMMYY from "@/utils/formatDateToDDMMYY";
 import { toast } from "react-toastify";
 
@@ -167,6 +167,9 @@ const MySchedulePage = () => {
   const [isMakeupModalOpen, setIsMakeupModalOpen] = useState(false);
   const [selectedMissedSession, setSelectedMissedSession] = useState(null);
   const [registeredMakeups, setRegisteredMakeups] = useState([]); // Danh sách buổi bù đã đăng ký
+
+  // === COURSE END TEST STATE ===
+  const [showEndTestConfirm, setShowEndTestConfirm] = useState(false);
 
   // === LIVEKIT STATES ===
   const [showLiveKit, setShowLiveKit] = useState(false);
@@ -810,6 +813,65 @@ const MySchedulePage = () => {
                 </div>
               </div>
             </div>
+
+            {/* === BÀI TEST CUỐI KHÓA === */}
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              {overallPercentage >= 80 ? (
+                // ĐÃ MỞ KHÓA
+                <div className="relative overflow-hidden rounded-xl border-2 border-yellow-400 bg-gradient-to-br from-yellow-50 to-amber-50 p-4 shadow-sm">
+                  {/* Glow effect */}
+                  <div className="absolute -top-6 -right-6 w-24 h-24 bg-yellow-300/30 rounded-full blur-xl" />
+                  <div className="flex items-center gap-2 mb-2">
+                    <Trophy className="w-5 h-5 text-yellow-600" />
+                    <span className="font-bold text-yellow-800 text-sm">Bài Test Cuối Khóa</span>
+                    <span className="ml-auto bg-green-100 text-green-700 text-xs font-semibold px-2 py-0.5 rounded-full border border-green-200">Đã mở khóa 🔓</span>
+                  </div>
+                  <p className="text-xs text-yellow-700 mb-3">
+                    Bạn đã học <strong>{overallPercentage}%</strong> số buổi! Hãy kiểm tra năng lực của mình với đề <strong>ETS-2024-01</strong>.
+                  </p>
+                  <button
+                    onClick={() => setShowEndTestConfirm(true)}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white rounded-lg font-bold text-sm transition-all shadow-md hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
+                  >
+                    <Zap className="w-4 h-4" />
+                    Làm bài ngay
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                // CHƯA MỞ KHÓA
+                <div className="relative overflow-hidden rounded-xl border-2 border-gray-200 bg-gray-50 p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Lock className="w-5 h-5 text-gray-400" />
+                    <span className="font-bold text-gray-500 text-sm">Bài Test Cuối Khóa</span>
+                    <span className="ml-auto bg-gray-100 text-gray-500 text-xs font-semibold px-2 py-0.5 rounded-full border border-gray-200">Đã khóa 🔒</span>
+                  </div>
+                  <p className="text-xs text-gray-400 mb-3">
+                    Cần học ít nhất <strong>80%</strong> số buổi để mở khóa bài test cuối khóa.
+                  </p>
+                  {/* Mini progress */}
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-xs text-gray-400">
+                      <span>Tiến độ của bạn</span>
+                      <span>{overallPercentage}% / 80%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-500 bg-gradient-to-r from-blue-400 to-indigo-500"
+                        style={{ width: `${Math.min(overallPercentage, 100)}%` }}
+                      />
+                      {/* Threshold marker at 80% */}
+                      <div className="relative">
+                        <div className="absolute top-0 h-2 w-0.5 bg-yellow-500" style={{ left: "80%", marginTop: "-8px" }} />
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-400">
+                      Cần thêm <strong className="text-gray-600">{Math.max(0, Math.ceil(totalSessions * 0.8) - attendedSessions)}</strong> buổi nữa để mở khóa
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Upcoming Events (classes với next session upcoming) */}
@@ -895,6 +957,93 @@ const MySchedulePage = () => {
         missedSession={selectedMissedSession}
         onSelectMakeup={handleSelectMakeup}
       />
+
+      {/* ========== CONFIRM MODAL - BÀI TEST CUỐI KHÓA ========== */}
+      {showEndTestConfirm && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+          onClick={() => setShowEndTestConfirm(false)}
+        >
+          <div
+            className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header gradient */}
+            <div className="bg-gradient-to-br from-yellow-400 to-orange-500 p-6 text-white text-center relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-28 h-28 bg-white/10 rounded-full -translate-y-14 translate-x-14" />
+              <div className="text-5xl mb-2 relative z-10">🏆</div>
+              <h2 className="text-2xl font-black relative z-10">Bài Test Cuối Khóa</h2>
+              <p className="text-white/90 text-sm mt-1 relative z-10">ETS 2024 Full Test 1</p>
+            </div>
+
+            {/* Content */}
+            <div className="p-6">
+              {/* Exam info */}
+              <div className="grid grid-cols-2 gap-3 mb-5">
+                <div className="bg-blue-50 rounded-xl p-3 text-center border border-blue-100">
+                  <p className="text-2xl font-black text-blue-600">200</p>
+                  <p className="text-xs text-gray-500">Câu hỏi</p>
+                </div>
+                <div className="bg-orange-50 rounded-xl p-3 text-center border border-orange-100">
+                  <p className="text-2xl font-black text-orange-600">120</p>
+                  <p className="text-xs text-gray-500">Phút</p>
+                </div>
+              </div>
+
+              {/* Level info */}
+              <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl p-4 mb-5">
+                <p className="text-sm font-semibold text-indigo-800 mb-2">📊 Thang đo Level</p>
+                <div className="space-y-1.5 text-xs text-gray-600">
+                  <div className="flex items-center gap-2">
+                    <span className="w-4 h-4 rounded-full bg-green-400 flex-shrink-0" />
+                    <span><strong>Beginner:</strong> 0 – 449 điểm</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-4 h-4 rounded-full bg-blue-400 flex-shrink-0" />
+                    <span><strong>Intermediate:</strong> 450 – 649 điểm</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-4 h-4 rounded-full bg-purple-500 flex-shrink-0" />
+                    <span><strong>Advanced:</strong> 650+ điểm</span>
+                  </div>
+                </div>
+                <p className="text-xs text-indigo-600 mt-2 font-medium">Nếu vượt mốc điểm, bạn sẽ được nâng level! 🚀</p>
+              </div>
+
+              <p className="text-sm text-gray-600 text-center mb-5">
+                Bạn có sẵn sàng bắt đầu bài kiểm tra cuối khóa không? Hãy chắc chắn bạn đang ở môi trường yên tĩnh.
+              </p>
+
+              {/* Buttons */}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowEndTestConfirm(false)}
+                  className="flex-1 py-3 border-2 border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl font-semibold transition-all"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={() => {
+                    setShowEndTestConfirm(false);
+                    navigate("/course-end-test", {
+                      state: {
+                        attendedSessions,
+                        totalSessions,
+                        overallPercentage,
+                        currentLevel: user?.level || "beginner",
+                      },
+                    });
+                  }}
+                  className="flex-1 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white rounded-xl font-bold transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2"
+                >
+                  <Zap className="w-4 h-4" />
+                  Bắt đầu!
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ==================== LIVEKIT ROOM ==================== */}
       {showLiveKit && liveKitData && (
