@@ -46,9 +46,9 @@ const PreRecordedCourseManagement = () => {
     targetScoreRange: { min: 0, max: 450 },
     features: [""],
     courseStructure: {
-      totalSessions: 0,
-      hoursPerSession: 0,
-      totalHours: 0,
+      totalSessions: 1,
+      hoursPerSession: 1,
+      totalHours: 1,
       description: "",
     },
     instructor: "",
@@ -307,9 +307,9 @@ const PreRecordedCourseManagement = () => {
       targetScoreRange: { min: 0, max: 450 },
       features: [""],
       courseStructure: {
-        totalSessions: 0,
-        hoursPerSession: 0,
-        totalHours: 0,
+        totalSessions: 1,
+        hoursPerSession: 1,
+        totalHours: 1,
         description: "",
       },
       instructor: "",
@@ -366,9 +366,10 @@ const PreRecordedCourseManagement = () => {
   const handleUpdateCourse = async (e) => {
     e.preventDefault();
     try {
-      // Calculate totalLessons
+      // Build payload - exclude courseStructure for pre-recorded courses
+      const { courseStructure, ...restForm } = courseForm;
       const updatedForm = {
-        ...courseForm,
+        ...restForm,
         preRecordedContent: {
           ...courseForm.preRecordedContent,
           totalLessons: courseForm.preRecordedContent.videoLessons.length,
@@ -389,7 +390,10 @@ const PreRecordedCourseManagement = () => {
         }
       );
 
-      if (!response.ok) throw new Error("Failed to update course");
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.message || "Failed to update course");
+      }
 
       alert("Cập nhật khóa học thành công!");
       setShowEditModal(false);
@@ -439,10 +443,24 @@ const PreRecordedCourseManagement = () => {
       level: course.level,
       targetScoreRange: course.targetScoreRange,
       features: course.features || [""],
-      courseStructure: course.courseStructure,
+      courseStructure: course.courseStructure || {
+        totalSessions: 1,
+        hoursPerSession: 1,
+        totalHours: 1,
+        description: "",
+      },
       instructor: course.instructor?._id || course.instructor,
       thumbnail: course.thumbnail,
-      preRecordedContent: course.preRecordedContent,
+      preRecordedContent: course.preRecordedContent || {
+        totalTopics: 1,
+        totalLessons: 0,
+        accessDuration: 12,
+        accessDurationUnit: "months",
+        downloadable: true,
+        certificate: true,
+        description: "",
+        videoLessons: [{ title: "", url: "", order: 1, questions: [] }],
+      },
     });
     setThumbnailPreview(course.thumbnail);
     setShowEditModal(true);

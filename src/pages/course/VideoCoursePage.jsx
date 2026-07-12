@@ -95,11 +95,13 @@ const VideoQuiz = ({ questions, onPassed }) => {
                   } else {
                     // After submit
                     if (opt.label === q.correctAnswer) {
-                      optClass += " border-green-500 bg-green-500/10 text-green-300";
+                      optClass +=
+                        " border-green-500 bg-green-500/10 text-green-300";
                     } else if (opt.label === chosen && !result?.isCorrect) {
                       optClass += " border-red-500 bg-red-500/10 text-red-300";
                     } else {
-                      optClass += " border-gray-700 bg-gray-800/30 text-gray-500";
+                      optClass +=
+                        " border-gray-700 bg-gray-800/30 text-gray-500";
                     }
                   }
 
@@ -117,10 +119,10 @@ const VideoQuiz = ({ questions, onPassed }) => {
                                 ? "bg-indigo-500 text-white"
                                 : "bg-gray-700 text-gray-400"
                               : opt.label === q.correctAnswer
-                              ? "bg-green-500 text-white"
-                              : opt.label === chosen && !result?.isCorrect
-                              ? "bg-red-500 text-white"
-                              : "bg-gray-700 text-gray-500"
+                                ? "bg-green-500 text-white"
+                                : opt.label === chosen && !result?.isCorrect
+                                  ? "bg-red-500 text-white"
+                                  : "bg-gray-700 text-gray-500"
                           }`}
                       >
                         {opt.label}
@@ -159,11 +161,13 @@ const VideoQuiz = ({ questions, onPassed }) => {
             <div className="flex-1">
               {results.passed ? (
                 <p className="text-green-300 font-semibold">
-                  Xuất sắc! Bạn đã trả lời đúng {results.correct}/{results.total} câu — có thể chuyển sang bài tiếp!
+                  Xuất sắc! Bạn đã trả lời đúng {results.correct}/
+                  {results.total} câu — có thể chuyển sang bài tiếp!
                 </p>
               ) : (
                 <p className="text-red-300 font-semibold">
-                  Bạn trả lời đúng {results.correct}/{results.total} câu. Cần đúng tất cả để tiếp tục.
+                  Bạn trả lời đúng {results.correct}/{results.total} câu. Cần
+                  đúng tất cả để tiếp tục.
                 </p>
               )}
             </div>
@@ -198,7 +202,7 @@ const VideoQuiz = ({ questions, onPassed }) => {
 
 // THAY ĐỔI THỜI GIAN XEM BẮT BUỘC TẠI ĐÂY (đơn vị: giây)
 // Mặc định: 90 * 60 = 5400 giây (90 phút). Bạn có thể đổi thành ví dụ: 5 để test nhanh.
-const REQUIRED_WATCH_TIME = 90 * 60;
+const REQUIRED_WATCH_TIME = 1 * 60;
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 const CourseLearningPage = () => {
@@ -216,7 +220,7 @@ const CourseLearningPage = () => {
   const [progressLoading, setProgressLoading] = useState(false);
 
   const accessTokenFromStore = useSelector(
-    (state) => state?.auth?.login?.accessToken
+    (state) => state?.auth?.login?.accessToken,
   );
 
   // Synchronous references to prevent race conditions during state updates on video switch
@@ -253,7 +257,7 @@ const CourseLearningPage = () => {
       currentVideo.questions && currentVideo.questions.length > 0;
     // If no questions or already completed → auto-pass
     setCurrentVideoPassed(
-      !hasQuestions || completedVideos.includes(currentVideo.order)
+      !hasQuestions || completedVideos.includes(currentVideo.order),
     );
   }, [currentVideo, completedVideos]);
 
@@ -311,7 +315,7 @@ const CourseLearningPage = () => {
               Authorization: `Bearer ${accessTokenFromStore}`,
               "Content-Type": "application/json",
             },
-          }
+          },
         ),
         fetch(
           `${import.meta.env.VITE_BACKEND_URL}/courses/progress/${courseId}`,
@@ -319,7 +323,7 @@ const CourseLearningPage = () => {
             headers: {
               Authorization: `Bearer ${accessTokenFromStore}`,
             },
-          }
+          },
         ),
       ]);
 
@@ -331,7 +335,7 @@ const CourseLearningPage = () => {
       }
       if (courseRes.status === 403) {
         setError(
-          "Bạn chưa mua khóa học này. Vui lòng mua khóa học để tiếp tục."
+          "Bạn chưa mua khóa học này. Vui lòng mua khóa học để tiếp tục.",
         );
         setAccessDenied(true);
         setLoading(false);
@@ -370,8 +374,7 @@ const CourseLearningPage = () => {
         const firstVideo = data.videoLessons[0];
         console.log("Setting first video:", firstVideo);
         setCurrentVideo(firstVideo);
-        const hasQ =
-          firstVideo.questions && firstVideo.questions.length > 0;
+        const hasQ = firstVideo.questions && firstVideo.questions.length > 0;
         setCurrentVideoPassed(!hasQ || completed.includes(firstVideo.order));
       }
 
@@ -387,8 +390,7 @@ const CourseLearningPage = () => {
   // ── Navigation helpers ────────────────────────────────────────────────────
   const getYouTubeEmbedUrl = (url) => {
     if (!url) return "";
-    const videoId =
-      url.split("v=")[1]?.split("&")[0] || url.split("/").pop();
+    const videoId = url.split("v=")[1]?.split("&")[0] || url.split("/").pop();
     return `https://www.youtube.com/embed/${videoId}`;
   };
 
@@ -424,9 +426,12 @@ const CourseLearningPage = () => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ videoOrder: currentVideo.order }),
-        }
+        },
       );
-      console.log("Successfully saved progress for video order:", currentVideo.order);
+      console.log(
+        "Successfully saved progress for video order:",
+        currentVideo.order,
+      );
     } catch (err) {
       console.error("Failed to save progress:", err);
     } finally {
@@ -435,9 +440,14 @@ const CourseLearningPage = () => {
   };
 
   const handleNextVideo = () => {
-    if (!course || !currentVideo || !completedVideos.includes(currentVideo.order)) return;
+    if (
+      !course ||
+      !currentVideo ||
+      !completedVideos.includes(currentVideo.order)
+    )
+      return;
     const currentIndex = course.videoLessons.findIndex(
-      (v) => v.order === currentVideo.order
+      (v) => v.order === currentVideo.order,
     );
     if (currentIndex < course.videoLessons.length - 1) {
       handleVideoSelect(course.videoLessons[currentIndex + 1]);
@@ -447,7 +457,7 @@ const CourseLearningPage = () => {
   const handlePreviousVideo = () => {
     if (!course || !currentVideo) return;
     const currentIndex = course.videoLessons.findIndex(
-      (v) => v.order === currentVideo.order
+      (v) => v.order === currentVideo.order,
     );
     if (currentIndex > 0) {
       handleVideoSelect(course.videoLessons[currentIndex - 1]);
@@ -457,7 +467,7 @@ const CourseLearningPage = () => {
   const calculateProgress = () => {
     if (!course || !course.videoLessons) return 0;
     return Math.round(
-      (completedVideos.length / course.videoLessons.length) * 100
+      (completedVideos.length / course.videoLessons.length) * 100,
     );
   };
 
@@ -525,8 +535,7 @@ const CourseLearningPage = () => {
   const progress = calculateProgress();
   const currentVideoHasQuestions =
     currentVideo?.questions && currentVideo.questions.length > 0;
-  const isLastVideo =
-    currentVideo?.order === course.videoLessons?.length;
+  const isLastVideo = currentVideo?.order === course.videoLessons?.length;
   const isFirstVideo = currentVideo?.order === 1;
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -614,7 +623,8 @@ const CourseLearningPage = () => {
             {course.videoLessons?.map((video, index) => {
               const isActive = currentVideo?.order === video.order;
               const isCompleted = completedVideos.includes(video.order);
-              const isUnlocked = video.order === 1 || completedVideos.includes(video.order - 1);
+              const isUnlocked =
+                video.order === 1 || completedVideos.includes(video.order - 1);
               const hasQ = video.questions && video.questions.length > 0;
 
               return (
@@ -636,8 +646,8 @@ const CourseLearningPage = () => {
                           isCompleted
                             ? "bg-green-500/20 text-green-400"
                             : !isUnlocked
-                            ? "bg-gray-900 text-gray-600"
-                            : "bg-gray-800 text-gray-400"
+                              ? "bg-gray-900 text-gray-600"
+                              : "bg-gray-800 text-gray-400"
                         }
                       `}
                     >
@@ -653,7 +663,11 @@ const CourseLearningPage = () => {
                     <div className="flex-1 min-w-0">
                       <p
                         className={`text-sm font-medium line-clamp-2 ${
-                          isActive ? "text-white" : !isUnlocked ? "text-gray-500" : "text-gray-300"
+                          isActive
+                            ? "text-white"
+                            : !isUnlocked
+                              ? "text-gray-500"
+                              : "text-gray-300"
                         }`}
                       >
                         {index + 1}. {video.title}
@@ -665,7 +679,9 @@ const CourseLearningPage = () => {
                         </div>
                       )}
                       {hasQ && (
-                        <div className={`flex items-center gap-1 mt-1 text-xs ${!isUnlocked ? "text-gray-600" : "text-indigo-400"}`}>
+                        <div
+                          className={`flex items-center gap-1 mt-1 text-xs ${!isUnlocked ? "text-gray-600" : "text-indigo-400"}`}
+                        >
                           <HelpCircle className="w-3 h-3" />
                           <span>{video.questions.length} câu hỏi</span>
                         </div>
@@ -716,14 +732,15 @@ const CourseLearningPage = () => {
                   {currentVideo?.title}
                 </h2>
                 <p className="text-sm text-gray-400">
-                  Bài {currentVideo?.order} /{" "}
-                  {course.videoLessons?.length || 0}
+                  Bài {currentVideo?.order} / {course.videoLessons?.length || 0}
                 </p>
               </div>
 
               <button
                 onClick={handleNextVideo}
-                disabled={isLastVideo || !completedVideos.includes(currentVideo?.order)}
+                disabled={
+                  isLastVideo || !completedVideos.includes(currentVideo?.order)
+                }
                 title={
                   !completedVideos.includes(currentVideo?.order)
                     ? "Hoàn thành các yêu cầu (xem video & trả lời quiz) để tiếp tục"
@@ -747,47 +764,65 @@ const CourseLearningPage = () => {
                   <Clock className="w-5 h-5 text-indigo-400" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-white">Yêu cầu xem video</h4>
-                  <p className="text-xs text-gray-400">Bắt buộc xem ít nhất {Math.floor(REQUIRED_WATCH_TIME / 60)} phút</p>
+                  <h4 className="text-sm font-bold text-white">
+                    Yêu cầu xem video
+                  </h4>
+                  <p className="text-xs text-gray-400">
+                    Bắt buộc xem ít nhất {Math.floor(REQUIRED_WATCH_TIME / 60)}{" "}
+                    phút
+                  </p>
                 </div>
               </div>
               <div className="flex flex-col items-end gap-1.5 w-full sm:w-auto">
                 <div className="flex justify-between w-full sm:justify-end text-xs text-gray-400 gap-2">
                   <span>Tiến độ xem:</span>
                   <span className="font-semibold text-white">
-                    {Math.floor(watchTime / 60)} phút {watchTime % 60} giây / {Math.floor(REQUIRED_WATCH_TIME / 60)} phút
+                    {Math.floor(watchTime / 60)} phút {watchTime % 60} giây /{" "}
+                    {Math.floor(REQUIRED_WATCH_TIME / 60)} phút
                   </span>
                 </div>
                 <div className="w-full sm:w-48 h-2 bg-gray-800 rounded-full overflow-hidden">
-                  <div 
+                  <div
                     className="h-full bg-indigo-500 transition-all duration-300"
-                    style={{ width: `${Math.min((watchTime / REQUIRED_WATCH_TIME) * 100, 100)}%` }}
+                    style={{
+                      width: `${Math.min((watchTime / REQUIRED_WATCH_TIME) * 100, 100)}%`,
+                    }}
                   />
                 </div>
               </div>
             </div>
 
             {/* Lock notice */}
-            {((currentVideoHasQuestions && !currentVideoPassed) || watchTime < REQUIRED_WATCH_TIME) && !completedVideos.includes(currentVideo?.order) && (
-              <div className="flex items-center gap-3 px-4 py-3 mb-4 bg-amber-500/10 border border-amber-500/30 rounded-xl">
-                <Lock className="w-4 h-4 text-amber-400 flex-shrink-0" />
-                <div className="text-sm text-amber-300">
-                  {watchTime < REQUIRED_WATCH_TIME && (
-                    <p>• Bạn cần xem thêm {Math.ceil((REQUIRED_WATCH_TIME - watchTime) / 60)} phút để đạt thời lượng yêu cầu.</p>
-                  )}
-                  {currentVideoHasQuestions && !currentVideoPassed && (
-                    <p>• Bạn cần trả lời đúng tất cả câu hỏi trắc nghiệm bên dưới.</p>
-                  )}
+            {((currentVideoHasQuestions && !currentVideoPassed) ||
+              watchTime < REQUIRED_WATCH_TIME) &&
+              !completedVideos.includes(currentVideo?.order) && (
+                <div className="flex items-center gap-3 px-4 py-3 mb-4 bg-amber-500/10 border border-amber-500/30 rounded-xl">
+                  <Lock className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                  <div className="text-sm text-amber-300">
+                    {watchTime < REQUIRED_WATCH_TIME && (
+                      <p>
+                        • Bạn cần xem thêm{" "}
+                        {Math.ceil((REQUIRED_WATCH_TIME - watchTime) / 60)} phút
+                        để đạt thời lượng yêu cầu.
+                      </p>
+                    )}
+                    {currentVideoHasQuestions && !currentVideoPassed && (
+                      <p>
+                        • Bạn cần trả lời đúng tất cả câu hỏi trắc nghiệm bên
+                        dưới.
+                      </p>
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
             {/* Completed badge */}
             {completedVideos.includes(currentVideo?.order) && (
               <div className="flex items-center gap-3 px-4 py-3 mb-4 bg-green-500/10 border border-green-500/30 rounded-xl">
                 <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0" />
                 <p className="text-sm text-green-300">
-                  Bạn đã hoàn thành đầy đủ yêu cầu cho bài học này! (Đã xem đủ {Math.floor(REQUIRED_WATCH_TIME / 60)} phút & vượt qua quiz).
+                  Bạn đã hoàn thành đầy đủ yêu cầu cho bài học này! (Đã xem đủ{" "}
+                  {Math.floor(REQUIRED_WATCH_TIME / 60)} phút & vượt qua quiz).
                   {progressLoading && (
                     <span className="text-gray-400 text-xs ml-1">
                       Đang lưu...
@@ -798,31 +833,37 @@ const CourseLearningPage = () => {
             )}
 
             {/* Course completion banner */}
-            {completedVideos.length > 0 && course.videoLessons && completedVideos.length === course.videoLessons.length && (
-              <div className="bg-gradient-to-r from-indigo-900/60 via-purple-900/60 to-pink-900/60 border border-indigo-500/50 rounded-2xl p-6 mb-6 text-center relative overflow-hidden shadow-2xl">
-                <div className="absolute -top-10 -left-10 w-32 h-32 bg-indigo-500/20 rounded-full blur-2xl" />
-                <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-pink-500/20 rounded-full blur-2xl" />
-                
-                <div className="relative z-10 space-y-4">
-                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-indigo-400 to-pink-500 text-white text-3xl shadow-lg animate-bounce">
-                    🎉
+            {completedVideos.length > 0 &&
+              course.videoLessons &&
+              completedVideos.length === course.videoLessons.length && (
+                <div className="bg-gradient-to-r from-indigo-900/60 via-purple-900/60 to-pink-900/60 border border-indigo-500/50 rounded-2xl p-6 mb-6 text-center relative overflow-hidden shadow-2xl">
+                  <div className="absolute -top-10 -left-10 w-32 h-32 bg-indigo-500/20 rounded-full blur-2xl" />
+                  <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-pink-500/20 rounded-full blur-2xl" />
+
+                  <div className="relative z-10 space-y-4">
+                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-indigo-400 to-pink-500 text-white text-3xl shadow-lg animate-bounce">
+                      🎉
+                    </div>
+                    <div>
+                      <h3 className="text-2xl font-black text-white">
+                        Chúc mừng! Bạn đã hoàn thành khóa học!
+                      </h3>
+                      <p className="text-sm text-gray-300 mt-1 max-w-lg mx-auto leading-relaxed">
+                        Bạn đã xem toàn bộ các bài học và trả lời đúng tất cả
+                        quiz. Hãy làm bài test cuối khóa ngay bây giờ để đánh
+                        giá năng lực và thăng cấp trình độ của bạn!
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => navigate("/course-end-test")}
+                      className="inline-flex items-center gap-2 px-8 py-3.5 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:opacity-95 text-white font-extrabold rounded-xl transition-all shadow-md hover:shadow-indigo-500/20 hover:scale-105 active:scale-95 text-sm"
+                    >
+                      <Trophy className="w-5 h-5" />
+                      Làm bài test cuối khóa ngay
+                    </button>
                   </div>
-                  <div>
-                    <h3 className="text-2xl font-black text-white">Chúc mừng! Bạn đã hoàn thành khóa học!</h3>
-                    <p className="text-sm text-gray-300 mt-1 max-w-lg mx-auto leading-relaxed">
-                      Bạn đã xem toàn bộ các bài học và trả lời đúng tất cả quiz. Hãy làm bài test cuối khóa ngay bây giờ để đánh giá năng lực và thăng cấp trình độ của bạn!
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => navigate("/course-end-test")}
-                    className="inline-flex items-center gap-2 px-8 py-3.5 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:opacity-95 text-white font-extrabold rounded-xl transition-all shadow-md hover:shadow-indigo-500/20 hover:scale-105 active:scale-95 text-sm"
-                  >
-                    <Trophy className="w-5 h-5" />
-                    Làm bài test cuối khóa ngay
-                  </button>
                 </div>
-              </div>
-            )}
+              )}
 
             {/* Course overview */}
             <div className="bg-gray-950 rounded-xl border border-gray-800 p-6 mb-2">

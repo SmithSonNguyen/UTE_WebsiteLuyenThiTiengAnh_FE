@@ -37,30 +37,67 @@ const GROQ_CONFIG = {
 async function gradeWithAI(answers) {
   const answerSummary = Object.entries(answers)
     .map(([qid, text]) => {
-      const label =
-        parseInt(qid) <= 5
-          ? `Câu ${qid} (Part 1 – Viết câu theo ảnh)`
-          : parseInt(qid) <= 7
-            ? `Câu ${qid} (Part 2 – Phản hồi email)`
-            : `Câu ${qid} (Part 3 – Viết luận)`;
-      return `${label}:\n"${text || "(Bỏ trống)"}"`;
+      const num = parseInt(qid);
+      const partLabel =
+        num <= 5
+          ? `Câu ${qid} (Part 1 – Viết câu mô tả tranh)`
+          : num <= 7
+            ? `Câu ${qid} (Part 2 – Phản hồi email/yêu cầu)`
+            : `Câu ${qid} (Part 3 – Viết luận quan điểm)`;
+      return `${partLabel}:\n"${text || "(Bỏ trống)"}"`;
     })
     .join("\n\n");
 
-  const prompt = `Bạn là giáo viên TOEIC Writing chuyên nghiệp. Hãy phân tích và nhận xét bài làm sau đây.
+  const prompt = `You are a professional TOEIC Writing examiner. Evaluate the following student answers strictly according to the official TOEIC Writing scoring rubrics for each part.
 
-BÀI LÀM CỦA HỌC VIÊN:
+=== OFFICIAL SCORING RUBRICS ===
+
+PART 1 (Questions 1–5) – Write a sentence based on a picture:
+Criteria:
+1. Grammar (Ngữ pháp): Correct verb tense, sentence structure, articles, pronouns, adjectives, adverbs, passive/conditional/comparative constructions. Vocabulary must be accurate and contextually appropriate.
+2. Relevance (Sự liên quan đến tranh): The sentence must clearly and accurately describe the picture content. Ideas must be relevant and contextually fitting to the image situation.
+Scoring: Each criterion scored 0–3. Total per question: 0–6 points.
+
+PART 2 (Questions 6–7) – Respond to a written request (email):
+Criteria:
+1. Sentence Quality & Variety (Chất lượng và đa dạng câu): Accurate, clear sentences; mix of short/long, simple/complex/compound structures; creative language use.
+2. Vocabulary (Từ vựng): Appropriate and varied vocabulary; correct word choice; use of synonyms, collocations, and idioms where suitable.
+3. Organization (Cách tổ chức): Logical structure with clear opening, body, and closing; use of linking words; coherent flow of ideas; appropriate prioritization of information.
+Scoring: Each criterion scored 0–4. Total per question: 0–12 points.
+
+PART 3 (Question 8) – Write an opinion essay:
+Criteria:
+1. Opinion Support (Bảo vệ quan điểm): Clear opinion with logical arguments (cause-effect, comparison, analysis); supported by specific examples from daily life, personal experience, or research.
+2. Grammar (Ngữ pháp): Accurate and flexible grammar; diverse sentence structures and tenses; avoidance of monotonous/repetitive patterns.
+3. Vocabulary (Từ vựng): Appropriate and rich vocabulary; varied word choice; effective use of synonyms, collocations, and idiomatic expressions.
+4. Organization (Cách tổ chức): Clear introduction-body-conclusion structure; logical cohesion between ideas; effective use of linking words and discourse markers.
+Scoring: Each criterion scored 0–5. Total: 0–20 points.
+
+=== STUDENT ANSWERS ===
 ${answerSummary}
 
-Hãy trả lời theo đúng cấu trúc JSON sau (chỉ JSON, không thêm gì khác):
+=== INSTRUCTIONS ===
+Respond ONLY with valid JSON matching exactly this structure (no markdown, no extra text).
+CRITICAL: The \`totalEstimatedScore\` (range 0-200) MUST accurately reflect the ACTUAL quality of the provided answers. Do NOT output a generic or random score. If the answers are blank, very short, or full of errors, the score must be very low (e.g., 0-50). Only give high scores (150-200) if the writing is truly excellent.
+
 {
-  "overallFeedback": "<nhận xét tổng quan về bài làm (2-3 câu)>",
+  "overallFeedback": "<2-3 sentence overall assessment of the student's writing performance across all parts>",
+  "totalEstimatedScore": "<Accurate estimated TOEIC Writing score range based on the answers, e.g. '30-50', '110-130', '170-190'>",
   "questionFeedbacks": [
     {
-      "questionNumber": <số câu>,
-      "strengths": "<điểm mạnh (1 câu)>",
-      "weaknesses": "<điểm yếu / lỗi sai (1-2 câu)>",
-      "suggestion": "<gợi ý cải thiện (1 câu)>"
+      "questionNumber": <number>,
+      "part": <1, 2, or 3>,
+      "estimatedScore": "<score/max, e.g. '4/6' for Part 1, '9/12' for Part 2, '15/20' for Part 3>",
+      "criteria": [
+        {
+          "name": "<criterion name in Vietnamese>",
+          "score": "<score/max>",
+          "feedback": "<1-2 sentence specific feedback on this criterion>"
+        }
+      ],
+      "strengths": "<1 sentence: what the student did well overall for this question>",
+      "weaknesses": "<1-2 sentences: main errors or weaknesses>",
+      "suggestion": "<1 sentence: most important improvement tip>"
     }
   ]
 }`;
@@ -92,6 +129,37 @@ Hãy trả lời theo đúng cấu trúc JSON sau (chỉ JSON, không thêm gì 
       .replace(/^```[\w]*\n?/g, "")
       .replace(/```$/g, "")
       .trim(),
+  );
+}
+
+// ── Shared answer block (top-level to avoid remount on parent re-render) ────────
+function AnswerBlock({ qid, minH = 180, answers, notes, openNotes, submitted, onAnswer, onNote, onToggleNote }) {
+  const wc = countWords(answers[qid] || "");
+  return (
+    <div className="tw-card-answer">
+      <button className="tw-note-toggle" onClick={() => onToggleNote(qid)}>
+        {openNotes[qid] ? "▲ Ẩn ghi chú" : "+ Thêm ghi chú / dàn ý"}
+      </button>
+      {openNotes[qid] && (
+        <textarea
+          className="tw-note-input"
+          placeholder="Thêm ghi chú tại đây..."
+          value={notes[qid] || ""}
+          onChange={(e) => onNote(qid, e.target.value)}
+        />
+      )}
+      <textarea
+        className="tw-answer-input"
+        style={{ minHeight: minH }}
+        placeholder="Viết câu trả lời tại đây..."
+        value={answers[qid] || ""}
+        onChange={(e) => onAnswer(qid, e.target.value)}
+        disabled={submitted}
+      />
+      <div className={`tw-wordcount ${wc > 0 ? "has-words" : ""}`}>
+        Word count: {wc}
+      </div>
+    </div>
   );
 }
 
@@ -256,36 +324,7 @@ export default function TOEICWritingTest() {
   const timerColor =
     timeLeft < 300 ? "#ef4444" : timeLeft < 600 ? "#f59e0b" : "#6366f1";
 
-  // ── Shared answer block ─────────────────────────────────────────────────────
-  const AnswerBlock = ({ qid, minH = 180 }) => {
-    const wc = countWords(answers[qid] || "");
-    return (
-      <div className="tw-card-answer">
-        <button className="tw-note-toggle" onClick={() => toggleNote(qid)}>
-          {openNotes[qid] ? "▲ Ẩn ghi chú" : "+ Thêm ghi chú / dàn ý"}
-        </button>
-        {openNotes[qid] && (
-          <textarea
-            className="tw-note-input"
-            placeholder="Thêm ghi chú tại đây..."
-            value={notes[qid] || ""}
-            onChange={(e) => setNote(qid, e.target.value)}
-          />
-        )}
-        <textarea
-          className="tw-answer-input"
-          style={{ minHeight: minH }}
-          placeholder="Viết câu trả lời tại đây..."
-          value={answers[qid] || ""}
-          onChange={(e) => setAnswer(qid, e.target.value)}
-          disabled={submitted}
-        />
-        <div className={`tw-wordcount ${wc > 0 ? "has-words" : ""}`}>
-          Word count: {wc}
-        </div>
-      </div>
-    );
-  };
+  // AnswerBlock is defined outside the component (see top-level) to avoid remount on each keystroke.
 
   // ── Loading / Error states ──────────────────────────────────────────────────
   if (loadingTest) {
@@ -520,17 +559,39 @@ export default function TOEICWritingTest() {
                         marginBottom: "1.5rem",
                       }}
                     >
-                      <div
-                        style={{
-                          fontSize: "0.75rem",
-                          color: "#6366f1",
-                          fontWeight: 600,
-                          letterSpacing: "0.1em",
-                          textTransform: "uppercase",
-                          marginBottom: "0.75rem",
-                        }}
-                      >
-                        Nhận xét tổng quan
+                      {/* Header row: title + estimated score */}
+                      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "0.75rem", gap: "1rem" }}>
+                        <div
+                          style={{
+                            fontSize: "0.75rem",
+                            color: "#6366f1",
+                            fontWeight: 600,
+                            letterSpacing: "0.1em",
+                            textTransform: "uppercase",
+                          }}
+                        >
+                          Nhận xét tổng quan
+                        </div>
+                        {gradingResult.totalEstimatedScore && (
+                          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "0.25rem", flexShrink: 0 }}>
+                            <span style={{ fontSize: "0.65rem", color: "#5c5f7a", letterSpacing: "0.07em", textTransform: "uppercase" }}>Điểm ước tính</span>
+                            <span
+                              style={{
+                                fontFamily: "'JetBrains Mono', monospace",
+                                fontSize: "1.25rem",
+                                fontWeight: 700,
+                                color: "#a5b4fc",
+                                background: "#0d0f14",
+                                border: "1px solid #6366f1",
+                                borderRadius: 8,
+                                padding: "0.2rem 0.75rem",
+                                letterSpacing: "0.05em",
+                              }}
+                            >
+                              {gradingResult.totalEstimatedScore}
+                            </span>
+                          </div>
+                        )}
                       </div>
                       <p
                         style={{
@@ -556,147 +617,158 @@ export default function TOEICWritingTest() {
                         gap: "1rem",
                       }}
                     >
-                      {gradingResult.questionFeedbacks?.map((fb) => (
-                        <div
-                          key={fb.questionNumber}
-                          style={{
-                            background: "#13151d",
-                            border: "1px solid #1e2130",
-                            borderRadius: 12,
-                            overflow: "hidden",
-                          }}
-                        >
+                      {gradingResult.questionFeedbacks?.map((fb) => {
+                        const partLabel =
+                          fb.part === 1
+                            ? "Part 1 – Viết câu theo tranh"
+                            : fb.part === 2
+                              ? "Part 2 – Phản hồi email"
+                              : "Part 3 – Viết luận";
+                        return (
                           <div
+                            key={fb.questionNumber}
                             style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "0.75rem",
-                              padding: "0.875rem 1.25rem",
-                              borderBottom: "1px solid #1e2130",
-                              background: "#0f1118",
+                              background: "#13151d",
+                              border: "1px solid #1e2130",
+                              borderRadius: 12,
+                              overflow: "hidden",
                             }}
                           >
+                            {/* Card header */}
                             <div
                               style={{
                                 display: "flex",
                                 alignItems: "center",
-                                justifyContent: "center",
-                                width: 30,
-                                height: 30,
-                                borderRadius: 8,
-                                background: "#1e2250",
-                                border: "1px solid #6366f1",
-                                fontWeight: 700,
-                                fontSize: "0.8rem",
-                                color: "#a5b4fc",
-                                flexShrink: 0,
+                                justifyContent: "space-between",
+                                padding: "0.875rem 1.25rem",
+                                borderBottom: "1px solid #1e2130",
+                                background: "#0f1118",
                               }}
                             >
-                              {fb.questionNumber}
+                              <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    width: 30,
+                                    height: 30,
+                                    borderRadius: 8,
+                                    background: "#1e2250",
+                                    border: "1px solid #6366f1",
+                                    fontWeight: 700,
+                                    fontSize: "0.8rem",
+                                    color: "#a5b4fc",
+                                    flexShrink: 0,
+                                  }}
+                                >
+                                  {fb.questionNumber}
+                                </div>
+                                <div>
+                                  <span style={{ fontSize: "0.75rem", color: "#5c5f7a", textTransform: "uppercase", letterSpacing: "0.07em", display: "block" }}>
+                                    Câu {fb.questionNumber} · {partLabel}
+                                  </span>
+                                </div>
+                              </div>
+                              {fb.estimatedScore && (
+                                <span
+                                  style={{
+                                    fontSize: "0.8rem",
+                                    fontWeight: 700,
+                                    color: "#a5b4fc",
+                                    background: "#1e2250",
+                                    border: "1px solid #6366f133",
+                                    borderRadius: 6,
+                                    padding: "0.2rem 0.6rem",
+                                    fontFamily: "'JetBrains Mono', monospace",
+                                  }}
+                                >
+                                  {fb.estimatedScore}
+                                </span>
+                              )}
                             </div>
-                            <span
+
+                            {/* Criteria breakdown */}
+                            {fb.criteria && fb.criteria.length > 0 && (
+                              <div
+                                style={{
+                                  padding: "0.875rem 1.25rem",
+                                  borderBottom: "1px solid #1e2130",
+                                  display: "flex",
+                                  flexDirection: "column",
+                                  gap: "0.5rem",
+                                }}
+                              >
+                                <div style={{ fontSize: "0.68rem", color: "#5c5f7a", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "0.25rem" }}>
+                                  Chi tiết tiêu chí
+                                </div>
+                                {fb.criteria.map((crit, ci) => (
+                                  <div
+                                    key={ci}
+                                    style={{
+                                      background: "#0d0f14",
+                                      border: "1px solid #1e2130",
+                                      borderRadius: 8,
+                                      padding: "0.6rem 0.875rem",
+                                      display: "flex",
+                                      flexDirection: "column",
+                                      gap: "0.25rem",
+                                    }}
+                                  >
+                                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                                      <span style={{ fontSize: "0.78rem", color: "#c8cae0", fontWeight: 600 }}>{crit.name}</span>
+                                      {crit.score && (
+                                        <span style={{ fontSize: "0.75rem", fontFamily: "'JetBrains Mono', monospace", color: "#6366f1", fontWeight: 700 }}>
+                                          {crit.score}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <span style={{ fontSize: "0.78rem", color: "#7c7f99", lineHeight: 1.5 }}>{crit.feedback}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Overall strengths / weaknesses / suggestion */}
+                            <div
                               style={{
-                                fontSize: "0.75rem",
-                                color: "#5c5f7a",
-                                textTransform: "uppercase",
-                                letterSpacing: "0.07em",
+                                padding: "1rem 1.25rem",
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: "0.6rem",
                               }}
                             >
-                              Câu {fb.questionNumber}
-                            </span>
+                              {fb.strengths && (
+                                <div style={{ display: "flex", gap: "0.5rem", alignItems: "flex-start" }}>
+                                  <span style={{ color: "#34d399", flexShrink: 0, marginTop: 2 }}>✓</span>
+                                  <span style={{ fontSize: "0.85rem", color: "#9ca3c4" }}>{fb.strengths}</span>
+                                </div>
+                              )}
+                              {fb.weaknesses && (
+                                <div style={{ display: "flex", gap: "0.5rem", alignItems: "flex-start" }}>
+                                  <span style={{ color: "#f87171", flexShrink: 0, marginTop: 2 }}>✗</span>
+                                  <span style={{ fontSize: "0.85rem", color: "#9ca3c4" }}>{fb.weaknesses}</span>
+                                </div>
+                              )}
+                              {fb.suggestion && (
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    gap: "0.5rem",
+                                    alignItems: "flex-start",
+                                    padding: "0.5rem 0.75rem",
+                                    background: "#1a1d2a",
+                                    borderRadius: 8,
+                                  }}
+                                >
+                                  <span style={{ color: "#f59e0b", flexShrink: 0 }}>💡</span>
+                                  <span style={{ fontSize: "0.82rem", color: "#a5a8c4", fontStyle: "italic" }}>{fb.suggestion}</span>
+                                </div>
+                              )}
+                            </div>
                           </div>
-                          <div
-                            style={{
-                              padding: "1rem 1.25rem",
-                              display: "flex",
-                              flexDirection: "column",
-                              gap: "0.6rem",
-                            }}
-                          >
-                            {fb.strengths && (
-                              <div
-                                style={{
-                                  display: "flex",
-                                  gap: "0.5rem",
-                                  alignItems: "flex-start",
-                                }}
-                              >
-                                <span
-                                  style={{
-                                    color: "#34d399",
-                                    flexShrink: 0,
-                                    marginTop: 2,
-                                  }}
-                                >
-                                  ✓
-                                </span>
-                                <span
-                                  style={{
-                                    fontSize: "0.85rem",
-                                    color: "#9ca3c4",
-                                  }}
-                                >
-                                  {fb.strengths}
-                                </span>
-                              </div>
-                            )}
-                            {fb.weaknesses && (
-                              <div
-                                style={{
-                                  display: "flex",
-                                  gap: "0.5rem",
-                                  alignItems: "flex-start",
-                                }}
-                              >
-                                <span
-                                  style={{
-                                    color: "#f87171",
-                                    flexShrink: 0,
-                                    marginTop: 2,
-                                  }}
-                                >
-                                  ✗
-                                </span>
-                                <span
-                                  style={{
-                                    fontSize: "0.85rem",
-                                    color: "#9ca3c4",
-                                  }}
-                                >
-                                  {fb.weaknesses}
-                                </span>
-                              </div>
-                            )}
-                            {fb.suggestion && (
-                              <div
-                                style={{
-                                  display: "flex",
-                                  gap: "0.5rem",
-                                  alignItems: "flex-start",
-                                  padding: "0.5rem 0.75rem",
-                                  background: "#1a1d2a",
-                                  borderRadius: 8,
-                                }}
-                              >
-                                <span
-                                  style={{ color: "#f59e0b", flexShrink: 0 }}
-                                >
-                                  💡
-                                </span>
-                                <span
-                                  style={{
-                                    fontSize: "0.82rem",
-                                    color: "#a5a8c4",
-                                    fontStyle: "italic",
-                                  }}
-                                >
-                                  {fb.suggestion}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
 
                     {/* Back button */}
@@ -750,7 +822,16 @@ export default function TOEICWritingTest() {
                       <div className="tw-card-context">
                         <img src={q.imageUrl} alt={`Question ${qid}`} />
                       </div>
-                      <AnswerBlock qid={qid} />
+                      <AnswerBlock
+                        qid={qid}
+                        answers={answers}
+                        notes={notes}
+                        openNotes={openNotes}
+                        submitted={submitted}
+                        onAnswer={setAnswer}
+                        onNote={setNote}
+                        onToggleNote={toggleNote}
+                      />
                     </div>
                   </div>
                 );
@@ -798,7 +879,16 @@ export default function TOEICWritingTest() {
                           </div>
                         </div>
                       </div>
-                      <AnswerBlock qid={qid} />
+                      <AnswerBlock
+                        qid={qid}
+                        answers={answers}
+                        notes={notes}
+                        openNotes={openNotes}
+                        submitted={submitted}
+                        onAnswer={setAnswer}
+                        onNote={setNote}
+                        onToggleNote={toggleNote}
+                      />
                     </div>
                   </div>
                 );
@@ -823,7 +913,17 @@ export default function TOEICWritingTest() {
                       <div className="tw-card-context">
                         <p className="tw-essay-prompt">{q.essayPrompt}</p>
                       </div>
-                      <AnswerBlock qid={qid} minH={280} />
+                      <AnswerBlock
+                        qid={qid}
+                        minH={280}
+                        answers={answers}
+                        notes={notes}
+                        openNotes={openNotes}
+                        submitted={submitted}
+                        onAnswer={setAnswer}
+                        onNote={setNote}
+                        onToggleNote={toggleNote}
+                      />
                     </div>
                   </div>
                 );

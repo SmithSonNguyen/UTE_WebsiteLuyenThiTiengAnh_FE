@@ -285,9 +285,9 @@ export default function NewsPortal() {
   return (
     <>
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-        <header className="bg-white shadow-md sticky top-0 z-50">
-          <div className="max-w-7xl mx-auto px-4 py-4">
-            <div className="flex items-center justify-between mb-4">
+        <header className="bg-white shadow-md sticky top-0 z-40">
+          <div className="max-w-7xl mx-auto px-4 py-2">
+            <div className="flex items-center justify-between mb-2">
               <div className="flex items-center space-x-3">
                 <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-2 rounded-lg">
                   <TrendingUp className="w-8 h-8 text-white" />
