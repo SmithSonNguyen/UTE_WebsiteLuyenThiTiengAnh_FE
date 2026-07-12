@@ -960,7 +960,7 @@ export default function DisplaySpeakingTest() {
                     <div className="sp-ai-loading">
                       <Loader2 className="w-8 h-8 sp-spin" />
                       <span>AI đang phân tích bài nói của bạn...</span>
-                      <span style={{ fontSize: "0.75rem", color: "#4e526d" }}>Groq · Llama 3.3 70B · Tiêu chí ETS TOEIC Speaking</span>
+                      <span style={{ fontSize: "0.75rem", color: "#4e526d" }}>Groq · Llama 3.3 70B · Tiêu chí IELTS Speaking</span>
                     </div>
                   </div>
                 )}
@@ -972,7 +972,7 @@ export default function DisplaySpeakingTest() {
                       </div>
                       <div>
                         <div className="sp-ai-title">Kết quả chấm điểm AI</div>
-                        <div className="sp-ai-subtitle">Groq · Llama 3.3 70B · Chuẩn ETS TOEIC Speaking</div>
+                        <div className="sp-ai-subtitle">Groq · Llama 3.3 70B · Chuẩn IELTS Speaking</div>
                       </div>
                     </div>
                     <div className="sp-ai-body">
