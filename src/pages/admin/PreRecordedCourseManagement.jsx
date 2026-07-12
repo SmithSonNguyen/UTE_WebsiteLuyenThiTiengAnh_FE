@@ -13,6 +13,9 @@ import {
   Star,
   Clock,
   Search,
+  HelpCircle,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 
 const PreRecordedCourseManagement = () => {
@@ -43,9 +46,9 @@ const PreRecordedCourseManagement = () => {
     targetScoreRange: { min: 0, max: 450 },
     features: [""],
     courseStructure: {
-      totalSessions: 0,
-      hoursPerSession: 0,
-      totalHours: 0,
+      totalSessions: 1,
+      hoursPerSession: 1,
+      totalHours: 1,
       description: "",
     },
     instructor: "",
@@ -58,9 +61,11 @@ const PreRecordedCourseManagement = () => {
       downloadable: true,
       certificate: true,
       description: "",
-      videoLessons: [{ title: "", url: "", order: 1 }],
+      videoLessons: [{ title: "", url: "", order: 1, questions: [] }],
     },
   });
+
+  const [expandedQuestions, setExpandedQuestions] = useState({});
 
   useEffect(() => {
     fetchCourses();
@@ -203,6 +208,75 @@ const PreRecordedCourseManagement = () => {
     });
   };
 
+  const toggleQuestionPanel = (videoIndex) => {
+    setExpandedQuestions((prev) => ({
+      ...prev,
+      [videoIndex]: !prev[videoIndex],
+    }));
+  };
+
+  const addQuestion = (videoIndex) => {
+    const newLessons = [...courseForm.preRecordedContent.videoLessons];
+    if (!newLessons[videoIndex].questions) {
+      newLessons[videoIndex].questions = [];
+    }
+    newLessons[videoIndex].questions.push({
+      questionText: "",
+      options: [
+        { label: "A", text: "" },
+        { label: "B", text: "" },
+        { label: "C", text: "" },
+        { label: "D", text: "" },
+      ],
+      correctAnswer: "A",
+    });
+    setCourseForm({
+      ...courseForm,
+      preRecordedContent: {
+        ...courseForm.preRecordedContent,
+        videoLessons: newLessons,
+      },
+    });
+  };
+
+  const removeQuestion = (videoIndex, questionIndex) => {
+    const newLessons = [...courseForm.preRecordedContent.videoLessons];
+    newLessons[videoIndex].questions = newLessons[videoIndex].questions.filter(
+      (_, i) => i !== questionIndex
+    );
+    setCourseForm({
+      ...courseForm,
+      preRecordedContent: {
+        ...courseForm.preRecordedContent,
+        videoLessons: newLessons,
+      },
+    });
+  };
+
+  const updateQuestion = (videoIndex, questionIndex, field, value) => {
+    const newLessons = [...courseForm.preRecordedContent.videoLessons];
+    newLessons[videoIndex].questions[questionIndex][field] = value;
+    setCourseForm({
+      ...courseForm,
+      preRecordedContent: {
+        ...courseForm.preRecordedContent,
+        videoLessons: newLessons,
+      },
+    });
+  };
+
+  const updateQuestionOption = (videoIndex, questionIndex, optionIndex, value) => {
+    const newLessons = [...courseForm.preRecordedContent.videoLessons];
+    newLessons[videoIndex].questions[questionIndex].options[optionIndex].text = value;
+    setCourseForm({
+      ...courseForm,
+      preRecordedContent: {
+        ...courseForm.preRecordedContent,
+        videoLessons: newLessons,
+      },
+    });
+  };
+
   const addFeature = () => {
     setCourseForm({
       ...courseForm,
@@ -233,9 +307,9 @@ const PreRecordedCourseManagement = () => {
       targetScoreRange: { min: 0, max: 450 },
       features: [""],
       courseStructure: {
-        totalSessions: 0,
-        hoursPerSession: 0,
-        totalHours: 0,
+        totalSessions: 1,
+        hoursPerSession: 1,
+        totalHours: 1,
         description: "",
       },
       instructor: "",
@@ -248,7 +322,7 @@ const PreRecordedCourseManagement = () => {
         downloadable: true,
         certificate: true,
         description: "",
-        videoLessons: [{ title: "", url: "", order: 1 }],
+        videoLessons: [{ title: "", url: "", order: 1, questions: [] }],
       },
     });
     setThumbnailPreview("");
@@ -292,9 +366,10 @@ const PreRecordedCourseManagement = () => {
   const handleUpdateCourse = async (e) => {
     e.preventDefault();
     try {
-      // Calculate totalLessons
+      // Build payload - exclude courseStructure for pre-recorded courses
+      const { courseStructure, ...restForm } = courseForm;
       const updatedForm = {
-        ...courseForm,
+        ...restForm,
         preRecordedContent: {
           ...courseForm.preRecordedContent,
           totalLessons: courseForm.preRecordedContent.videoLessons.length,
@@ -315,7 +390,10 @@ const PreRecordedCourseManagement = () => {
         }
       );
 
-      if (!response.ok) throw new Error("Failed to update course");
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.message || "Failed to update course");
+      }
 
       alert("Cập nhật khóa học thành công!");
       setShowEditModal(false);
@@ -365,10 +443,24 @@ const PreRecordedCourseManagement = () => {
       level: course.level,
       targetScoreRange: course.targetScoreRange,
       features: course.features || [""],
-      courseStructure: course.courseStructure,
+      courseStructure: course.courseStructure || {
+        totalSessions: 1,
+        hoursPerSession: 1,
+        totalHours: 1,
+        description: "",
+      },
       instructor: course.instructor?._id || course.instructor,
       thumbnail: course.thumbnail,
-      preRecordedContent: course.preRecordedContent,
+      preRecordedContent: course.preRecordedContent || {
+        totalTopics: 1,
+        totalLessons: 0,
+        accessDuration: 12,
+        accessDurationUnit: "months",
+        downloadable: true,
+        certificate: true,
+        description: "",
+        videoLessons: [{ title: "", url: "", order: 1, questions: [] }],
+      },
     });
     setThumbnailPreview(course.thumbnail);
     setShowEditModal(true);
@@ -867,45 +959,163 @@ const PreRecordedCourseManagement = () => {
                   </button>
                 </div>
 
-                <div className="space-y-3 max-h-60 overflow-y-auto">
+                <div className="space-y-3 max-h-96 overflow-y-auto">
                   {courseForm.preRecordedContent.videoLessons.map(
                     (lesson, index) => (
                       <div
                         key={index}
-                        className="flex gap-2 items-start p-3 bg-gray-50 rounded-lg"
+                        className="border border-gray-200 rounded-lg overflow-hidden"
                       >
-                        <div className="flex-shrink-0 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-semibold">
-                          {index + 1}
+                        {/* Video info row */}
+                        <div className="flex gap-2 items-start p-3 bg-gray-50">
+                          <div className="flex-shrink-0 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-semibold">
+                            {index + 1}
+                          </div>
+                          <div className="flex-1 space-y-2">
+                            <input
+                              type="text"
+                              value={lesson.title}
+                              onChange={(e) =>
+                                updateVideoLesson(index, "title", e.target.value)
+                              }
+                              placeholder="Lesson title"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                            />
+                            <input
+                              type="url"
+                              value={lesson.url}
+                              onChange={(e) =>
+                                updateVideoLesson(index, "url", e.target.value)
+                              }
+                              placeholder="YouTube URL"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                            />
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            {/* Toggle questions */}
+                            <button
+                              type="button"
+                              onClick={() => toggleQuestionPanel(index)}
+                              className="flex items-center gap-1 px-2 py-1 bg-indigo-50 text-indigo-600 rounded hover:bg-indigo-100 text-xs"
+                              title="Quản lý câu hỏi"
+                            >
+                              <HelpCircle className="w-3.5 h-3.5" />
+                              <span>{lesson.questions?.length || 0} Q</span>
+                              {expandedQuestions[index] ? (
+                                <ChevronUp className="w-3 h-3" />
+                              ) : (
+                                <ChevronDown className="w-3 h-3" />
+                              )}
+                            </button>
+                            {/* Remove video */}
+                            {courseForm.preRecordedContent.videoLessons.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => removeVideoLesson(index)}
+                                className="p-1.5 bg-red-50 text-red-600 rounded hover:bg-red-100"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
                         </div>
-                        <div className="flex-1 space-y-2">
-                          <input
-                            type="text"
-                            value={lesson.title}
-                            onChange={(e) =>
-                              updateVideoLesson(index, "title", e.target.value)
-                            }
-                            placeholder="Lesson title"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
-                          />
-                          <input
-                            type="url"
-                            value={lesson.url}
-                            onChange={(e) =>
-                              updateVideoLesson(index, "url", e.target.value)
-                            }
-                            placeholder="YouTube URL"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
-                          />
-                        </div>
-                        {courseForm.preRecordedContent.videoLessons.length >
-                          1 && (
-                          <button
-                            type="button"
-                            onClick={() => removeVideoLesson(index)}
-                            className="flex-shrink-0 p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
+
+                        {/* Questions panel */}
+                        {expandedQuestions[index] && (
+                          <div className="p-3 bg-white border-t border-gray-200">
+                            <div className="flex items-center justify-between mb-3">
+                              <span className="text-sm font-medium text-gray-700">
+                                Câu hỏi sau video ({lesson.questions?.length || 0})
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => addQuestion(index)}
+                                className="flex items-center gap-1 text-xs px-2 py-1 bg-green-50 text-green-700 rounded hover:bg-green-100"
+                              >
+                                <Plus className="w-3 h-3" />
+                                Thêm câu hỏi
+                              </button>
+                            </div>
+
+                            {(!lesson.questions || lesson.questions.length === 0) && (
+                              <p className="text-xs text-gray-400 italic text-center py-2">
+                                Chưa có câu hỏi nào. Nhấn "Thêm câu hỏi" để bắt đầu.
+                              </p>
+                            )}
+
+                            <div className="space-y-4">
+                              {(lesson.questions || []).map((question, qIndex) => (
+                                <div
+                                  key={qIndex}
+                                  className="border border-indigo-100 rounded-lg p-3 bg-indigo-50/30"
+                                >
+                                  <div className="flex items-start justify-between mb-2">
+                                    <span className="text-xs font-semibold text-indigo-600">
+                                      Câu {qIndex + 1}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => removeQuestion(index, qIndex)}
+                                      className="p-1 text-red-400 hover:text-red-600"
+                                    >
+                                      <X className="w-3 h-3" />
+                                    </button>
+                                  </div>
+
+                                  {/* Question text */}
+                                  <input
+                                    type="text"
+                                    value={question.questionText}
+                                    onChange={(e) =>
+                                      updateQuestion(index, qIndex, "questionText", e.target.value)
+                                    }
+                                    placeholder="Nội dung câu hỏi..."
+                                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm mb-3 focus:ring-2 focus:ring-indigo-400"
+                                  />
+
+                                  {/* Options A/B/C/D */}
+                                  <div className="space-y-2 mb-3">
+                                    {(question.options || []).map((opt, oIndex) => (
+                                      <div key={oIndex} className="flex items-center gap-2">
+                                        <span className="w-6 h-6 flex-shrink-0 flex items-center justify-center bg-gray-200 rounded-full text-xs font-bold text-gray-600">
+                                          {opt.label}
+                                        </span>
+                                        <input
+                                          type="text"
+                                          value={opt.text}
+                                          onChange={(e) =>
+                                            updateQuestionOption(index, qIndex, oIndex, e.target.value)
+                                          }
+                                          placeholder={`Đáp án ${opt.label}...`}
+                                          className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-indigo-400"
+                                        />
+                                      </div>
+                                    ))}
+                                  </div>
+
+                                  {/* Correct answer */}
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs text-gray-600 font-medium">Đáp án đúng:</span>
+                                    {['A','B','C','D'].map((label) => (
+                                      <label key={label} className="flex items-center gap-1 cursor-pointer">
+                                        <input
+                                          type="radio"
+                                          name={`correct-${index}-${qIndex}`}
+                                          value={label}
+                                          checked={question.correctAnswer === label}
+                                          onChange={() =>
+                                            updateQuestion(index, qIndex, "correctAnswer", label)
+                                          }
+                                          className="w-3 h-3 accent-green-600"
+                                        />
+                                        <span className="text-xs font-semibold text-green-700">{label}</span>
+                                      </label>
+                                    ))}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
                         )}
                       </div>
                     )

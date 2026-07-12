@@ -4,7 +4,7 @@ import axiosInstance from "@/utils/axiosInstance";
 
 const VocabTranslator = () => {
   const [text, setText] = useState("");
-  const [translation, setTranslation] = useState("");
+  const [translation, setTranslation] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [isOpen, setIsOpen] = useState(false);
@@ -27,7 +27,7 @@ const VocabTranslator = () => {
 
     setLoading(true);
     setError("");
-    setTranslation("");
+    setTranslation(null);
 
     try {
       const response = await fetch(GROQ_CONFIG.url, {
@@ -41,8 +41,16 @@ const VocabTranslator = () => {
           messages: [
             {
               role: "system",
-              content:
-                "You are a professional translator. Translate English to Vietnamese accurately and naturally. Return ONLY the Vietnamese translation without any explanations or extra text.",
+              content: `You are a professional dictionary and translator. Translate the English word or phrase to Vietnamese.
+Return ONLY a valid JSON object matching exactly this structure (no markdown, no extra text):
+{
+  "vietnamese": "Vietnamese translation",
+  "partOfSpeech": "noun / verb / adjective / adverb / etc.",
+  "englishDefinition": "English explanation of the meaning",
+  "wordFamily": "Synonyms or related word forms (e.g., verb, adjective, noun)",
+  "englishExample": "An example sentence in English using the word",
+  "vietnameseExample": "The translation of the example sentence"
+}`
             },
             {
               role: "user",
@@ -61,9 +69,14 @@ const VocabTranslator = () => {
 
       const data = await response.json();
       if (data.choices && data.choices[0]?.message?.content) {
-        const translated = data.choices[0].message.content.trim();
-        const cleanTranslation = translated.replace(/^["']|["']$/g, "");
-        setTranslation(cleanTranslation);
+        const rawContent = data.choices[0].message.content.trim();
+        const cleanJson = rawContent.replace(/^```[\w]*\n?/g, "").replace(/```$/g, "").trim();
+        try {
+          const parsed = JSON.parse(cleanJson);
+          setTranslation(parsed);
+        } catch (e) {
+          throw new Error("API trả về định dạng không hợp lệ");
+        }
       } else {
         throw new Error("Không nhận được bản dịch từ API");
       }
@@ -84,16 +97,28 @@ const VocabTranslator = () => {
 
   // Lưu từ vựng (giữ nguyên)
   const saveToMyVocabulary = async () => {
-    if (!text.trim() || !translation.trim()) {
+    if (!text.trim() || !translation || !translation.vietnamese) {
       toast.error("Vui lòng dịch từ trước khi lưu");
       return;
     }
 
     setSaving(true);
     try {
+      let fullExplanation = translation.vietnamese;
+      if (translation.partOfSpeech) fullExplanation = `(${translation.partOfSpeech}) ${fullExplanation}`;
+      if (translation.englishDefinition) fullExplanation += `\n- Def: ${translation.englishDefinition}`;
+      if (translation.wordFamily) fullExplanation += `\n- Family/Synonyms: ${translation.wordFamily}`;
+
+      let exampleText = "";
+      if (translation.englishExample) {
+        exampleText = translation.englishExample;
+        if (translation.vietnameseExample) exampleText += `\n(${translation.vietnameseExample})`;
+      }
+
       const payload = {
         word: text.trim(),
-        explanation: translation.trim(),
+        explanation: fullExplanation.trim(),
+        contextExample: exampleText.trim(),
         sourceLanguage: "en",
       };
 
@@ -117,7 +142,7 @@ const VocabTranslator = () => {
   const handleClose = () => {
     setIsOpen(false);
     setText("");
-    setTranslation("");
+    setTranslation(null);
     setError("");
   };
 
@@ -279,10 +304,10 @@ const VocabTranslator = () => {
               </div>
             )}
 
-            {translation && (
+            {translation && typeof translation === 'object' && (
               <div className="space-y-2.5">
-                <div className="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 p-4 rounded-lg shadow-sm">
-                  <div className="flex items-center gap-2 mb-2">
+                <div className="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 p-4 rounded-lg shadow-sm space-y-3">
+                  <div className="flex items-center gap-2 border-b border-green-200 pb-2 mb-2">
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       className="h-4 w-4 text-green-600"
@@ -298,12 +323,45 @@ const VocabTranslator = () => {
                       />
                     </svg>
                     <p className="text-xs font-medium text-green-700">
-                      Bản dịch từ Groq:
+                      Từ điển Groq AI:
                     </p>
                   </div>
-                  <p className="text-base font-semibold text-green-900">
-                    {translation}
-                  </p>
+                  
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-base font-bold text-green-900 capitalize">{text}</span>
+                      {translation.partOfSpeech && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-200 text-green-800 uppercase tracking-wider">
+                          {translation.partOfSpeech}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-base font-semibold text-green-800 mb-1">
+                      {translation.vietnamese}
+                    </p>
+                    {translation.englishDefinition && (
+                      <p className="text-sm text-green-700 italic border-l-2 border-green-300 pl-2 my-2">
+                        {translation.englishDefinition}
+                      </p>
+                    )}
+                    {translation.wordFamily && (
+                      <p className="text-sm text-green-800 mt-2 bg-green-100/50 p-2 rounded">
+                        <span className="font-semibold text-green-900">Gia đình từ / Đồng nghĩa:</span> {translation.wordFamily}
+                      </p>
+                    )}
+                  </div>
+
+                  {(translation.englishExample || translation.vietnameseExample) && (
+                    <div className="bg-white/60 p-3 rounded-lg text-sm border border-green-100">
+                      <p className="text-gray-800 font-bold mb-1 text-xs uppercase tracking-wider">Ví dụ:</p>
+                      {translation.englishExample && (
+                        <p className="text-gray-800 mb-1">• {translation.englishExample}</p>
+                      )}
+                      {translation.vietnameseExample && (
+                        <p className="text-gray-600 italic ml-2">{translation.vietnameseExample}</p>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <button

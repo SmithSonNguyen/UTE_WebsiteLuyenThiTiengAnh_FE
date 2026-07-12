@@ -60,13 +60,13 @@ const MyVocabCarousel = ({
             >
               {/* Header */}
               <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-3 flex-1">
-                  <div className="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center">
+                <div className="flex items-start gap-3 flex-1 min-w-0">
+                  <div className="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
                     <BookOpen className="w-6 h-6 text-blue-600" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-bold text-lg truncate">{vocab.word}</h3>
-                    <p className="text-sm text-muted-foreground truncate">
+                    <p className="text-sm text-muted-foreground line-clamp-2">
                       {vocab.explanation}
                     </p>
                   </div>
@@ -100,7 +100,7 @@ const MyVocabCarousel = ({
                     <p className="text-xs font-semibold text-gray-600 mb-1">
                       Meaning:
                     </p>
-                    <p className="text-base">{vocab.explanation}</p>
+                    <p className="text-base whitespace-pre-wrap">{vocab.explanation}</p>
                   </div>
                   {vocab.contextExample && (
                     <div>
